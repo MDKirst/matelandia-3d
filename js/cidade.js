@@ -5,6 +5,7 @@ import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 import { scene, flat, $ } from './cena.js';
 import { toXZ } from './geo.js';
 import { LIMITE, OVERPASS, OSM_API, DADOS_CIDADE } from './config.js';
+import { substituidoPorMarco } from './marcos.js';
 
 const LARGURA = {motorway:13,trunk:12,primary:10,secondary:9,tertiary:8,residential:7,unclassified:7,living_street:6,
   motorway_link:7,trunk_link:7,primary_link:7,secondary_link:7,tertiary_link:7,service:4,track:3.5,
@@ -48,6 +49,7 @@ function construir(elements){
     if(t.building){
       if(pts.length>1){ const a=pts[0], z=pts[pts.length-1]; if(a[0]===z[0]&&a[1]===z[1]) pts.pop(); }
       if(pts.length<3) continue;
+      { const b=bbox(pts), A=(b[2]-b[0])*(b[3]-b[1]); if(substituidoPorMarco((b[0]+b[2])/2,(b[1]+b[3])/2,'osm',A)) continue; } // marco feito à mão no lugar
       let h=parseFloat(t.height)||(parseFloat(t['building:levels'])*3.2)||(3.4+(el.id%7)*0.5);
       h=Math.min(Math.max(h,2.5),120);
       try{

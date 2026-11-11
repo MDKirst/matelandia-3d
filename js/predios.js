@@ -9,6 +9,7 @@ import { scene } from './cena.js';
 import { toXZ } from './geo.js';
 import { predios, bbox } from './cidade.js';
 import { DADOS_PREDIOS } from './config.js';
+import { substituidoPorMarco } from './marcos.js';
 
 const PAREDES = [0xf2ead9,0xe8dcc8,0xd9c7a8,0xcfd6da,0xe9c9a8,0xf0e6d6,0xc9d3b5,0xd8b08c,0xe6e1d3,0xbfcad3].map(c=>new THREE.Color(c));
 const CERAMICA = [0xa5553a,0x9b4c33,0xb0603f,0x8f4a35,0xb86b4b].map(c=>new THREE.Color(c));
@@ -76,6 +77,7 @@ export async function carregarPredios(){
     let A=area(pts); if(Math.abs(A)<12) continue;              // menor que 12 m²: ruído
     if(A<0){ pts=pts.reverse(); A=-A; }                       // sentido anti-horário visto de cima
     const bb=bbox(pts), cx=(bb[0]+bb[2])/2, cz=(bb[1]+bb[3])/2;
+    if(substituidoPorMarco(cx,cz,'overture',A)) continue;      // marco feito à mão no lugar
     if(osm.some(o=>cx>=o.bb[0]&&cx<=o.bb[2]&&cz>=o.bb[1]&&cz<=o.bb[3]&&dentro(cx,cz,o.pts))) continue; // já veio do OSM
     const h=altura(p,pts,A,cx,cz), r=sorte(cx,cz,1);
     const telhado=pts.length===4 && A<900;
