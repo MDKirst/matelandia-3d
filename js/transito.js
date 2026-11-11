@@ -83,15 +83,22 @@ export function atualizarTransito(dt, px, pz, outros){
     for(const d of carros) if(d!==c&&d.r&&d.obj.visible) testar(d.obj.position.x,d.obj.position.z,2.2,1.2);
     const lim=c.r.tipo.startsWith('motorway')?Math.max(c.vCruz,16):c.vCruz;
     c.vAlvo=livre?lim:0;
-    // preso há mais de 6 s (veículo estacionado na faixa, rua travada): dá meia-volta ou some
+    // preso há mais de 6 s (veículo estacionado na faixa, rua travada): longe do jogador some e
+    // renasce em outro lugar; perto, espera (antes dava meia-volta pulando de faixa e podia cair
+    // em cima do veículo do jogador)
     c.preso = c.v<0.3&&!livre ? (c.preso||0)+dt : 0;
-    if(c.preso>6){ c.preso=0; if(pode(c.r,-c.dir)){ c.i+=c.dir; c.dir=-c.dir; c.s=Math.max(0,P.L-c.s); P=pose(c); } else { c.r=null; continue; } }
+    if(c.preso>6&&Math.hypot(P.x-px,P.z-pz)>45){ c.preso=0; c.r=null; continue; }
     c.v += Math.sign(c.vAlvo-c.v)*Math.min(Math.abs(c.vAlvo-c.v), (c.vAlvo<c.v?9:3)*dt);
+    const antes={r:c.r,i:c.i,dir:c.dir,s:c.s};
     c.s += c.v*dt;
     let guard=0;
     while(c.r && c.s>=P.L && guard++<8){ c.s-=P.L; proximo(c); if(c.r) P=pose(c); }
     if(!c.r) continue;
     P=pose(c);
+    // trava final: o passo não pode terminar em cima de ninguém (curva, troca de rua, faixa)
+    const ocupado=outros.some(o=>Math.hypot(o[0]-P.x,o[1]-P.z)<Math.max(o[2],o[3])+2.0) ||
+      carros.some(d=>d!==c&&d.r&&d.obj.visible&&Math.hypot(d.obj.position.x-P.x,d.obj.position.z-P.z)<3.2&&Math.hypot(d.obj.position.x-c.obj.position.x,d.obj.position.z-c.obj.position.z)>=Math.hypot(d.obj.position.x-P.x,d.obj.position.z-P.z));
+    if(ocupado){ Object.assign(c,antes); c.v=0; P=pose(c); }
     c.obj.position.set(P.x,0,P.z);
     // vira suave (o modelo da Kenney olha para -Z, como os nossos)
     const alvo=Math.atan2(-P.ux,-P.uz); let d=alvo-c.obj.rotation.y; d=Math.atan2(Math.sin(d),Math.cos(d));
