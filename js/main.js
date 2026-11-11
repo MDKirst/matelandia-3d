@@ -8,8 +8,9 @@ import { ruas, predios, carregarCidade, status } from './cidade.js';
 import { jogador, suporte, av, animar } from './avatar.js';
 import { tecla, cam, toque, pedido } from './controles.js';
 import { bloqueado, ruaMaisProxima, pontoLivre } from './mundo.js';
-import { carregarPredios } from './predios.js';
+import { carregarPredios, atualizarTelhados } from './predios.js';
 import { construirMarcos } from './marcos.js';
+import { carregarLojas } from './lojas.js';
 import { minimapa } from './minimapa.js';
 import { frota, iniciarVeiculos, veiculoPerto, entrar, sair, dirigir, dentroDeVeiculo, frente, esquerda } from './veiculos.js';
 import * as veic from './veiculos.js';
@@ -104,6 +105,7 @@ function quadro(){
   camera.lookAt(alvo);
   base.position.set(p.x,0,p.z);
   satelite.atualizar(p.x,p.z);
+  atualizarTelhados(dt,p.x,p.z);
 
   tLento+=dt;
   if(tLento>0.12){ tLento=0;
@@ -123,6 +125,7 @@ carregarCidade().then(async()=>{
   // árvore e banco não vão para cima da rua
   const ruaLonge=(x,z)=>!ruas.some(r=>!r.pe&&x>r.bb[0]-12&&x<r.bb[2]+12&&z>r.bb[1]-12&&z<r.bb[3]+12&&r.pts.some((q,i)=>{ const n=r.pts[i+1]; if(!n) return false; const vx=n[0]-q[0], vz=n[1]-q[1]; let t=((x-q[0])*vx+(z-q[1])*vz)/(vx*vx+vz*vz||1); t=Math.max(0,Math.min(1,t)); return Math.hypot(x-q[0]-vx*t,z-q[1]-vz*t)<r.w/2+1.5; }));
   construirMarcos(predios, ruaLonge); status();
+  carregarLojas().then(r=>console.info('lojas',r));
   const p=jogador.position, [x,z]=pontoLivre(p.x,p.z); p.set(x,0,z);   // não nascer dentro de uma casa
   await iniciarVeiculos(); await iniciarTransito(jogador.position.x,jogador.position.z); });
 quadro();

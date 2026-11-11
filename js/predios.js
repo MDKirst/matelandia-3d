@@ -6,9 +6,9 @@
 import * as THREE from 'three';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 import { scene } from './cena.js';
-import { toXZ } from './geo.js';
+import { toXZ, toLL, D2R } from './geo.js';
 import { predios, bbox } from './cidade.js';
-import { DADOS_PREDIOS } from './config.js';
+import { DADOS_PREDIOS, TILE_URL, ZOOM_MAX } from './config.js';
 import { substituidoPorMarco } from './marcos.js';
 
 const PAREDES = [0xf2ead9,0xe8dcc8,0xd9c7a8,0xcfd6da,0xe9c9a8,0xf0e6d6,0xc9d3b5,0xd8b08c,0xe6e1d3,0xbfcad3].map(c=>new THREE.Color(c));
@@ -67,6 +67,62 @@ function quatroAguas(pts,h,alt){
   g.computeVertexNormals(); return g;
 }
 
+// tampa plana (laje) na altura h
+function laje(pts,h){
+  const g=new THREE.ShapeGeometry(new THREE.Shape(pts.map(p=>new THREE.Vector2(p[0],-p[1])))).rotateX(-Math.PI/2).translate(0,h,0);
+  g.deleteAttribute('uv'); return g.index?g.toNonIndexed():g;
+}
+
+/* ───────── Telhados com a imagem do satélite ─────────
+   Os telhados de cada quadra de 250 m ficam numa malha própria, com UV = posição no chão.
+   Perto do jogador, a quadra ganha uma textura montada com os blocos z18 da Esri (os mesmos do
+   chão, já no cache do navegador): de cima, cada telhado mostra o telhado real. Longe, volta a
+   cor sorteada. Nada é gravado em disco (regra da Esri: só online). */
+const Q=250, MARGEM=30, TPX=576;                  // quadra, folga em volta, pixels da textura (~0,54 m/px)
+const quadrasTelhado=[];                          // {x0,z0,mesh,mat,matTex,tex,estado,cores}
+const matTelhadoCor=new THREE.MeshLambertMaterial({vertexColors:true});
+const SOL=new THREE.Vector3(-0.5,1,0.35).normalize();
+function uvs(g,x0,z0){
+  const P=g.attributes.position, uv=new Float32Array(P.count*2), L=Q+2*MARGEM;
+  for(let i=0;i<P.count;i++){ uv[i*2]=(P.getX(i)-(x0-MARGEM))/L; uv[i*2+1]=1-(P.getZ(i)-(z0-MARGEM))/L; }
+  g.setAttribute('uv',new THREE.BufferAttribute(uv,2)); return g;
+}
+const gx=(lon,z)=>(lon+180)/360*256*2**z;
+const gy=(lat,z)=>(1-Math.asinh(Math.tan(lat*D2R))/Math.PI)/2*256*2**z;
+function carregarImg(url){ return new Promise((ok,no)=>{ const im=new Image(); im.crossOrigin='anonymous'; im.onload=()=>ok(im); im.onerror=no; im.src=url; }); }
+async function texturaQuadra(q){
+  const Z=ZOOM_MAX, [la0,lo0]=toLL(q.x0-MARGEM,q.z0-MARGEM), [la1,lo1]=toLL(q.x0+Q+MARGEM,q.z0+Q+MARGEM);
+  const X0=gx(lo0,Z), X1=gx(lo1,Z), Y0=gy(la0,Z), Y1=gy(la1,Z), sx=TPX/(X1-X0), sy=TPX/(Y1-Y0);
+  const cv=document.createElement('canvas'); cv.width=cv.height=TPX; const k=cv.getContext('2d');
+  const pedidos=[];
+  for(let tx=Math.floor(X0/256);tx<=Math.floor(X1/256);tx++) for(let ty=Math.floor(Y0/256);ty<=Math.floor(Y1/256);ty++)
+    pedidos.push(carregarImg(TILE_URL(Z,tx,ty)).then(im=>k.drawImage(im,(tx*256-X0)*sx,(ty*256-Y0)*sy,256*sx+0.5,256*sy+0.5)));
+  const res=await Promise.allSettled(pedidos);
+  if(!res.some(r=>r.status==='fulfilled')) throw new Error('sem blocos');
+  const tex=new THREE.CanvasTexture(cv); tex.colorSpace=THREE.SRGBColorSpace; tex.anisotropy=4; return tex;
+}
+// sombreamento leve por face (a imagem já tem luz, então só um toque para separar as águas)
+function sombra(g){ const N=g.attributes.normal, c=new Float32Array(N.count*3); for(let i=0;i<N.count;i++){ const v=0.8+0.25*Math.max(0,N.getX(i)*SOL.x+N.getY(i)*SOL.y+N.getZ(i)*SOL.z); c[i*3]=c[i*3+1]=c[i*3+2]=Math.min(1,v); } return new THREE.BufferAttribute(c,3); }
+
+let tTelhado=0;
+export function atualizarTelhados(dt,px,pz){
+  tTelhado+=dt; if(tTelhado<0.5) return; tTelhado=0;
+  for(const q of quadrasTelhado){
+    const d=Math.hypot(q.x0+Q/2-px,q.z0+Q/2-pz);
+    if(d<520&&q.estado==='cor'){
+      q.estado='carregando';
+      texturaQuadra(q).then(tex=>{
+        if(q.estado!=='carregando'){ tex.dispose(); return; }
+        q.tex=tex; q.matTex.map=tex; q.matTex.needsUpdate=true;
+        q.mesh.geometry.setAttribute('color',q.sombra); q.mesh.material=q.matTex; q.estado='foto';
+      }).catch(()=>{ q.estado='cor'; });
+    } else if(d>800&&q.estado!=='cor'){
+      if(q.tex){ q.tex.dispose(); q.tex=null; }
+      q.mesh.geometry.setAttribute('color',q.cores); q.mesh.material=matTelhadoCor; q.estado='cor';
+    }
+  }
+}
+
 export async function carregarPredios(){
   let dados;
   try{ const r=await fetch(DADOS_PREDIOS); if(!r.ok) throw new Error('HTTP '+r.status); dados=await r.json(); }
@@ -80,21 +136,28 @@ export async function carregarPredios(){
     if(substituidoPorMarco(cx,cz,'overture',A)) continue;      // marco feito à mão no lugar
     if(osm.some(o=>cx>=o.bb[0]&&cx<=o.bb[2]&&cz>=o.bb[1]&&cz<=o.bb[3]&&dentro(cx,cz,o.pts))) continue; // já veio do OSM
     const h=altura(p,pts,A,cx,cz), r=sorte(cx,cz,1);
-    const telhado=pts.length===4 && A<900;
-    const geos=[];
+    const quatro=pts.length===4 && A<900;
+    const i=Math.floor(cx/Q), j=Math.floor(cz/Q), k=i+'_'+j;
+    if(!quadras.has(k)) quadras.set(k,{i,j,paredes:[],telhados:[]});
+    const qd=quadras.get(k);
     try{
-      geos.push(pinta(paredes(pts,h,!telhado), PAREDES[(r*PAREDES.length)|0]));
-      if(telhado){ const curto=Math.min(Math.hypot(pts[1][0]-pts[0][0],pts[1][1]-pts[0][1]),Math.hypot(pts[2][0]-pts[1][0],pts[2][1]-pts[1][1]));
-        geos.push(pinta(quatroAguas(pts,h,Math.min(curto*0.28,3)), (A>400?FIBRO:CERAMICA)[(sorte(cx,cz,2)*5|0)%(A>400?3:5)])); }
-      else { const top=geos[0], P=top.attributes.position, N=top.attributes.normal, C=top.attributes.color, laje=FIBRO[(r*3)|0];
-        for(let i=0;i<P.count;i++) if(N.getY(i)>0.9){ C.setXYZ(i,laje.r,laje.g,laje.b); } }
+      const par=pinta(paredes(pts,h,false), PAREDES[(r*PAREDES.length)|0]);
+      let tel;
+      if(quatro){ const curto=Math.min(Math.hypot(pts[1][0]-pts[0][0],pts[1][1]-pts[0][1]),Math.hypot(pts[2][0]-pts[1][0],pts[2][1]-pts[1][1]));
+        tel=pinta(quatroAguas(pts,h,Math.min(curto*0.28,3)), (A>400?FIBRO:CERAMICA)[(sorte(cx,cz,2)*5|0)%(A>400?3:5)]); }
+      else tel=pinta(laje(pts,h), FIBRO[(r*3)|0]);
+      qd.paredes.push(par); qd.telhados.push(uvs(tel,i*Q,j*Q));
     }catch(e){ continue; }
-    const k=Math.floor(cx/250)+'_'+Math.floor(cz/250); if(!quadras.has(k)) quadras.set(k,[]); quadras.get(k).push(...geos);
-    predios.push({pts,bb}); n++;
+    predios.push({pts,bb,h}); n++;
   }
-  for(const geos of quadras.values()){
-    const g=mergeGeometries(geos,false); geos.forEach(x=>x.dispose()); if(!g) continue;
-    g.computeBoundingSphere(); scene.add(new THREE.Mesh(g,mat));
+  for(const qd of quadras.values()){
+    const g=mergeGeometries(qd.paredes,false); qd.paredes.forEach(x=>x.dispose());
+    if(g){ g.computeBoundingSphere(); scene.add(new THREE.Mesh(g,mat)); }
+    const t=mergeGeometries(qd.telhados,false); qd.telhados.forEach(x=>x.dispose()); if(!t) continue;
+    t.computeBoundingSphere();
+    const mesh=new THREE.Mesh(t,matTelhadoCor); scene.add(mesh);
+    quadrasTelhado.push({x0:qd.i*Q, z0:qd.j*Q, mesh, cores:t.attributes.color, sombra:sombra(t),
+      matTex:new THREE.MeshBasicMaterial({vertexColors:true}), tex:null, estado:'cor'});
   }
   return n;
 }

@@ -179,6 +179,6 @@ export function construirMarcos(predios, ruaLonge){
     scene.add(tronco,copa,copa2);
   }
   const bb=pts=>{ let a=1e9,b=1e9,c=-1e9,d=-1e9; for(const p of pts){ a=Math.min(a,p[0]); b=Math.min(b,p[1]); c=Math.max(c,p[0]); d=Math.max(d,p[1]); } return [a,b,c,d]; };
-  for(const pts of solidos) predios.push({pts,bb:bb(pts)});
+  for(const pts of solidos) predios.push({pts,bb:bb(pts),marco:true});
   return { arvores:arvores.length, solidos:solidos.length };
 }
