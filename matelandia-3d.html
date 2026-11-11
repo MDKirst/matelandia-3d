@@ -432,7 +432,8 @@ function quadro(){
   tLento+=dt;
   if(tLento>0.12){ tLento=0; minimapa();
     const r=ruaMaisProxima(p.x,p.z), nome=r?r.nome:'';
-    if(nome!==ruaAtual){ ruaAtual=nome; $('street').innerHTML=nome?`${nome}<small>MATELÂNDIA · PR</small>`:''; }
+    if(nome!==ruaAtual){ ruaAtual=nome; const el=$('street'); el.textContent=nome; // nome vem do OSM (editável por qualquer um): nunca como HTML
+      if(nome){ const s=document.createElement('small'); s.textContent='MATELÂNDIA · PR'; el.appendChild(s); } }
     const [la,lo]=toLL(p.x,p.z); $('coord').textContent=la.toFixed(5)+', '+lo.toFixed(5);
   }
   renderer.render(scene,camera);
