@@ -1,0 +1,28 @@
+<!DOCTYPE html>
+<html lang="pt-BR"><head><meta charset="utf-8"><title>Estúdio de veículos</title>
+<style>html,body{margin:0;height:100%;background:#cfd8dc;font-family:system-ui}#l{position:fixed;top:8px;left:8px;background:#0009;color:#fff;padding:6px 10px;border-radius:6px;font-size:13px}</style>
+<script type="importmap">{"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js","three/addons/":"https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"}}</script>
+</head><body><div id="l">Seta azul = frente do jogo (-Z). ?m=a.glb,b.glb (em ../assets/veiculos/)</div>
+<script type="module">
+// Uso: tools/ver-veiculos.html?m=suv.glb,picape.glb — mostra lado a lado, com a frente do jogo marcada
+import * as THREE from 'three';
+import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+import { MeshoptDecoder } from 'three/addons/libs/meshopt_decoder.module.js';
+const nomes=(new URLSearchParams(location.search).get('m')||'picape.glb,cavalo.glb,suv.glb').split(',');
+const r=new THREE.WebGLRenderer({antialias:true}); r.setSize(innerWidth,innerHeight); r.outputColorSpace=THREE.SRGBColorSpace; document.body.appendChild(r.domElement);
+const s=new THREE.Scene(); s.background=new THREE.Color(0xcfd8dc);
+s.add(new THREE.HemisphereLight(0xffffff,0x777766,2)); const d=new THREE.DirectionalLight(0xffffff,1.5); d.position.set(3,5,2); s.add(d);
+s.add(new THREE.GridHelper(40,40,0x555555,0x999999));
+const c=new THREE.PerspectiveCamera(40,innerWidth/innerHeight,0.1,200);
+const L=new GLTFLoader(); L.setMeshoptDecoder(MeshoptDecoder);
+nomes.forEach((n,i)=>L.load('../assets/veiculos/'+n,g=>{
+  const x=(i-(nomes.length-1)/2)*4; g.scene.position.x=x; s.add(g.scene);
+  const seta=new THREE.ArrowHelper(new THREE.Vector3(0,0,-1),new THREE.Vector3(x,0.05,-1),4,0x1d4ed8,0.8,0.5); s.add(seta);
+  const cv=document.createElement('canvas'); cv.width=256; cv.height=64; const k=cv.getContext('2d'); k.font='bold 40px system-ui'; k.fillStyle='#111'; k.textAlign='center'; k.fillText(n.replace('.glb',''),128,46);
+  const sp=new THREE.Sprite(new THREE.SpriteMaterial({map:new THREE.CanvasTexture(cv)})); sp.scale.set(3,0.75,1); sp.position.set(x,3.6,0); s.add(sp);
+}));
+const v=Q=>Q; let ang=-0.9;
+addEventListener('keydown',e=>{ if(e.key==='ArrowLeft') ang-=0.3; if(e.key==='ArrowRight') ang+=0.3; });
+(function f(){ requestAnimationFrame(f); const R=16; c.position.set(Math.sin(ang)*R,6,-Math.cos(ang)*R); c.lookAt(0,1,0); r.render(s,c); })();
+window.__ang=a=>{ ang=a; c.position.set(Math.sin(ang)*16,6,-Math.cos(ang)*16); c.lookAt(0,1,0); r.render(s,c); };
+</script></body></html>

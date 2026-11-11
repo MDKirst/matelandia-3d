@@ -17,7 +17,7 @@ const matPredio= new THREE.MeshLambertMaterial({vertexColors:true});
 const PAREDES = [0xe8dcc8,0xd9c7a8,0xcfd6da,0xe3b9a0,0xc9d3b5,0xf0e6d6,0xb9c4cf,0xd8b08c].map(c=>new THREE.Color(c));
 const TELHADOS= [0xa5553a,0x8f4a35,0x9a9a96,0x6f7377,0xb0603f].map(c=>new THREE.Color(c));
 
-export const ruas=[];     // {nome,tipo,pts,bb,w,pe}
+export const ruas=[];     // {nome,tipo,pts,bb,w,pe,mao}
 export const predios=[];  // {pts,bb}
 const vistos=new Set();
 let carregando=true, erroRede=false, fonte='OpenStreetMap ao vivo';
@@ -63,7 +63,7 @@ function construir(elements){
       const w=LARGURA[t.highway], pe=A_PE.has(t.highway);
       fita(pts,w,pe?P:R);
       if(!pe&&w>=7) fita(pts,0.16,F);
-      ruas.push({nome:t.name||'',tipo:t.highway,pts,bb:bbox(pts),w,pe});
+      ruas.push({nome:t.name||'',tipo:t.highway,pts,bb:bbox(pts),w,pe,mao:t.oneway==='yes'||t.highway==='motorway'?1:t.oneway==='-1'?-1:0}); // mao: 1/-1 = mão única
     }
   }
   malha(P,matPe,-6); malha(R,matRua,-5); malha(F,matFaixa,-4);

@@ -22,6 +22,10 @@
   #street small{display:block;font-size:.42em;font-weight:600;color:#fcd34d;font-style:normal;letter-spacing:.5px}
   #mini{position:fixed;left:12px;bottom:28px;width:190px;height:190px;border-radius:50%;border:3px solid rgba(255,255,255,.85);box-shadow:0 4px 18px rgba(0,0,0,.5);background:#1b2a1f}
   #attr{position:fixed;left:0;right:0;bottom:0;text-align:center;font-size:10px;color:#0f172a;background:rgba(255,255,255,.55);padding:2px;pointer-events:none}
+  #dica{position:fixed;left:50%;bottom:64px;transform:translateX(-50%);font-weight:700;font-size:15px;text-shadow:0 2px 0 #000,0 0 8px #000;pointer-events:none;display:none}
+  #velo{position:fixed;right:22px;bottom:118px;text-align:right;font-weight:900;font-size:clamp(26px,4vw,46px);text-shadow:0 2px 0 #000,0 0 12px rgba(0,0,0,.8);pointer-events:none;display:none}
+  #velo small{font-size:.4em;font-weight:700;color:#fcd34d}
+  #usar{position:fixed;right:18px;bottom:190px;width:74px;height:74px;border-radius:50%;font-size:14px;display:none;box-shadow:0 4px 14px rgba(0,0,0,.5)}
   #drop{position:fixed;inset:0;display:none;align-items:center;justify-content:center;background:rgba(249,115,22,.35);font-size:28px;font-weight:800;pointer-events:none}
   @media (max-width:700px){#help{display:none}#mini{width:130px;height:130px}#top{max-width:210px}}
 </style>
@@ -49,14 +53,18 @@
 <div id="help" class="panel">
   <b>WASD / setas</b> andar · <b>Shift</b> correr<br>
   <b>Arrastar mouse</b> girar câmera · <b>Scroll</b> zoom<br>
+  <b>E</b> entrar/sair do veículo · <b>Espaço</b> freio de mão<br>
   <b>R</b> girar avatar 90° · <b>[ ]</b> detalhe do satélite<br>
   Celular: esquerda anda, direita gira
 </div>
 
 <canvas id="mini" width="380" height="380"></canvas>
 <div id="street"></div>
+<div id="dica"></div>
+<div id="velo"></div>
+<button id="usar">Entrar</button>
 <div id="drop">Solte o .glb aqui</div>
-<div id="attr">Imagens © Esri, Maxar, Earthstar Geographics · Dados de ruas e prédios © colaboradores do OpenStreetMap</div>
+<div id="attr">Imagens © Esri, Maxar, Earthstar Geographics · Dados de ruas e prédios © colaboradores do OpenStreetMap · Carros do trânsito: Kenney (CC0)</div>
 
 <script type="module" src="js/main.js"></script>
 </body>

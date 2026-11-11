@@ -8,12 +8,14 @@ import { status } from './cidade.js';
 export const tecla={};
 export const cam={ yaw:0.6, pitch:0.42, dist:9 };  // câmera orbital atrás do avatar
 export const toque={ joy:null };                    // joystick virtual (lado esquerdo da tela no celular)
+export const pedido={ usar:false };                 // entrar/sair do veículo (tecla E ou botão)
 const dedos={};
 const digitando=()=>document.activeElement&&document.activeElement.tagName==='INPUT';
 
 addEventListener('keydown',e=>{
   if(digitando()) return;
   tecla[e.code]=true;
+  if((e.code==='KeyE'||e.code==='KeyF')&&!e.repeat) pedido.usar=true;
   if(e.code==='KeyR') av.giroExtra+=Math.PI/2;
   if(e.code==='BracketRight'||e.code==='BracketLeft'){
     const z=satelite.mudarZoom(e.code==='BracketRight'?1:-1);
@@ -46,3 +48,4 @@ $('tp').addEventListener('keydown',e=>{
   const m=e.target.value.match(/(-?\d+(?:[.,]\d+)?)\s*[,; ]\s*(-?\d+(?:[.,]\d+)?)/);
   if(m){ const [x,z]=toXZ(parseFloat(m[1].replace(',','.')),parseFloat(m[2].replace(',','.'))); jogador.position.set(x,0,z); e.target.value=''; e.target.blur(); }
 });
+$('usar').addEventListener('click',e=>{ pedido.usar=true; e.currentTarget.blur(); });
