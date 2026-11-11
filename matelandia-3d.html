@@ -80,7 +80,8 @@ const OVERPASS = [
   'https://overpass.kumi.systems/api/interpreter',
   'https://overpass.private.coffee/api/interpreter'
 ];
-const OSM_API = 'https://api.openstreetmap.org/api/0.6/map'; // reserva: Overpass às vezes some
+const DADOS_CIDADE = 'dados/matelandia.json';
+const OSM_API ='https://api.openstreetmap.org/api/0.6/map'; // reserva: Overpass às vezes some
 const ANDAR = 4, CORRER = 10; // m/s
 const ALTURA_AVATAR = 1.75;
 
@@ -246,6 +247,11 @@ let fonte='OpenStreetMap ao vivo';
 async function carregarCidade(){
   const emb=document.getElementById('cidade-embutida');
   if(emb){ try{ construir(JSON.parse(emb.textContent).elements); carregando=false; fonte='dados salvos no arquivo'; status(); return; }catch(e){ console.warn(e); } }
+  try{ // dados/matelandia.json (gerado por tools/baixar_cidade.py); a rede é só reserva
+    const r=await fetch(DADOS_CIDADE); if(!r.ok) throw new Error('HTTP '+r.status);
+    const j=await r.json(); if(!j.elements?.length) throw new Error('vazio');
+    construir(j.elements); carregando=false; fonte='dados locais'+(j.meta?.baixado_em?' de '+j.meta.baixado_em.split('-').reverse().join('/'):''); status(); return;
+  }catch(e){ console.warn('Sem '+DADOS_CIDADE+', baixando do OpenStreetMap:',e); }
   for(;;){
     try{ construir(await baixarCidade()); erroRede=false; carregando=false; status(); return; }
     catch(e){ console.warn('OSM',e); erroRede=true; status(); await new Promise(r=>setTimeout(r,8000)); }
