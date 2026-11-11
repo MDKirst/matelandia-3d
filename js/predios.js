@@ -14,7 +14,30 @@ import { substituidoPorMarco } from './marcos.js';
 const PAREDES = [0xf2ead9,0xe8dcc8,0xd9c7a8,0xcfd6da,0xe9c9a8,0xf0e6d6,0xc9d3b5,0xd8b08c,0xe6e1d3,0xbfcad3].map(c=>new THREE.Color(c));
 const CERAMICA = [0xa5553a,0x9b4c33,0xb0603f,0x8f4a35,0xb86b4b].map(c=>new THREE.Color(c));
 const FIBRO = [0x9a9a96,0x8a8f93,0xa7a9a6].map(c=>new THREE.Color(c));   // telha de fibrocimento / laje
-const mat = new THREE.MeshLambertMaterial({vertexColors:true});
+// fachada: janela a cada 3 m, andares de 3,2 m (UV em metros, que o ExtrudeGeometry já dá);
+// a textura é branca onde é parede, então a cor sorteada por prédio aparece por baixo
+function texFachada(galpao){
+  const cv=document.createElement('canvas'); cv.width=256; cv.height=256; const k=cv.getContext('2d');
+  const px=x=>x/3*256, py=y=>256-y/3.2*256;               // metros → pixel (y conta do chão)
+  k.fillStyle='#fff'; k.fillRect(0,0,256,256);
+  for(let i=0;i<1500;i++){ k.fillStyle=`rgba(0,0,0,${Math.random()*0.05})`; k.fillRect(Math.random()*256,Math.random()*256,2,2); }
+  if(galpao){                                             // telha metálica ondulada na parede, faixa de vitrô no alto
+    for(let x=0;x<256;x+=10){ k.fillStyle='rgba(0,0,0,.07)'; k.fillRect(x,0,4,256); }
+    k.fillStyle='#55606b'; k.fillRect(px(0.3),py(3.0),px(2.4),py(2.6)-py(3.0));
+  } else {
+    k.fillStyle='rgba(0,0,0,.18)'; k.fillRect(0,py(0.45),256,py(0)-py(0.45));          // barrado (sujeira de chuva)
+    const x0=px(0.85), x1=px(2.15), y0=py(2.15), y1=py(0.95);
+    k.fillStyle='#e9e4da'; k.fillRect(x0-6,y0-6,x1-x0+12,y1-y0+16);                   // moldura e peitoril
+    k.fillStyle='#2e3b47'; k.fillRect(x0,y0,x1-x0,y1-y0);                              // vidro
+    k.fillStyle='rgba(160,190,210,.35)'; k.fillRect(x0,y0,(x1-x0)/2-2,y1-y0);          // reflexo
+    k.fillStyle='#d8d2c6'; k.fillRect((x0+x1)/2-2,y0,4,y1-y0); k.fillRect(x0,(y0+y1)/2-2,x1-x0,4); // caixilho
+  }
+  const t=new THREE.CanvasTexture(cv); t.colorSpace=THREE.SRGBColorSpace; t.wrapS=t.wrapT=THREE.RepeatWrapping; t.anisotropy=8;
+  t.repeat.set(1/3,-1/3.2); t.offset.set(0,1/3.2);       // v do Extrude = 1 − altura → aqui vira altura/3,2
+  return t;
+}
+const mat = new THREE.MeshLambertMaterial({vertexColors:true, map:texFachada(false)});
+const matGalpao = new THREE.MeshLambertMaterial({vertexColors:true, map:texFachada(true)});
 
 // número pseudoaleatório estável por prédio (a cidade sai igual toda vez)
 const sorte = (x,z,k=0)=>{ const s=Math.sin(x*12.9898+z*78.233+k*37.719)*43758.5453; return s-Math.floor(s); };
@@ -36,14 +59,14 @@ function pinta(g,cor){ const n=g.attributes.position.count, a=new Float32Array(n
 function paredes(pts,h,tampa){
   const s=new THREE.Shape(pts.map(p=>new THREE.Vector2(p[0],-p[1])));
   const g=new THREE.ExtrudeGeometry(s,{depth:h,bevelEnabled:false,steps:1}).rotateX(-Math.PI/2);
-  g.deleteAttribute('uv');
-  if(!tampa){ // tira as faces de cima (normal para cima, no topo)
+  if(!tampa){ // só as paredes: tira as faces de cima e de baixo (normal vertical)
     const P=g.attributes.position, N=g.attributes.normal, keep=[];
-    for(let t=0;t<P.count;t+=3){ const cima=N.getY(t)>0.9&&P.getY(t)>h-0.01; if(!cima) keep.push(t,t+1,t+2); }
+    for(let t=0;t<P.count;t+=3){ if(Math.abs(N.getY(t))<0.9) keep.push(t,t+1,t+2); }
     const ng=new THREE.BufferGeometry();
-    for(const nome of ['position','normal']){ const src=g.attributes[nome], arr=new Float32Array(keep.length*3); keep.forEach((v,i)=>{ arr[i*3]=src.getX(v); arr[i*3+1]=src.getY(v); arr[i*3+2]=src.getZ(v); }); ng.setAttribute(nome,new THREE.BufferAttribute(arr,3)); }
+    for(const nome of ['position','normal','uv']){ const src=g.attributes[nome], n=src.itemSize, arr=new Float32Array(keep.length*n); keep.forEach((v,i)=>{ for(let c=0;c<n;c++) arr[i*n+c]=src.array[v*n+c]; }); ng.setAttribute(nome,new THREE.BufferAttribute(arr,n)); }
     g.dispose(); return ng;
   }
+  g.deleteAttribute('uv');
   return g.index ? g.toNonIndexed() : g;
 }
 
@@ -138,7 +161,7 @@ export async function carregarPredios(){
     const h=altura(p,pts,A,cx,cz), r=sorte(cx,cz,1);
     const quatro=pts.length===4 && A<900;
     const i=Math.floor(cx/Q), j=Math.floor(cz/Q), k=i+'_'+j;
-    if(!quadras.has(k)) quadras.set(k,{i,j,paredes:[],telhados:[]});
+    if(!quadras.has(k)) quadras.set(k,{i,j,paredes:[],galpoes:[],telhados:[]});
     const qd=quadras.get(k);
     try{
       const par=pinta(paredes(pts,h,false), PAREDES[(r*PAREDES.length)|0]);
@@ -146,13 +169,14 @@ export async function carregarPredios(){
       if(quatro){ const curto=Math.min(Math.hypot(pts[1][0]-pts[0][0],pts[1][1]-pts[0][1]),Math.hypot(pts[2][0]-pts[1][0],pts[2][1]-pts[1][1]));
         tel=pinta(quatroAguas(pts,h,Math.min(curto*0.28,3)), (A>400?FIBRO:CERAMICA)[(sorte(cx,cz,2)*5|0)%(A>400?3:5)]); }
       else tel=pinta(laje(pts,h), FIBRO[(r*3)|0]);
-      qd.paredes.push(par); qd.telhados.push(uvs(tel,i*Q,j*Q));
+      (A>600?qd.galpoes:qd.paredes).push(par); qd.telhados.push(uvs(tel,i*Q,j*Q));
     }catch(e){ continue; }
-    predios.push({pts,bb,h}); n++;
+    predios.push({pts,bb,h,galpao:A>600}); n++;
   }
   for(const qd of quadras.values()){
-    const g=mergeGeometries(qd.paredes,false); qd.paredes.forEach(x=>x.dispose());
-    if(g){ g.computeBoundingSphere(); scene.add(new THREE.Mesh(g,mat)); }
+    for(const [lista,m] of [[qd.paredes,mat],[qd.galpoes,matGalpao]]){ if(!lista.length) continue;
+      const g=mergeGeometries(lista,false); lista.forEach(x=>x.dispose());
+      if(g){ g.computeBoundingSphere(); scene.add(new THREE.Mesh(g,m)); } }
     const t=mergeGeometries(qd.telhados,false); qd.telhados.forEach(x=>x.dispose()); if(!t) continue;
     t.computeBoundingSphere();
     const mesh=new THREE.Mesh(t,matTelhadoCor); scene.add(mesh);

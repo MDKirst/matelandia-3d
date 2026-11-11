@@ -19,7 +19,7 @@ function dentroPoly(x,z,pts){ let c=false; for(let i=0,j=pts.length-1;i<pts.leng
 export function substituidoPorMarco(x,z,fonte,A){
   if(Math.hypot(x-IGREJA.c[0],z-IGREJA.c[1])<IGREJA.r+4) return true;
   if(x>=LOTE_COLEGIO[0]&&x<=LOTE_COLEGIO[1]&&z>=LOTE_COLEGIO[2]&&z<=LOTE_COLEGIO[3]) return true;
-  if(dentroPoly(x,z,PRACA_MUNICIPAL)) return fonte==='overture' && A<150;   // quiosques/palco saem; quadra coberta fica
+  if(dentroPoly(x,z,PRACA_MUNICIPAL)) return fonte==='muro' || (fonte==='overture' && A<150);   // quiosques/palco saem; quadra coberta fica; praça sem muro
   if(dentroPoly(x,z,PRACA_BIAZUS)) return true;
   return false;
 }

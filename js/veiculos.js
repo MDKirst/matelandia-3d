@@ -62,7 +62,7 @@ export async function iniciarVeiculos(){
   await Promise.all(TIPOS.map((tipo,k)=>new Promise(ok=>loader.load(tipo.arq, g=>{
     const obj=g.scene, tam=new THREE.Box3().setFromObject(obj).getSize(new THREE.Vector3());
     obj.traverse(o=>{ if(o.isMesh){ o.material.side=THREE.FrontSide; } });
-    const L=lugares[k]; obj.position.set(L.x,0,L.z); obj.rotation.y=L.h; scene.add(obj);
+    const L=lugares[k]; obj.rotation.order='YXZ'; obj.position.set(L.x,0,L.z); obj.rotation.y=L.h; scene.add(obj);   // YXZ: arfagem e rolagem no eixo do próprio veículo
     frota.push({tipo, obj, h:L.h, v:0, comp:tam.z, larg:tam.x}); ok();
   }, undefined, e=>{ console.warn('veículo',tipo.arq,e); ok(); }))));
 }
@@ -102,7 +102,7 @@ export function dirigir(dt, acel, giro, freio, obstaculo){
   const [fx,fz]=frente(nh), p=c.obj.position, nx=p.x+fx*c.v*dt, nz=p.z+fz*c.v*dt;
   const bate = contorno(c,nx,nz,nh).some(([x,z])=>bloqueado(x,z)||x<LX0+2||x>LX1-2||z<LZ0+2||z>LZ1-2) || dentroDeOutro(c,nx,nz,nh) || obstaculo?.(c,nx,nz,nh);
   if(bate){ c.v *= -0.25; return true; }
-  p.set(nx,0,nz); c.h=nh; c.obj.rotation.y=nh;
+  p.set(nx,p.y,nz); c.h=nh; c.obj.rotation.y=nh;
   // leve inclinação na curva e no freio, só para dar vida
   c.obj.rotation.z = THREE.MathUtils.lerp(c.obj.rotation.z, -esterco*Math.min(1,Math.abs(c.v)/15)*0.06, Math.min(1,dt*6));
   return false;

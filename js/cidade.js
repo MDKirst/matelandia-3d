@@ -152,5 +152,5 @@ export async function carregarCidade(){
 
 export function status(){
   $('status').textContent = erroRede ? 'Sem resposta do OpenStreetMap — tentando de novo…'
-    : carregando ? 'Carregando a cidade…' : `${ruas.length} ruas · ${predios.length} prédios · ${fonte}`;
+    : carregando ? 'Carregando a cidade…' : `${ruas.length} ruas · ${predios.filter(p=>!p.muro&&!p.marco).length} prédios · ${fonte}`;
 }

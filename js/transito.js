@@ -5,6 +5,7 @@ import * as THREE from 'three';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { scene } from './cena.js';
 import { ruas } from './cidade.js';
+import { lombadas, alturaLombada } from './detalhes.js';
 
 const MODELOS = ['sedan','sedan-sports','hatchback-sports','suv','suv-luxury','van','taxi','delivery','truck','police'];
 const ESCALA = 1.75;        // o kit tem ~2,5 unidades de comprimento: vira ~4,4 m
@@ -82,7 +83,8 @@ export function atualizarTransito(dt, px, pz, outros){
     for(const o of outros) testar(o[0],o[1],o[2],o[3]);
     for(const d of carros) if(d!==c&&d.r&&d.obj.visible) testar(d.obj.position.x,d.obj.position.z,2.2,1.2);
     const lim=c.r.tipo.startsWith('motorway')?Math.max(c.vCruz,16):c.vCruz;
-    c.vAlvo=livre?lim:0;
+    const lomb=lombadas.some(o=>{ const dx=o.x-P.x, dz=o.z-P.z, f=dx*P.ux+dz*P.uz; return f>-2&&f<16&&Math.abs(-dx*P.uz+dz*P.ux)<4; });
+    c.vAlvo=livre?(lomb?Math.min(lim,3.5):lim):0;   // reduz antes do quebra-mola
     // preso há mais de 6 s (veículo estacionado na faixa, rua travada): longe do jogador some e
     // renasce em outro lugar; perto, espera (antes dava meia-volta pulando de faixa e podia cair
     // em cima do veículo do jogador)
@@ -99,7 +101,7 @@ export function atualizarTransito(dt, px, pz, outros){
     const ocupado=outros.some(o=>Math.hypot(o[0]-P.x,o[1]-P.z)<Math.max(o[2],o[3])+2.0) ||
       carros.some(d=>d!==c&&d.r&&d.obj.visible&&Math.hypot(d.obj.position.x-P.x,d.obj.position.z-P.z)<3.2&&Math.hypot(d.obj.position.x-c.obj.position.x,d.obj.position.z-c.obj.position.z)>=Math.hypot(d.obj.position.x-P.x,d.obj.position.z-P.z));
     if(ocupado){ Object.assign(c,antes); c.v=0; P=pose(c); }
-    c.obj.position.set(P.x,0,P.z);
+    c.obj.position.set(P.x,alturaLombada(P.x,P.z),P.z);
     // vira suave (o modelo da Kenney olha para -Z, como os nossos)
     const alvo=Math.atan2(-P.ux,-P.uz); let d=alvo-c.obj.rotation.y; d=Math.atan2(Math.sin(d),Math.cos(d));
     c.obj.rotation.y += d*Math.min(1,dt*6);

@@ -11,6 +11,7 @@ import { bloqueado, ruaMaisProxima, pontoLivre } from './mundo.js';
 import { carregarPredios, atualizarTelhados } from './predios.js';
 import { construirMarcos } from './marcos.js';
 import { carregarLojas } from './lojas.js';
+import { construirDetalhes, alturaLombada } from './detalhes.js';
 import { minimapa } from './minimapa.js';
 import { frota, iniciarVeiculos, veiculoPerto, entrar, sair, dirigir, dentroDeVeiculo, frente, esquerda } from './veiculos.js';
 import * as veic from './veiculos.js';
@@ -69,6 +70,9 @@ function aoVolante(dt){
   if(toque.joy){ acel=-toque.joy.y; giro=-toque.joy.x; }
   dirigir(dt, acel, giro, tecla.Space, bateNoTransito);
   const p=c.obj.position; jogador.position.set(p.x,0,p.z); rumo=c.h+Math.PI;
+  // quebra-mola: eixo da frente e de trás sobem; quanto mais rápido, maior o pulo
+  { const [fx,fz]=frente(c.h), a=c.comp*0.35, yf=alturaLombada(p.x+fx*a,p.z+fz*a), yt=alturaLombada(p.x-fx*a,p.z-fz*a), k=1+Math.max(0,Math.abs(c.v)-6)*0.25;
+    p.y=(yf+yt)/2*k; c.obj.rotation.x=Math.atan2((yf-yt)*k,c.comp); }
   // câmera vem para trás do veículo quando ele anda (parado, dá para olhar em volta)
   if(Math.abs(c.v)>0.6){ let d=c.h-cam.yaw; d=Math.atan2(Math.sin(d),Math.cos(d)); cam.yaw+=d*Math.min(1,dt*2.5); }
   cam.dist+= (c.tipo.cam-cam.dist)*Math.min(1,dt*3);
@@ -130,7 +134,8 @@ carregarCidade().then(async()=>{
   // árvore e banco não vão para cima da rua
   const ruaLonge=(x,z)=>!ruas.some(r=>!r.pe&&x>r.bb[0]-12&&x<r.bb[2]+12&&z>r.bb[1]-12&&z<r.bb[3]+12&&r.pts.some((q,i)=>{ const n=r.pts[i+1]; if(!n) return false; const vx=n[0]-q[0], vz=n[1]-q[1]; let t=((x-q[0])*vx+(z-q[1])*vz)/(vx*vx+vz*vz||1); t=Math.max(0,Math.min(1,t)); return Math.hypot(x-q[0]-vx*t,z-q[1]-vz*t)<r.w/2+1.5; }));
   construirMarcos(predios, ruaLonge); status();
-  carregarLojas().then(r=>console.info('lojas',r));
+  console.info('lojas', await carregarLojas());
+  console.info('detalhes', await construirDetalhes());
   const p=jogador.position, [x,z]=pontoLivre(p.x,p.z); p.set(x,0,z);   // não nascer dentro de uma casa
   await iniciarVeiculos(); await iniciarTransito(jogador.position.x,jogador.position.z); });
 quadro();
