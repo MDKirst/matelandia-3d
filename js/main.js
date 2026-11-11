@@ -7,7 +7,8 @@ import { satelite } from './satelite.js';
 import { ruas, predios, carregarCidade, status } from './cidade.js';
 import { jogador, suporte, av, animar } from './avatar.js';
 import { tecla, cam, toque, pedido } from './controles.js';
-import { bloqueado, ruaMaisProxima } from './mundo.js';
+import { bloqueado, ruaMaisProxima, pontoLivre } from './mundo.js';
+import { carregarPredios } from './predios.js';
 import { minimapa } from './minimapa.js';
 import { frota, iniciarVeiculos, veiculoPerto, entrar, sair, dirigir, dentroDeVeiculo, frente, esquerda } from './veiculos.js';
 import * as veic from './veiculos.js';
@@ -116,7 +117,10 @@ function quadro(){
 }
 
 status();
-carregarCidade().then(async()=>{ await iniciarVeiculos(); await iniciarTransito(jogador.position.x,jogador.position.z); });
+carregarCidade().then(async()=>{
+  await carregarPredios(); status();
+  const p=jogador.position, [x,z]=pontoLivre(p.x,p.z); p.set(x,0,z);   // não nascer dentro de uma casa
+  await iniciarVeiculos(); await iniciarTransito(jogador.position.x,jogador.position.z); });
 quadro();
 // gancho para testes no console
 window.__jogo={jogador,ruas,predios,tecla,frota,veic,pedido,lim:[LX0,LZ0,LX1,LZ1],cam:(d,p,y)=>{cam.dist=d;cam.pitch=p;cam.yaw=y;}};

@@ -10,6 +10,7 @@ export const ZOOM_FUNDO = 15, RAIO_DETALHE = 4, RAIO_FUNDO = 2;
 export const TILE_URL = (z,x,y)=>`https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/${z}/${y}/${x}`;
 
 export const DADOS_CIDADE = 'dados/matelandia.json';         // gerado por tools/baixar_cidade.py
+export const DADOS_PREDIOS = 'dados/predios.json';           // gerado por tools/baixar_predios.py (Overture)
 export const OVERPASS = [
   'https://overpass-api.de/api/interpreter',
   'https://maps.mail.ru/osm/tools/overpass/api/interpreter',
