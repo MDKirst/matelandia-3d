@@ -8,11 +8,23 @@ import { scene } from './cena.js';
 import { ruas } from './cidade.js';
 import { lombadas, alturaLombada } from './detalhes.js';
 
-// só modelos gerados por IA 3D (TRELLIS), já em metros e com a frente em -Z; peso = chance de sair
-const MODELOS = [ {arq:'suv', peso:5}, {arq:'picape', peso:5}, {arq:'cavalo', peso:1} ];
+// só modelos gerados por IA 3D, já em metros e com a frente em -Z; peso = chance de sair.
+// suv/picape/cavalo: TRELLIS deste projeto. Os demais vieram do Couro & Asfalto (imagem do Gemini →
+// Stable Fast 3D / TRELLIS, preparados lá); os modelados no Blender ficaram de fora.
+// partes: peças em fila (z = centro da peça); so: tipos de via onde pode andar; tinta: aceita cor sorteada
+const BR = new Set(['motorway','motorway_link','trunk','trunk_link']);
+const MODELOS = [
+  {partes:[{arq:'hatch'}], peso:5}, {partes:[{arq:'sedan'}], peso:5},
+  {partes:[{arq:'suv'}], peso:3}, {partes:[{arq:'suv2'}], peso:3},
+  {partes:[{arq:'picape'}], peso:3, tinta:true}, {partes:[{arq:'picape2'}], peso:3, tinta:true},
+  {partes:[{arq:'onibus'}], peso:1}, {partes:[{arq:'ambulancia'}], peso:1},
+  {partes:[{arq:'caminhonete-policia'}], peso:1, claro:1.8},
+  {partes:[{arq:'cavalo'}], peso:1, so:BR},
+  {partes:[{arq:'cavalinho',z:-5.5},{arq:'reboque-graneleiro',z:2.2}], peso:2, so:BR},   // carreta graneleira
+];
 // tinta por cima da textura (multiplica: pega bem na picape branca, quase nada no SUV preto)
 const TINTAS = [0xffffff,0xffffff,0xd9443b,0x3b6fd9,0xb9bec4,0x3a3f45,0x2f8f5b,0xe0b54a];
-const QTD = 14, RAIO_NASCE = [90, 320], RAIO_SOME = 420;
+const QTD = 18, RAIO_NASCE = [90, 320], RAIO_SOME = 420;
 const TIPOS_OK = new Set(['motorway','motorway_link','trunk','trunk_link','primary','primary_link','secondary','secondary_link',
   'tertiary','tertiary_link','residential','unclassified','living_street']);
 
@@ -38,7 +50,8 @@ function pose(c){
 
 function colocar(c, px, pz){
   // escolhe um trecho de rua a uma distância boa do jogador
-  const ok=ruas.filter(r=>TIPOS_OK.has(r.tipo)&&r.pts.length>1);
+  const ok=ruas.filter(r=>TIPOS_OK.has(r.tipo)&&r.pts.length>1&&(!c.so||c.so.has(r.tipo)));
+  if(!ok.length){ c.obj.visible=false; c.r=null; return false; }
   for(let t=0;t<40;t++){
     const r=ok[Math.random()*ok.length|0], i=Math.random()*(r.pts.length-1)|0, p=r.pts[i], d=Math.hypot(p[0]-px,p[1]-pz);
     if(d<RAIO_NASCE[0]||d>RAIO_NASCE[1]) continue;
@@ -55,6 +68,7 @@ function proximo(c){
   const op=[];
   for(const {r,i} of nos.get(chave(c.r.pts[j]))||[]){
     if(r===c.r&&i===j){ if(j+c.dir>=0&&j+c.dir<r.pts.length) op.push({r,i,dir:c.dir}); continue; }
+    if(c.so&&!c.so.has(r.tipo)) continue;                    // carreta não entra na cidade
     for(const dir of [1,-1]) if(i+dir>=0&&i+dir<r.pts.length&&pode(r,dir)) op.push({r,i,dir});
   }
   if(op.length){ const o=op[Math.random()*op.length|0]; c.r=o.r; c.i=o.i; c.dir=o.dir; return; }
@@ -64,15 +78,25 @@ function proximo(c){
 
 export async function iniciarTransito(px,pz){
   montarGrafo();
-  await Promise.all(MODELOS.map(m=>new Promise(ok=>loader.load(`assets/veiculos/${m.arq}.glb`, g=>{
-    const tam=new THREE.Box3().setFromObject(g.scene).getSize(new THREE.Vector3()); moldes[m.arq]={cena:g.scene, meio:tam.z/2, larg:tam.x/2}; ok(); }, undefined, ()=>ok()))));
-  const sorteio=MODELOS.filter(m=>moldes[m.arq]).flatMap(m=>Array(m.peso).fill(m.arq)); if(!sorteio.length) return;
+  const arquivos=[...new Set(MODELOS.flatMap(m=>m.partes.map(p=>p.arq)))], cenas={};
+  await Promise.all(arquivos.map(a=>new Promise(ok=>loader.load(`assets/veiculos/${a}.glb`, g=>{ cenas[a]=g.scene; ok(); }, undefined, e=>{ console.warn('veículo',a,e); ok(); }))));
+  MODELOS.forEach((m,i)=>{
+    if(!m.partes.every(p=>cenas[p.arq])) return;
+    const grupo=new THREE.Group(); for(const p of m.partes){ const o=cenas[p.arq].clone(); o.position.z=p.z||0; grupo.add(o); }
+    const box=new THREE.Box3().setFromObject(grupo), tam=box.getSize(new THREE.Vector3()), cz=(box.min.z+box.max.z)/2;
+    for(const o of grupo.children) o.position.z-=cz;                                   // centro no meio do conjunto
+    if(m.claro) grupo.traverse(o=>{ if(o.isMesh){ o.material=o.material.clone(); o.material.color.multiplyScalar(m.claro); } });
+    moldes[i]={cena:grupo, meio:tam.z/2, larg:tam.x/2, m};
+  });
+  const sorteio=Object.keys(moldes).flatMap(i=>Array(moldes[i].m.peso).fill(i)); if(!sorteio.length) return;
+  // passo sem divisor comum com o tamanho da lista: percorre todos os modelos antes de repetir
+  const mdc=(a,b)=>b?mdc(b,a%b):a; let passo=7; while(mdc(passo,sorteio.length)!==1) passo++;
   for(let k=0;k<QTD;k++){
-    const m=moldes[sorteio[(k*7+3)%sorteio.length]], obj=m.cena.clone(); obj.rotation.order='YXZ';
+    const chaves=Object.keys(moldes), md=moldes[k<chaves.length?chaves[k]:sorteio[(k*passo+3)%sorteio.length]], obj=md.cena.clone(); obj.rotation.order='YXZ'; // um de cada, depois pelo peso
     const tinta=TINTAS[k%TINTAS.length];
-    if(tinta!==0xffffff) obj.traverse(o=>{ if(o.isMesh){ o.material=o.material.clone(); o.material.color.setHex(tinta); } });
+    if(md.m.tinta&&tinta!==0xffffff) obj.traverse(o=>{ if(o.isMesh){ o.material=o.material.clone(); o.material.color.setHex(tinta); } });
     scene.add(obj);
-    const c={obj, r:null, i:0, dir:1, s:0, v:0, vAlvo:0, vCruz:7+Math.random()*5, meio:m.meio, larg:m.larg};
+    const c={obj, r:null, i:0, dir:1, s:0, v:0, vAlvo:0, vCruz:7+Math.random()*5, meio:md.meio, larg:md.larg, so:md.m.so};
     colocar(c,px,pz); carros.push(c);
   }
 }

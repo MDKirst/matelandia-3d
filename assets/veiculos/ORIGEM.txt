@@ -1,0 +1,13 @@
+Todos os veiculos do jogo sao modelos 3D gerados por IA.
+
+Deste projeto (TRELLIS, otimizados por tools/otimizar-veiculo.mjs a partir dos
+sample_2026-11-10T*.glb da pasta jogo):
+  suv.glb, picape.glb, cavalo.glb
+
+Copiados do Couro & Asfalto (public/modelos/veiculos, com autorizacao do Maicon em
+11/11/2026; imagem do Gemini -> 3D por IA, preparados la por preparar-veiculo.ts):
+  hatch.glb, sedan.glb, suv2.glb (suv), picape2.glb (picape), onibus.glb,
+  ambulancia.glb, caminhonete-policia.glb, cavalinho.glb, reboque-graneleiro.glb
+
+Ficaram de fora os modelados no Blender (sem IA): bombeiros, guincho,
+caminhao-frango, cavalo-branco, reboque-bau, reboque-lona, bitrem-reboques.
