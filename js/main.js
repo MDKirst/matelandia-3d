@@ -27,12 +27,12 @@ const travado=(x,z)=>bloqueado(x,z)||dentroDeVeiculo(x,z);
 // carro do trânsito na frente do veículo do jogador?
 // (se já estão encostados, deixa se afastar: senão o veículo travava para sempre)
 function bateNoTransito(c,x,z,h){
-  const enc=(px,pz,ph,tx,tz)=>{ const [fx,fz]=frente(ph), [ex,ez]=esquerda(ph), dx=tx-px, dz=tz-pz;
-    return Math.abs(dx*fx+dz*fz)<c.comp/2+2.1 && Math.abs(dx*ex+dz*ez)<c.larg/2+1.2; };
   const p=c.obj.position;
-  for(const [tx,tz] of posicoesTransito()){
-    if(!enc(x,z,h,tx,tz)) continue;
-    if(enc(p.x,p.z,c.h,tx,tz) && Math.hypot(tx-x,tz-z)>=Math.hypot(tx-p.x,tz-p.z)) continue;   // saindo de perto
+  for(const [tx,tz,,meio=2.2,larg=1.1] of posicoesTransito()){
+    const enc=(px,pz,ph)=>{ const [fx,fz]=frente(ph), [ex,ez]=esquerda(ph), dx=tx-px, dz=tz-pz;
+      return Math.abs(dx*fx+dz*fz)<c.comp/2+meio-0.1 && Math.abs(dx*ex+dz*ez)<c.larg/2+larg; };
+    if(!enc(x,z,h)) continue;
+    if(enc(p.x,p.z,c.h) && Math.hypot(tx-x,tz-z)>=Math.hypot(tx-p.x,tz-p.z)) continue;   // saindo de perto
     return true; }
   return false;
 }

@@ -1,19 +1,22 @@
-// Trânsito de fundo: carros do Car Kit da Kenney (CC0) rodando pelas ruas do OSM,
+// Trânsito de fundo: os mesmos veículos feitos por IA 3D (assets/veiculos) rodando pelas ruas do OSM,
 // mão direita, respeitando mão única. Em cruzamento escolhem uma rua ao acaso; rua sem
 // saída = meia-volta. Param se tiver algo na frente. Só existem perto do jogador.
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+import { MeshoptDecoder } from 'three/addons/libs/meshopt_decoder.module.js';
 import { scene } from './cena.js';
 import { ruas } from './cidade.js';
 import { lombadas, alturaLombada } from './detalhes.js';
 
-const MODELOS = ['sedan','sedan-sports','hatchback-sports','suv','suv-luxury','van','taxi','delivery','truck','police'];
-const ESCALA = 1.75;        // o kit tem ~2,5 unidades de comprimento: vira ~4,4 m
+// só modelos gerados por IA 3D (TRELLIS), já em metros e com a frente em -Z; peso = chance de sair
+const MODELOS = [ {arq:'suv', peso:5}, {arq:'picape', peso:5}, {arq:'cavalo', peso:1} ];
+// tinta por cima da textura (multiplica: pega bem na picape branca, quase nada no SUV preto)
+const TINTAS = [0xffffff,0xffffff,0xd9443b,0x3b6fd9,0xb9bec4,0x3a3f45,0x2f8f5b,0xe0b54a];
 const QTD = 14, RAIO_NASCE = [90, 320], RAIO_SOME = 420;
 const TIPOS_OK = new Set(['motorway','motorway_link','trunk','trunk_link','primary','primary_link','secondary','secondary_link',
   'tertiary','tertiary_link','residential','unclassified','living_street']);
 
-const loader = new GLTFLoader();
+const loader = new GLTFLoader(); loader.setMeshoptDecoder(MeshoptDecoder);
 const moldes = {};
 export const carros = [];   // {obj, r, i, dir, s, v, vAlvo}
 let nos = null;             // chave de vértice → [{r,i}]  (ruas que se cruzam no mesmo nó do OSM)
@@ -61,12 +64,15 @@ function proximo(c){
 
 export async function iniciarTransito(px,pz){
   montarGrafo();
-  await Promise.all(MODELOS.map(m=>new Promise(ok=>loader.load(`assets/kenney/${m}.glb`, g=>{ moldes[m]=g.scene; ok(); }, undefined, ()=>ok()))));
-  const nomes=Object.keys(moldes); if(!nomes.length) return;
+  await Promise.all(MODELOS.map(m=>new Promise(ok=>loader.load(`assets/veiculos/${m.arq}.glb`, g=>{
+    const tam=new THREE.Box3().setFromObject(g.scene).getSize(new THREE.Vector3()); moldes[m.arq]={cena:g.scene, meio:tam.z/2, larg:tam.x/2}; ok(); }, undefined, ()=>ok()))));
+  const sorteio=MODELOS.filter(m=>moldes[m.arq]).flatMap(m=>Array(m.peso).fill(m.arq)); if(!sorteio.length) return;
   for(let k=0;k<QTD;k++){
-    const obj=moldes[nomes[k%nomes.length]].clone(); obj.scale.setScalar(ESCALA); scene.add(obj);
-    const c={obj, r:null, i:0, dir:1, s:0, v:0, vAlvo:0, vCruz:7+Math.random()*5, rodas:[]};
-    obj.traverse(o=>{ if(/^wheel/.test(o.name)) c.rodas.push(o); });
+    const m=moldes[sorteio[(k*7+3)%sorteio.length]], obj=m.cena.clone(); obj.rotation.order='YXZ';
+    const tinta=TINTAS[k%TINTAS.length];
+    if(tinta!==0xffffff) obj.traverse(o=>{ if(o.isMesh){ o.material=o.material.clone(); o.material.color.setHex(tinta); } });
+    scene.add(obj);
+    const c={obj, r:null, i:0, dir:1, s:0, v:0, vAlvo:0, vCruz:7+Math.random()*5, meio:m.meio, larg:m.larg};
     colocar(c,px,pz); carros.push(c);
   }
 }
@@ -81,7 +87,7 @@ export function atualizarTransito(dt, px, pz, outros){
     // rf = meia-largura na frente/trás, rl = meia-largura de lado
     const testar=(x,z,rf,rl)=>{ const dx=x-P.x, dz=z-P.z, f=dx*P.ux+dz*P.uz, l=Math.abs(-dx*P.uz+dz*P.ux); if(f>0&&f<7+rf&&l<1.3+rl) livre=false; };
     for(const o of outros) testar(o[0],o[1],o[2],o[3]);
-    for(const d of carros) if(d!==c&&d.r&&d.obj.visible) testar(d.obj.position.x,d.obj.position.z,2.2,1.2);
+    for(const d of carros) if(d!==c&&d.r&&d.obj.visible) testar(d.obj.position.x,d.obj.position.z,d.meio+c.meio-2.2,d.larg);
     const lim=c.r.tipo.startsWith('motorway')?Math.max(c.vCruz,16):c.vCruz;
     const lomb=lombadas.some(o=>{ const dx=o.x-P.x, dz=o.z-P.z, f=dx*P.ux+dz*P.uz; return f>-2&&f<16&&Math.abs(-dx*P.uz+dz*P.ux)<4; });
     c.vAlvo=livre?(lomb?Math.min(lim,3.5):lim):0;   // reduz antes do quebra-mola
@@ -98,16 +104,15 @@ export function atualizarTransito(dt, px, pz, outros){
     if(!c.r) continue;
     P=pose(c);
     // trava final: o passo não pode terminar em cima de ninguém (curva, troca de rua, faixa)
-    const ocupado=outros.some(o=>Math.hypot(o[0]-P.x,o[1]-P.z)<Math.max(o[2],o[3])+2.0) ||
-      carros.some(d=>d!==c&&d.r&&d.obj.visible&&Math.hypot(d.obj.position.x-P.x,d.obj.position.z-P.z)<3.2&&Math.hypot(d.obj.position.x-c.obj.position.x,d.obj.position.z-c.obj.position.z)>=Math.hypot(d.obj.position.x-P.x,d.obj.position.z-P.z));
+    const ocupado=outros.some(o=>Math.hypot(o[0]-P.x,o[1]-P.z)<Math.max(o[2],o[3])+c.meio-0.3) ||
+      carros.some(d=>d!==c&&d.r&&d.obj.visible&&Math.hypot(d.obj.position.x-P.x,d.obj.position.z-P.z)<(c.meio+d.meio)*0.7&&Math.hypot(d.obj.position.x-c.obj.position.x,d.obj.position.z-c.obj.position.z)>=Math.hypot(d.obj.position.x-P.x,d.obj.position.z-P.z));
     if(ocupado){ Object.assign(c,antes); c.v=0; P=pose(c); }
     c.obj.position.set(P.x,alturaLombada(P.x,P.z),P.z);
-    // vira suave (o modelo da Kenney olha para -Z, como os nossos)
+    // vira suave (os modelos olham para -Z)
     const alvo=Math.atan2(-P.ux,-P.uz); let d=alvo-c.obj.rotation.y; d=Math.atan2(Math.sin(d),Math.cos(d));
     c.obj.rotation.y += d*Math.min(1,dt*6);
-    for(const w of c.rodas) w.rotation.x -= c.v*dt/0.35;
   }
 }
 
 // para o minimapa e para a colisão do veículo do jogador
-export function posicoesTransito(){ return carros.filter(c=>c.r&&c.obj.visible).map(c=>[c.obj.position.x,c.obj.position.z,c.obj.rotation.y]); }
+export function posicoesTransito(){ return carros.filter(c=>c.r&&c.obj.visible).map(c=>[c.obj.position.x,c.obj.position.z,c.obj.rotation.y,c.meio,c.larg]); }
