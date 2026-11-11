@@ -6,14 +6,22 @@ import { scene, flat, $ } from './cena.js';
 import { toXZ } from './geo.js';
 import { LIMITE, OVERPASS, OSM_API, DADOS_CIDADE } from './config.js';
 import { substituidoPorMarco } from './marcos.js';
+import { texAsfalto, texCalcada } from './texturas.js';
 
 const LARGURA = {motorway:13,trunk:12,primary:10,secondary:9,tertiary:8,residential:7,unclassified:7,living_street:6,
   motorway_link:7,trunk_link:7,primary_link:7,secondary_link:7,tertiary_link:7,service:4,track:3.5,
   pedestrian:4,footway:1.8,path:1.5,cycleway:2,steps:1.8};
 const A_PE = new Set(['pedestrian','footway','path','cycleway','steps']);
-const matRua   = new THREE.MeshBasicMaterial(flat({color:0x34373c,side:THREE.DoubleSide}));
-const matFaixa = new THREE.MeshBasicMaterial(flat({color:0xe9c24a,side:THREE.DoubleSide}));
-const matPe    = new THREE.MeshBasicMaterial(flat({color:0xd9cdb8,side:THREE.DoubleSide}));
+const matRua   = new THREE.MeshBasicMaterial(flat({map:texAsfalto(),side:THREE.DoubleSide}));
+const matFaixa = new THREE.MeshBasicMaterial(flat({color:0xe2b93f,side:THREE.DoubleSide}));
+const matBorda = new THREE.MeshBasicMaterial(flat({color:0xe8e6df,side:THREE.DoubleSide}));
+const texCalc  = texCalcada();
+const matCalc  = new THREE.MeshBasicMaterial(flat({map:texCalc,side:THREE.DoubleSide}));
+const matPe    = new THREE.MeshBasicMaterial(flat({map:texCalc,color:0xe8dcc6,side:THREE.DoubleSide}));
+const matGuia  = new THREE.MeshBasicMaterial(flat({color:0xd2d0c8,side:THREE.DoubleSide}));   // meio-fio
+// rua com calçada dos dois lados (rodovia, estradinha e acesso de serviço ficam sem)
+const COM_CALCADA = new Set(['primary','secondary','tertiary','residential','unclassified','living_street','primary_link','secondary_link','tertiary_link']);
+const CALCADA = 2.6, GUIA = 0.3;
 const matPredio= new THREE.MeshLambertMaterial({vertexColors:true});
 const PAREDES = [0xe8dcc8,0xd9c7a8,0xcfd6da,0xe3b9a0,0xc9d3b5,0xf0e6d6,0xb9c4cf,0xd8b08c].map(c=>new THREE.Color(c));
 const TELHADOS= [0xa5553a,0x8f4a35,0x9a9a96,0x6f7377,0xb0603f].map(c=>new THREE.Color(c));
@@ -32,16 +40,32 @@ function fita(pts,w,out){
   }
   for(let i=0;i<n-1;i++){ const k=b+i*2; out.idx.push(k,k+1,k+2, k+1,k+3,k+2); }
 }
-function malha(out,mat,ordem){
+// faixa paralela ao eixo, deslocada 'off' metros para a esquerda (negativo = direita)
+function fitaDesloc(pts,off,w,out){
+  const n=pts.length; if(n<2) return; const q=[];
+  for(let i=0;i<n;i++){ const a=pts[Math.max(i-1,0)], c=pts[Math.min(i+1,n-1)]; let dx=c[0]-a[0], dz=c[1]-a[1]; const l=Math.hypot(dx,dz)||1; q.push([pts[i][0]+dz/l*off, pts[i][1]-dx/l*off]); }
+  fita(q,w,out);
+}
+// tracejado: traço/vão em metros; pula os trechos perto de cruzamento
+function tracejado(pts,w,traco,vao,pular,out){
+  let fase=0;
+  for(let i=0;i<pts.length-1;i++){ const a=pts[i], b=pts[i+1], L=Math.hypot(b[0]-a[0],b[1]-a[1]); if(L<1e-3) continue;
+    for(let s=-fase; s<L; s+=traco+vao){ const s0=Math.max(0,s), s1=Math.min(L,s+traco); if(s1-s0<0.4) continue;
+      const p0=[a[0]+(b[0]-a[0])*s0/L, a[1]+(b[1]-a[1])*s0/L], p1=[a[0]+(b[0]-a[0])*s1/L, a[1]+(b[1]-a[1])*s1/L];
+      if(pular((p0[0]+p1[0])/2,(p0[1]+p1[1])/2)) continue; fita([p0,p1],w,out); }
+    fase=(fase+L)%(traco+vao); }
+}
+function malha(out,mat,ordem,escala){
   if(!out.idx.length) return;
   const g=new THREE.BufferGeometry();
   g.setAttribute('position',new THREE.Float32BufferAttribute(out.pos,3)); g.setIndex(out.idx);
+  if(escala){ const uv=new Float32Array(out.pos.length/3*2); for(let i=0;i<uv.length/2;i++){ uv[i*2]=out.pos[i*3]/escala; uv[i*2+1]=out.pos[i*3+2]/escala; } g.setAttribute('uv',new THREE.BufferAttribute(uv,2)); }
   const m=new THREE.Mesh(g,mat); m.renderOrder=ordem; m.frustumCulled=false; scene.add(m);
 }
 export const bbox = pts=>{ let a=1e9,b=1e9,c=-1e9,d=-1e9; for(const p of pts){ if(p[0]<a)a=p[0]; if(p[1]<b)b=p[1]; if(p[0]>c)c=p[0]; if(p[1]>d)d=p[1]; } return [a,b,c,d]; };
 
 function construir(elements){
-  const R={pos:[],idx:[]}, F={pos:[],idx:[]}, P={pos:[],idx:[]}, geos=[];
+  const R={pos:[],idx:[]}, F={pos:[],idx:[]}, P={pos:[],idx:[]}, C={pos:[],idx:[]}, G={pos:[],idx:[]}, B={pos:[],idx:[]}, geos=[], vias=[];
   for(const el of elements){
     if(el.type!=='way'||!el.geometry||vistos.has(el.id)) continue;
     vistos.add(el.id);
@@ -64,11 +88,21 @@ function construir(elements){
     } else if(t.highway && LARGURA[t.highway] && t.area!=='yes'){
       const w=LARGURA[t.highway], pe=A_PE.has(t.highway);
       fita(pts,w,pe?P:R);
-      if(!pe&&w>=7) fita(pts,0.16,F);
+      if(!pe) vias.push({pts,w,tipo:t.highway});
       ruas.push({nome:t.name||'',tipo:t.highway,pts,bb:bbox(pts),w,pe,mao:t.oneway==='yes'||t.highway==='motorway'?1:t.oneway==='-1'?-1:0}); // mao: 1/-1 = mão única
     }
   }
-  malha(P,matPe,-6); malha(R,matRua,-5); malha(F,matFaixa,-4);
+  // cruzamentos = vértices compartilhados por duas vias ou mais
+  const cont=new Map(), k=p=>Math.round(p[0]*10)+'_'+Math.round(p[1]*10);
+  for(const v of vias){ const vist=new Set(); for(const p of v.pts){ const c=k(p); if(vist.has(c)) continue; vist.add(c); cont.set(c,(cont.get(c)||0)+1); } }
+  const cruz=[]; for(const v of vias) for(const p of v.pts) if(cont.get(k(p))>1) cruz.push(p);
+  const pertoCruz=(x,z,r)=>cruz.some(p=>Math.abs(p[0]-x)<r&&Math.abs(p[1]-z)<r&&Math.hypot(p[0]-x,p[1]-z)<r);
+  for(const v of vias){
+    if(COM_CALCADA.has(v.tipo)){ fita(v.pts,v.w+2*(CALCADA+GUIA),C); fita(v.pts,v.w+2*GUIA,G); }
+    if(v.w>=8) tracejado(v.pts,0.15,3,4,(x,z)=>pertoCruz(x,z,v.w*0.8+2),F);          // eixo amarelo tracejado só nas avenidas
+    if(v.tipo==='motorway'||v.tipo==='trunk'){ fitaDesloc(v.pts,v.w/2-0.4,0.15,B); fitaDesloc(v.pts,-(v.w/2-0.4),0.15,B); } // bordas brancas da rodovia
+  }
+  malha(C,matCalc,-7.5,2); malha(G,matGuia,-7); malha(P,matPe,-6,2); malha(R,matRua,-5,6); malha(F,matFaixa,-4); malha(B,matBorda,-4);
   if(geos.length){ const g=mergeGeometries(geos,false); if(g){ scene.add(new THREE.Mesh(g,matPredio)); } geos.forEach(x=>x.dispose()); }
 }
 

@@ -2,6 +2,7 @@
 // da Esri não permitem baixar em massa para uso offline; a atribuição fica na tela)
 import * as THREE from 'three';
 import { scene, renderer, flat } from './cena.js';
+import { detalharSatelite } from './texturas.js';
 import { toXZ, toLL, tileLat, D2R, LX0, LZ0, LX1, LZ1 } from './geo.js';
 import { TILE_URL, ZOOM_INICIAL, ZOOM_MAX, ZOOM_FUNDO, RAIO_DETALHE, RAIO_FUNDO } from './config.js';
 
@@ -27,7 +28,7 @@ class CamadaSatelite{
     const [x0,z0]=toXZ(tileLat(y,n),   x/n*360-180);
     const [x1,z1]=toXZ(tileLat(y+1,n), (x+1)/n*360-180);
     if(this.recorta){ const M=200; if(x1<LX0-M||x0>LX1+M||z1<LZ0-M||z0>LZ1+M) return; } // fora da cidade: não baixa
-    const mat=new THREE.MeshBasicMaterial(flat({color:0xffffff}));
+    const mat=detalharSatelite(new THREE.MeshBasicMaterial(flat({color:0xffffff})));
     const mesh=new THREE.Mesh(new THREE.PlaneGeometry(x1-x0,z1-z0).rotateX(-Math.PI/2),mat);
     mesh.position.set((x0+x1)/2,0,(z0+z1)/2); mesh.renderOrder=this.ordem; mesh.visible=false; scene.add(mesh);
     const t={x,y,mesh,vivo:true}; this.tiles.set(k,t);
