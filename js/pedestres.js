@@ -9,6 +9,7 @@ import { clone as clonarEsqueleto } from 'three/addons/utils/SkeletonUtils.js';
 import { scene } from './cena.js';
 import { toXZ } from './geo.js';
 import { ruas } from './cidade.js';
+import { bloqueado } from './mundo.js';
 
 export const PESSOAS = ['male-casual','female-casual','male-shirt','female-dress','male-long-sleeve','female-tank-top','male-suit','female-alternative',
   'male-casual-2-24','female-casual-2-24','male-worker-24','female-worker-24','male-farmer-24','female-formal-24','male-casual-hoodie-24','female-suit-24','male-beach-24','male-suit-24'];
@@ -179,6 +180,17 @@ export function atualizarPedestres(dt, jog, veiculos=[]){
       }
     } else if(p.modo==='vitrine'){
       animar(p, p.acoes.mexer&&p.t%4<1.5?'mexer':'parado'); p.t-=dt; if(p.t<=0) p.modo='andar';
+    } else if(p.modo==='papo'){                          // falando com o jogador: vira para ele e gesticula
+      p.rumo=Math.atan2(px-p.x,pz-p.z); p.t-=dt;
+      animar(p, p.gesto&&p.acoes.acenar&&p.t>p.tMax-2.2?'acenar':(p.acoes.mexer&&Math.floor(p.t)%3===0?'mexer':'parado'));
+      if(p.t<=0) p.modo=p.antes||'andar';
+    } else if(p.modo==='seguir'){                        // vai atrás do jogador
+      const ax=px-p.x, az=pz-p.z, d=Math.hypot(ax,az);
+      if(d>70){ p.modo=p.r?'voltar':'conversa'; p.t=8; }  // ficou para trás
+      else if(d>2.4){ const sp=d>7?4.6:1.6, nx=p.x+ax/d*sp*dt, nz=p.z+az/d*sp*dt;
+        if(!bloqueado(nx,nz)&&!emVeiculo(nx,nz,veiculos,0.2)){ p.x=nx; p.z=nz; } else if(!bloqueado(nx,p.z)) p.x=nx; else if(!bloqueado(p.x,nz)) p.z=nz;
+        p.rumo=Math.atan2(ax,az); animar(p, d>7?'correr':'andar'); }
+      else { p.rumo=Math.atan2(ax,az); animar(p,'parado'); }
     } else if(p.modo==='conversa'){
       // vira para o vizinho mais perto e alterna entre parado e gesto
       let viz=null, md=4; for(const o of gente){ if(o===p||o.modo!=='conversa'||!o.obj) continue; const d=Math.hypot(o.x-p.x,o.z-p.z); if(d<md){ md=d; viz=o; } }
@@ -191,6 +203,59 @@ export function atualizarPedestres(dt, jog, veiculos=[]){
     if(dJog<RAIO_ANIMA) p.mixer.update(dt);           // longe, congela a animação (economiza)
   }
 }
+
+/* ───────── interação com o jogador ───────── */
+const FALAS={
+  oi:['Oi!','E aí, tudo certo?','Bom dia!','Opa, beleza?','Olá, vizinho!','Fala, meu chapa!'],
+  conversa:['Dizem que vai chover hoje.','Já passou na praça hoje?','O trânsito na Duque de Caxias tá puxado.','Tô indo no mercado.',
+    'Que calor, hein!','Viu o jogo ontem?','Matelândia tá crescendo!','Cuidado com a polícia por aí…','Tô atrasado pro serviço!',
+    'A festa da igreja é domingo.','Sabe onde fica a rodoviária?','Esse asfalto novo ficou bom.'],
+  seguir:['Bora!','Tô indo junto.','Pode ir na frente.'],
+  tchau:['Falou, até mais!','Tchau!','Até a próxima!'],
+  susto:['Aaah!','Socorro!','Tá louco?!','Sai pra lá!'],
+  cheio:['Já tem gente demais te seguindo!'],
+};
+const sorteia=l=>l[(Math.random()*l.length)|0];
+// balões de fala: sprites com texto, presos acima da cabeça
+const baloes=[];
+function falar(p,txt,seg=3.5){
+  let b=baloes.find(b=>b.p===p)||baloes.find(b=>b.t<=0);
+  if(!b){ const cv=document.createElement('canvas'); cv.width=512; cv.height=150; const tex=new THREE.CanvasTexture(cv); tex.colorSpace=THREE.SRGBColorSpace;
+    const sp=new THREE.Sprite(new THREE.SpriteMaterial({map:tex,depthTest:false,transparent:true})); sp.renderOrder=20; scene.add(sp); b={sp,cv,tex,t:0,p:null}; baloes.push(b); }
+  const k=b.cv.getContext('2d'); k.clearRect(0,0,512,150);
+  k.fillStyle='rgba(255,255,255,.95)'; k.strokeStyle='#111'; k.lineWidth=5;
+  k.beginPath(); k.roundRect(6,6,500,108,26); k.fill(); k.stroke();
+  k.beginPath(); k.moveTo(230,112); k.lineTo(256,146); k.lineTo(282,112); k.fill();
+  k.fillStyle='#111'; k.textAlign='center'; k.textBaseline='middle';
+  let fs=46; k.font=`700 ${fs}px system-ui,sans-serif`; while(k.measureText(txt).width>470&&fs>22){ fs-=2; k.font=`700 ${fs}px system-ui,sans-serif`; }
+  k.fillText(txt,256,61); b.tex.needsUpdate=true;
+  b.sp.scale.set(2.6,0.76,1); b.sp.visible=true; b.p=p; b.t=seg;
+}
+export function atualizarBaloes(dt){
+  for(const b of baloes){ if(b.t<=0) continue; b.t-=dt;
+    if(b.t<=0||!b.p.obj){ b.sp.visible=false; b.t=0; continue; }
+    b.sp.position.set(b.p.x,(b.p.y||0)+2.3,b.p.z); }
+}
+
+// pedestre mais perto do jogador que pode interagir (de pé)
+export function pedestrePerto(x,z,r=3.6){
+  let m=null, md=r; for(const p of gente){ if(!p.obj||p.modo==='caido'||p.modo==='levantar') continue; const d=Math.hypot(p.x-x,p.z-z); if(d<md){ md=d; m=p; } } return m;
+}
+// acao: 'conversar' | 'cumprimentar' | 'seguir' | 'assustar'; devolve true se alguém respondeu
+export function interagir(acao, jx, jz){
+  const p=pedestrePerto(jx,jz); if(!p) return false;
+  const parar=(t,gesto)=>{ if(p.modo!=='papo'&&p.modo!=='seguir') p.antes=p.modo==='vitrine'||p.modo==='fugir'||p.modo==='voltar'?'andar':p.modo; p.modo='papo'; p.t=p.tMax=t; p.gesto=gesto; };
+  if(acao==='conversar'){ const seguia=p.modo==='seguir'; parar(5,false); falar(p,sorteia(FALAS.conversa),4.5); if(seguia) p.antes='seguir'; }
+  else if(acao==='cumprimentar'){ const seguia=p.modo==='seguir'; parar(3,true); falar(p,sorteia(FALAS.oi),2.5); if(seguia) p.antes='seguir'; }
+  else if(acao==='seguir'){
+    if(p.modo==='seguir'||(p.modo==='papo'&&p.antes==='seguir')){ p.modo=p.r?'voltar':'conversa'; p.t=8; falar(p,sorteia(FALAS.tchau)); }
+    else if(gente.filter(o=>o.modo==='seguir'||(o.modo==='papo'&&o.antes==='seguir')).length>=3) falar(p,FALAS.cheio[0]);
+    else { p.modo='seguir'; falar(p,sorteia(FALAS.seguir)); }
+  }
+  else if(acao==='assustar'){ const ax=p.x-jx, az=p.z-jz, l=Math.hypot(ax,az)||1; p.modo='fugir'; p.fx=ax/l; p.fz=az/l; p.t=3; falar(p,sorteia(FALAS.susto),2); }
+  return true;
+}
+export const quantosSeguem=()=>gente.filter(o=>o.modo==='seguir'||(o.modo==='papo'&&o.antes==='seguir')).length;
 
 // para o trânsito e para o minimapa
 export function posicoesPedestres(){ return gente.filter(p=>p.obj).map(p=>[p.x,p.z]); }

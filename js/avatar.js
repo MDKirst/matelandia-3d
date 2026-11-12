@@ -49,14 +49,15 @@ function carregarGLB(buf){
       const andar=achar(/walk|andar|caminh/i), correr=achar(/run|corr|sprint|jog/i), parado=achar(/idle|stand|parad|breath/i);
       const unico=!andar&&!correr&&!parado ? gltf.animations[0] : null;
       const A=c=>c?mixer.clipAction(c):null;
-      av.acoes={parado:A(parado), andar:A(andar||correr||unico), correr:A(correr||andar||unico)};
+      const acena=achar(/acenar|wave|clap/i);
+      av.acoes={parado:A(parado), andar:A(andar||correr||unico), correr:A(correr||andar||unico), acenar:A(acena)};   // acenar: só quem tem o gesto
     }
   },err=>{ console.error(err); $('status').textContent='Erro ao ler o GLB: '+(err.message||err); });
 }
 
 export function animar(estado){
   if(!av.mixer) return;
-  const nova=av.acoes[estado]||null;
+  const nova=av.acoes[estado]||(estado==='acenar'?av.acoes.parado:null)||null;
   if(nova===av.acaoAtual) return;
   if(av.acaoAtual) av.acaoAtual.fadeOut(0.25);
   if(nova) nova.reset().fadeIn(0.25).play();

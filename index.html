@@ -22,17 +22,19 @@
   #street small{display:block;font-size:.42em;font-weight:600;color:#fcd34d;font-style:normal;letter-spacing:.5px}
   #mini{position:fixed;left:12px;bottom:28px;width:190px;height:190px;border-radius:50%;border:3px solid rgba(255,255,255,.85);box-shadow:0 4px 18px rgba(0,0,0,.5);background:#1b2a1f}
   #attr{position:fixed;left:0;right:0;bottom:0;text-align:center;font-size:10px;color:#0f172a;background:rgba(255,255,255,.55);padding:2px;pointer-events:none}
-  #dica{position:fixed;left:50%;bottom:64px;transform:translateX(-50%);font-weight:700;font-size:15px;text-shadow:0 2px 0 #000,0 0 8px #000;pointer-events:none;display:none}
+  #dica{position:fixed;left:50%;bottom:150px;transform:translateX(-50%);font-weight:700;font-size:15px;text-shadow:0 2px 0 #000,0 0 8px #000;pointer-events:none;display:none}
   #velo{position:fixed;right:22px;bottom:118px;text-align:right;font-weight:900;font-size:clamp(26px,4vw,46px);text-shadow:0 2px 0 #000,0 0 12px rgba(0,0,0,.8);pointer-events:none;display:none}
   #velo small{font-size:.4em;font-weight:700;color:#fcd34d}
   #procurado{position:fixed;top:14px;left:50%;transform:translateX(-50%);font-size:34px;letter-spacing:4px;color:#facc15;text-shadow:0 2px 0 #000,0 0 10px rgba(0,0,0,.8);pointer-events:none}
   #aviso{position:fixed;top:30%;left:50%;transform:translate(-50%,-50%);font-size:clamp(26px,5vw,58px);font-weight:900;text-align:center;text-shadow:0 3px 0 #000,0 0 18px rgba(0,0,0,.9);pointer-events:none;opacity:0;transition:opacity .4s;z-index:5}
+  #acoes{position:fixed;right:12px;bottom:280px;display:none;flex-direction:column;gap:6px}
+  #acoes button{font-size:13px;padding:9px 12px;border-radius:10px;box-shadow:0 3px 10px rgba(0,0,0,.45)}
   #usar{position:fixed;right:18px;bottom:190px;width:74px;height:74px;border-radius:50%;font-size:14px;display:none;box-shadow:0 4px 14px rgba(0,0,0,.5)}
   /* tela inicial */
   #home{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;gap:28px;padding:24px;box-sizing:border-box;
     background:linear-gradient(90deg,rgba(8,10,14,.92) 0%,rgba(8,10,14,.72) 45%,rgba(8,10,14,.25) 100%);z-index:10;transition:opacity .35s}
   #home.fora{opacity:0;pointer-events:none}
-  body.em-home #top,body.em-home #help,body.em-home #mini,body.em-home #street,body.em-home #dica,body.em-home #velo,body.em-home #usar,body.em-home #procurado{display:none!important}
+  body.em-home #top,body.em-home #help,body.em-home #mini,body.em-home #street,body.em-home #dica,body.em-home #velo,body.em-home #usar,body.em-home #procurado,body.em-home #acoes{display:none!important}
   #home .lado{max-width:420px}
   #home h1{margin:0;font-size:clamp(40px,7vw,76px);line-height:.95;font-weight:900;letter-spacing:-1px}
   #home h1 span{color:#F97316;display:block}
@@ -77,6 +79,7 @@
   <b>WASD / setas</b> andar · <b>Shift</b> correr<br>
   <b>Arrastar mouse</b> girar câmera · <b>Scroll</b> zoom<br>
   <b>E</b> entrar/sair do veículo · <b>Espaço</b> freio de mão<br>
+  <b>T</b> conversar · <b>G</b> cumprimentar · <b>H</b> seguir · <b>X</b> assustar<br>
   <b>[ ]</b> detalhe do satélite · <b>Esc</b> menu<br>
   Celular: esquerda anda, direita gira
 </div>
@@ -88,6 +91,7 @@
 <div id="procurado"></div>
 <div id="aviso"></div>
 <button id="usar">Entrar</button>
+<div id="acoes"><button data-acao="conversar">💬 Conversar</button><button data-acao="cumprimentar">👋 Cumprimentar</button><button data-acao="seguir">🚶 Seguir</button><button data-acao="assustar">😱 Assustar</button></div>
 <div id="home">
   <div class="lado">
     <h1>Matelândia <span>3D</span></h1>
@@ -96,6 +100,7 @@
     <div class="carrega" id="carrega"></div>
     <div class="ctrl">
       <b>WASD</b> andar · <b>Shift</b> correr · <b>E</b> entrar no veículo<br>
+      <b>T</b> conversar · <b>G</b> cumprimentar · <b>H</b> chamar para seguir · <b>X</b> assustar<br>
       <b>Mouse</b> girar a câmera · <b>Scroll</b> zoom · <b>Esc</b> volta a esta tela<br>
       Celular: lado esquerdo anda, lado direito gira
     </div>

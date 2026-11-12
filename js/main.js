@@ -17,7 +17,7 @@ import { home, pronto, progresso } from './home.js';
 import { atualizarEfeitos } from './efeitos.js';
 import { danificar, efeitosVeiculos } from './veiculos.js';
 import { baterNoCarro } from './transito.js';
-import { quandoAtropelar } from './pedestres.js';
+import { quandoAtropelar, interagir, pedestrePerto, atualizarBaloes, quantosSeguem } from './pedestres.js';
 import { iniciarPolicia, atualizarPolicia, crime, posicoesPolicia } from './policia.js';
 import { minimapa } from './minimapa.js';
 import { frota, iniciarVeiculos, veiculoPerto, entrar, sair, dirigir, dentroDeVeiculo, frente, esquerda } from './veiculos.js';
@@ -50,7 +50,7 @@ function bateNoTransito(c,x,z,h){
   return false;
 }
 
-let lugaresCache=[];
+let lugaresCache=[], gesto=0;
 const relogio=new THREE.Clock(), alvo=new THREE.Vector3(); let rumo=0, tLento=0, passo=0, ruaAtual='', orbita=0.6;
 function aPe(dt){
   let ix=(tecla.KeyD||tecla.ArrowRight?1:0)-(tecla.KeyA||tecla.ArrowLeft?1:0);
@@ -71,6 +71,7 @@ function aPe(dt){
   }
   p.x=Math.max(LX0+3,Math.min(LX1-3,p.x)); p.z=Math.max(LZ0+3,Math.min(LZ1-3,p.z));
   jogador.rotation.y=rumo; suporte.rotation.y=av.giroExtra;
+  if(gesto>0){ gesto-=dt; if(estado==='parado') estado='acenar'; }       // acenando para alguém
   animar(estado); if(av.mixer) av.mixer.update(dt);
   if(av.boneco){ const s=estado==='parado'?0:Math.sin(passo)*(estado==='correr'?0.9:0.55), q=av.boneco.userData.partes;
     q[0].rotation.x=s; q[1].rotation.x=-s; q[2].rotation.x=-s; q[3].rotation.x=s; }
@@ -122,6 +123,9 @@ function quadro(){
   const dt=Math.min(relogio.getDelta(),0.05);
   if(home.aberta){ pedido.usar=false; jogador.visible=false; }          // tela inicial: ninguém se mexe
   else { if(pedido.usar){ pedido.usar=false; trocarVeiculo(); }
+    if(pedido.acao){ const a=pedido.acao; pedido.acao=null;                     // T/G/H/X com um pedestre perto
+      if(!veic.dirigindo){ const p=jogador.position, alvo=pedestrePerto(p.x,p.z);
+        if(alvo){ rumo=Math.atan2(alvo.x-p.x,alvo.z-p.z); if(a==='cumprimentar') gesto=2.2; interagir(a,p.x,p.z); } } }
     if(veic.dirigindo) aoVolante(dt); else { jogador.visible=true; aPe(dt); } }
   const p=jogador.position;
 
@@ -131,6 +135,10 @@ function quadro(){
   if(perto&&perto.tipo.id==='cavalo') $('dica').textContent='E · subir no cavalo mecânico';
   $('usar').style.display=(perto||veic.dirigindo)&&matchMedia('(pointer:coarse)').matches?'block':'none';
   $('usar').textContent=veic.dirigindo?'Sair':'Entrar';
+  // pedestre perto (a pé): mostra as ações
+  const gente=!home.aberta&&!veic.dirigindo&&!perto&&pedestrePerto(p.x,p.z);
+  if(gente){ $('dica').style.display='block'; $('dica').textContent='T conversar · G cumprimentar · H '+(gente.modo==='seguir'?'dispensar':'chamar')+' · X assustar'+(quantosSeguem()?` · ${quantosSeguem()} seguindo`:''); }
+  $('acoes').style.display=gente&&matchMedia('(pointer:coarse)').matches?'flex':'none';
 
   const D=veic.dirigindo, outros=[[p.x,p.z,D?D.comp/2:0.5,D?D.larg/2:0.5], ...frota.filter(c=>c!==D).map(c=>[c.obj.position.x,c.obj.position.z,c.comp/2,c.larg/2])];
   for(const [x,z] of posicoesPedestres()) outros.push([x,z,0.3,0.3]);   // o trânsito para para pedestre na pista
@@ -138,7 +146,7 @@ function quadro(){
   atualizarPedestres(dt,{x:p.x,z:p.z,dirigindo:!!D,v:D?D.v:0, veic:D?{x:D.obj.position.x,z:D.obj.position.z,h:D.h,meio:D.comp/2,larg:D.larg/2,v:D.v}:null},
     [...frota.filter(c=>c!==D).map(c=>[c.obj.position.x,c.obj.position.z,c.h,c.comp/2,c.larg/2]), ...posicoesTransito(), ...posicoesPolicia()]);   // pedestre não atravessa veículo
   if(!home.aberta) atualizarPolicia(dt,{x:p.x,z:p.z,dirigindo:!!D,v:D?D.v:0},prender);
-  efeitosVeiculos(dt); atualizarEfeitos(dt);
+  efeitosVeiculos(dt); atualizarEfeitos(dt); atualizarBaloes(dt);
 
   if(home.aberta){ orbita+=dt*0.04;                                    // sobrevoo lento da cidade atrás da tela inicial
     alvo.set(p.x,0,p.z); camera.position.set(p.x+Math.sin(orbita)*170, 85, p.z+Math.cos(orbita)*170); camera.lookAt(alvo); }
