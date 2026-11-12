@@ -100,6 +100,11 @@ function construir(elements){
   for(const v of vias){
     if(COM_CALCADA.has(v.tipo)){ fita(v.pts,v.w+2*(CALCADA+GUIA),C); fita(v.pts,v.w+2*GUIA,G); }
     if(v.w>=8) tracejado(v.pts,0.15,3,4,(x,z)=>pertoCruz(x,z,v.w*0.8+2),F);          // eixo amarelo tracejado só nas avenidas
+    if(v.w>=8&&!v.tipo.startsWith('motorway')){                                       // faixa de pedestre zebrada antes de cada cruzamento
+      v.pts.forEach((q,i)=>{ if(cont.get(k(q))<2) return;
+        for(const o of [v.pts[i-1],v.pts[i+1]]){ if(!o) continue; const dx=o[0]-q[0], dz=o[1]-q[1], L=Math.hypot(dx,dz); if(L<14) continue;
+          const ux=dx/L, uz=dz/L, cx=q[0]+ux*7.5, cz=q[1]+uz*7.5;
+          for(let s=-v.w/2+0.7; s<=v.w/2-0.6; s+=1.1){ const px=cx-uz*s, pz=cz+ux*s; fita([[px-ux*1.6,pz-uz*1.6],[px+ux*1.6,pz+uz*1.6]],0.55,B); } } }); }
     if(v.tipo==='motorway'||v.tipo==='trunk'){ fitaDesloc(v.pts,v.w/2-0.4,0.15,B); fitaDesloc(v.pts,-(v.w/2-0.4),0.15,B); } // bordas brancas da rodovia
   }
   malha(C,matCalc,-7.5,2); malha(G,matGuia,-7); malha(P,matPe,-6,2); malha(R,matRua,-5,6); malha(F,matFaixa,-4); malha(B,matBorda,-4);

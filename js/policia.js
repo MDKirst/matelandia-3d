@@ -19,7 +19,8 @@ let semVer=0, aviso=0, espera=0;
 
 export async function iniciarPolicia(lugares){
   const pm=lugares.find(l=>/police|pol[ií]cia|\bPM\b/i.test((l.cat||'')+' '+l.n)); if(pm) posto=toXZ(pm.lat,pm.lon);
-  await new Promise(ok=>loader.load('assets/veiculos/caminhonete-policia.glb',g=>{ molde=g.scene; ok(); },undefined,()=>ok()));
+  // viatura nas cores da PM-PR (amarelo-limão, verde e branco): SUV de IA tingido + faixas desenhadas aqui
+  await new Promise(ok=>loader.load('assets/veiculos/suv2.glb',g=>{ molde=g.scene; ok(); },undefined,()=>ok()));
   moldeGuarda=await carregarModelo('male-suit-24');
 }
 
@@ -44,9 +45,12 @@ function novaViatura(px,pz){
   for(let t=0;t<1&&cand.length;t++){
     const q=cand[(Math.random()*cand.length)|0];
     const obj=molde.clone(); obj.rotation.order='YXZ';
-    obj.traverse(o=>{ if(o.isMesh){ o.material=o.material.clone(); o.material.color.multiplyScalar(1.8); } });   // a preta sumia no asfalto
+    obj.traverse(o=>{ if(o.isMesh){ o.material=o.material.clone(); o.material.color.setHex(0xe9f04a).multiplyScalar(1.25); } });   // cinza × amarelo-limão
     const box=new THREE.Box3().setFromObject(obj), tam=box.getSize(new THREE.Vector3());
     // giroflex: duas luzes no teto
+    for(const lado of [1,-1]){ const f=new THREE.Mesh(new THREE.PlaneGeometry(tam.z*0.82,0.42),new THREE.MeshBasicMaterial({map:faixaPM(),side:THREE.DoubleSide}));
+      f.position.set(lado*(tam.x/2+0.03),tam.y*0.47,0); f.rotation.y=lado*Math.PI/2; obj.add(f); }
+    const teto=new THREE.Mesh(new THREE.BoxGeometry(tam.x*0.62,0.05,tam.z*0.38),new THREE.MeshLambertMaterial({color:0xf4f4f0})); teto.position.set(0,tam.y-0.02,0.15); obj.add(teto);
     const luz=[0xff2a2a,0x2a5bff].map((c,i)=>{ const m=new THREE.Mesh(new THREE.BoxGeometry(0.45,0.16,0.3),new THREE.MeshBasicMaterial({color:c})); m.position.set(i?0.32:-0.32,tam.y+0.06,0.1); obj.add(m); return m; });
     scene.add(obj);
     const h=Math.atan2(-(px-q[0]),-(pz-q[1]));
@@ -76,6 +80,13 @@ function rota(x0,z0,x1,z1){
   }
   return [];
 }
+
+let texFaixa=null;
+function faixaPM(){ if(texFaixa) return texFaixa;
+  const c=document.createElement('canvas'); c.width=1024; c.height=128; const k=c.getContext('2d');
+  k.fillStyle='#1f7a3d'; k.fillRect(0,0,1024,128); k.fillStyle='#f4f4f0'; k.fillRect(0,0,1024,10); k.fillRect(0,118,1024,10);
+  k.fillStyle='#fff'; k.font='900 76px system-ui,sans-serif'; k.textAlign='center'; k.textBaseline='middle'; k.fillText('POLÍCIA MILITAR',512,66);
+  texFaixa=new THREE.CanvasTexture(c); texFaixa.colorSpace=THREE.SRGBColorSpace; return texFaixa; }
 
 function tirar(c){ scene.remove(c.obj); if(c.guarda) scene.remove(c.guarda.obj); }
 function limpar(){ for(const c of policia.carros) tirar(c); policia.carros=[]; policia.estrelas=0; semVer=0; hud(); }

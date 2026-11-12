@@ -51,23 +51,33 @@ const arvore=(x,z,esc=1)=>arvores.push([x,z,esc]);
 
 /* ───────── Igreja Matriz (planta redonda) ───────── */
 function igreja(){
-  const [cx,cz]=IGREJA.c, R=IGREJA.r, H=12;
-  poe(new THREE.CylinderGeometry(R,R,H,36,1,true),cx,H/2,cz,0,0xece4d2);                      // parede
-  poe(new THREE.CylinderGeometry(R+0.25,R+0.25,0.9,36,1,true),cx,H-0.45,cz,0,0xd8cdb4);       // cinta no alto
-  for(let i=0;i<16;i++){ const a=i/16*Math.PI*2; if(Math.abs(Math.atan2(Math.sin(a),Math.cos(a)))<0.35) continue; // deixa a frente (leste) livre
-    caixa(1.3,7,0.25, cx+Math.cos(a)*(R+0.05), 2.2, cz-Math.sin(a)*(R+0.05), 0x5b7fa6, a+Math.PI/2); }   // vitrais
-  poe(new THREE.CylinderGeometry(R,R,0.3,36),cx,H-0.15,cz,0,0xd9d6cf);                       // laje sob a cúpula
-  const cup=new THREE.SphereGeometry(R+0.8,36,10,0,Math.PI*2,0,Math.PI*0.32); cup.scale(1,0.45,1);
-  poe(cup,cx,H-(R+0.8)*0.45*Math.cos(Math.PI*0.32),cz,0,0xd9d6cf);                             // cúpula baixa e clara
-  poe(new THREE.CylinderGeometry(2.2,2.6,3,12),cx,H+3.4,cz,0,0xece4d2);                        // lanternim
-  poe(new THREE.ConeGeometry(2.6,3.5,12),cx,H+6.6,cz,0,0x9aa3a8);
-  caixa(0.35,5,0.35,cx,H+8.3,cz,0xf4efe2); caixa(2.6,0.35,0.35,cx,H+11.3,cz,0xf4efe2);         // cruz
-  // pórtico de entrada, virado para a Praça Biazus (leste)
+  // forma/cor/posição pela referência do Maicon (fotos dele só para ter noção): corpo largo e
+  // arredondado, branco com detalhes verdes, janelas em arco e torre alta com cruz do lado oeste
+  const [cx,cz]=IGREJA.c, R=IGREJA.r, H=12, BRANCO=0xf3f2ec, VERDE=0x2f7a55, VERDE2=0x3f8f66;
+  poe(new THREE.CylinderGeometry(R,R,H,40,1,true),cx,H/2,cz,0,BRANCO);                         // parede
+  poe(new THREE.CylinderGeometry(R+0.2,R+0.2,0.8,40,1,true),cx,0.4,cz,0,VERDE);                // rodapé verde
+  poe(new THREE.CylinderGeometry(R+0.25,R+0.25,0.9,40,1,true),cx,H-0.45,cz,0,VERDE);           // cinta verde no alto
+  for(let i=0;i<20;i++){ const a=i/20*Math.PI*2; if(Math.abs(Math.atan2(Math.sin(a),Math.cos(a)))<0.3) continue;   // frente (leste) livre
+    const wx=cx+Math.cos(a)*(R+0.06), wz=cz-Math.sin(a)*(R+0.06), ry=a+Math.PI/2;
+    caixa(1.2,5.2,0.22,wx,2.6,wz,0x9cc7dc,ry);                                                 // vidro
+    poe(new THREE.CylinderGeometry(0.6,0.6,0.22,16,1,false,0,Math.PI).rotateX(Math.PI/2).rotateZ(Math.PI/2),wx,7.8,wz,ry,0x9cc7dc);   // arco
+    caixa(1.5,0.25,0.3,wx,2.45,wz,VERDE,ry);                                                   // peitoril
+    const b=a+Math.PI/20; caixa(0.5,H-1.7,0.3,cx+Math.cos(b)*(R+0.1),0.8,cz-Math.sin(b)*(R+0.1),VERDE2,b+Math.PI/2); }   // pilastras
+  poe(new THREE.CylinderGeometry(R,R,0.3,40),cx,H-0.15,cz,0,0xe9e8e2);
+  const cup=new THREE.SphereGeometry(R+0.8,40,10,0,Math.PI*2,0,Math.PI*0.32); cup.scale(1,0.45,1);
+  poe(cup,cx,H-(R+0.8)*0.45*Math.cos(Math.PI*0.32),cz,0,VERDE);                                 // cobertura verde
+  // torre alta e fina do lado oeste, com agulha e cruz
+  const tx=cx-R-1.6, T=26;
+  caixa(4.2,T,4.2,tx,0,cz,BRANCO); caixa(4.5,0.6,4.5,tx,T*0.45,cz,VERDE); caixa(4.5,0.6,4.5,tx,T-0.6,cz,VERDE);
+  for(const [dx,dz] of [[2.11,0],[-2.11,0],[0,2.11],[0,-2.11]]) caixa(dx?0.1:1.6,3.2,dz?0.1:1.6,tx+dx,T-5,cz+dz,0x2a3a44);   // aberturas do sino
+  const agulha=new THREE.ConeGeometry(2.6,9,4); agulha.rotateY(Math.PI/4); poe(agulha,tx,T+4.5,cz,0,VERDE);
+  caixa(0.3,4,0.3,tx,T+9,cz,0xf7f7f2); caixa(2,0.3,0.3,tx,T+11.6,cz,0xf7f7f2);                   // cruz
+  // pórtico de entrada virado para a Praça Biazus (leste)
   const px=cx+R+3.2;
-  caixa(7,0.5,11,px,4.6,cz,0xd8cdb4); for(const dz of [-4.6,-1.6,1.6,4.6]) caixa(0.7,4.6,0.7,px+3,0,cz+dz,0xf1ece0);
+  caixa(7,0.5,11,px,4.6,cz,VERDE); for(const dz of [-4.6,-1.6,1.6,4.6]) caixa(0.7,4.6,0.7,px+3,0,cz+dz,BRANCO);
   caixa(0.3,4.2,4,cx+R+0.1,0,cz,0x6b4a33);                                                     // porta de madeira
   caixa(8,0.25,13,px,0,cz,0xbdb5a5);                                                           // degrau
-  circulo(cx,cz,R+0.3);
+  circulo(cx,cz,R+0.3); ret(tx-2.1,tx+2.1,cz-2.1,cz+2.1);
   for(const dz of [-4.6,-1.6,1.6,4.6]) retGirado(px+3,cz+dz,0.8,0.8,0);
 }
 
@@ -79,32 +89,34 @@ const BLOCOS = [
 ];
 function bloco(x0,x1,z0,z1,and,telhado){
   const w=x1-x0, d=z1-z0, cx=(x0+x1)/2, cz=(z0+z1)/2, H=and*3.4+0.6;
-  caixa(w,H,d,cx,0,cz,0xeee6cf);
-  caixa(w+0.1,0.9,d+0.1,cx,0,cz,0x6d8fb3);                                        // barrado
+  caixa(w,H,d,cx,0,cz,0xf4f4f1);                                                   // branco
+  caixa(w+0.1,0.9,d+0.1,cx,0,cz,0x2f5f9e);                                        // barrado azul
   for(let a=0;a<and;a++){ const y=a*3.4+1.5;                                       // faixas de janela nas faces compridas
     if(w>=d){ caixa(w-2,1.3,d+0.12,cx,y,cz,0x3d4f63); } else { caixa(w+0.12,1.3,d-2,cx,y,cz,0x3d4f63); } }
   const comp=Math.max(w,d), larg=Math.min(w,d), alt=Math.min(larg*0.22,2.2), ry=w>=d?0:Math.PI/2;
   const t=new THREE.CylinderGeometry(0.01,(larg/2+0.6)*Math.SQRT2,alt,4,1); t.rotateY(Math.PI/4); // pirâmide de 4 lados…
   t.scale((comp+1.2)/(larg+1.2),1,1);                                               // …esticada = 4 águas
-  poe(t,cx,H+alt/2,cz,ry,telhado==='ceramica'?0xab5a3c:0x9da2a3);
+  poe(t,cx,H+alt/2,cz,ry,telhado==='ceramica'?0xb05a3a:0x8fa0b4);
   ret(x0,x1,z0,z1);
 }
 function colegio(){
   for(const b of BLOCOS) bloco(...b);
   // ginásio de esportes do CEEC: paredes + cobertura em arco
   const [x0,x1,z0,z1]=[-708,-680,148,192], w=x1-x0, cx=(x0+x1)/2, cz=(z0+z1)/2, H=8;
-  caixa(w,H,z1-z0,cx,0,cz,0xe2dccb); caixa(w+0.1,1,z1-z0+0.1,cx,0,cz,0x6d8fb3);
-  caixa(w+0.12,1.2,z1-z0-4,cx,H-2,cz,0x8a96a3);                                   // venezianas altas
+  caixa(w,H,z1-z0,cx,0,cz,0xa7adb3); caixa(w+0.1,1.2,z1-z0+0.1,cx,0,cz,0xc9c6bd);   // chapa metálica cinza sobre base de concreto
+  caixa(w+0.12,1.4,z1-z0-4,cx,H-2.2,cz,0x6f7a86);                                  // faixa de ventilação no alto
   const arco=new THREE.CylinderGeometry(w/2+0.6,w/2+0.6,z1-z0+1,24,1,true,-Math.PI/2,Math.PI); arco.rotateX(-Math.PI/2); arco.scale(1,0.32,1);
-  poe(arco,cx,H,cz,0,0xc9cdd0);
+  poe(arco,cx,H,cz,0,0x2f63a8);                                                     // cobertura azul
+  mural(x1+0.08,cz,z1-z0-2,H-2.6,Math.PI/2); mural(cx,z1+0.08,w-2,H-2.6,0);          // mural nas faces da esquina
   ret(x0,x1,z0,z1);
   // muro do lote com portão na Rua Napoleão Laureano (sul)
-  const [L0,L1,M0,M1]=LOTE_COLEGIO, h=1.9, e=0.25, portao=[-752,-740];
-  caixa(L1-L0,h,e,(L0+L1)/2,0,M0,0xd9d2bf); ret(L0,L1,M0-e,M0+e);
-  caixa(e,h,M1-M0,L0,0,(M0+M1)/2,0xd9d2bf); ret(L0-e,L0+e,M0,M1);
-  caixa(e,h,M1-M0,L1,0,(M0+M1)/2,0xd9d2bf); ret(L1-e,L1+e,M0,M1);
-  caixa(portao[0]-L0,h,e,(L0+portao[0])/2,0,M1,0xd9d2bf); ret(L0,portao[0],M1-e,M1+e);
-  caixa(L1-portao[1],h,e,(portao[1]+L1)/2,0,M1,0xd9d2bf); ret(portao[1],L1,M1-e,M1+e);
+  const [L0,L1,M0,M1]=LOTE_COLEGIO, h=2.6, e=0.25, portao=[-752,-740], CINZA=0xb3b2ab;
+  // muro alto de placas de concreto com pilar a cada 2 m
+  const muro=(xa,za,xb,zb)=>{ const L=Math.hypot(xb-xa,zb-za), ry=Math.atan2(zb-za,xb-xa);
+    caixa(L,h,e,(xa+xb)/2,0,(za+zb)/2,CINZA,-ry);
+    for(let s=0;s<=L;s+=2){ const t=s/L; caixa(0.32,h+0.12,0.4,xa+(xb-xa)*t,0,za+(zb-za)*t,0x9d9c95,-ry); }
+    if(Math.abs(xb-xa)>Math.abs(zb-za)) ret(Math.min(xa,xb),Math.max(xa,xb),za-e,za+e); else ret(xa-e,xa+e,Math.min(za,zb),Math.max(za,zb)); };
+  muro(L0,M0,L1,M0); muro(L0,M0,L0,M1); muro(L1,M0,L1,M1); muro(L0,M1,portao[0],M1); muro(portao[1],M1,L1,M1);
   // placa
   for(const dx of [-3,3]) caixa(0.25,3.2,0.25,(portao[0]+portao[1])/2+dx+8,0,M1+2,0x4b5563);
   placa('COLÉGIO ESTADUAL', 'EUCLIDES DA CUNHA', (portao[0]+portao[1])/2+8, 3.6, M1+2.15);
@@ -112,6 +124,21 @@ function colegio(){
   for(let i=0;i<7;i++) arvore(-725+((i*37)%30), 120+((i*53)%60), 0.9+((i*7)%3)*0.15);
 }
 const placas=[];
+function mural(x,z,w,h,ry){
+  const cv=document.createElement('canvas'); cv.width=1024; cv.height=Math.round(1024*h/w); const k=cv.getContext('2d');
+  let s=7; const r=()=>{ s=(s*1103515245+12345)%2147483648; return s/2147483648; };
+  k.fillStyle='#1d6f8f'; k.fillRect(0,0,cv.width,cv.height);
+  const cores=['#f2c14e','#f78154','#4d9078','#b4436c','#5fad56','#f2e9d8','#7b5ea7','#2ec4b6'];
+  for(let i=0;i<34;i++){ const cx=r()*cv.width, cy=r()*cv.height, rr=30+r()*150;
+    k.fillStyle=cores[(r()*cores.length)|0]; k.globalAlpha=0.85;
+    if(i%3===0){ for(let p=0;p<6;p++){ const a=p/6*Math.PI*2; k.beginPath(); k.ellipse(cx+Math.cos(a)*rr*0.6,cy+Math.sin(a)*rr*0.6,rr*0.45,rr*0.22,a,0,7); k.fill(); } }   // flor
+    else if(i%3===1){ k.beginPath(); k.ellipse(cx,cy,rr,rr*0.32,r()*3,0,7); k.fill(); }                                                                 // folha
+    else { k.beginPath(); k.moveTo(cx,cy); for(let q=0;q<5;q++) k.quadraticCurveTo(cx+(r()-0.5)*rr*3,cy+(r()-0.5)*rr*3,cx+(r()-0.5)*rr*2,cy+(r()-0.5)*rr*2); k.fill(); } }
+  k.globalAlpha=1;
+  const tex=new THREE.CanvasTexture(cv); tex.colorSpace=THREE.SRGBColorSpace;
+  const m=new THREE.Mesh(new THREE.PlaneGeometry(w,h),new THREE.MeshLambertMaterial({map:tex}));
+  m.position.set(x,1.3+h/2,z); m.rotation.y=ry; placas.push(m);
+}
 function placa(l1,l2,x,y,z){
   const cv=document.createElement('canvas'); cv.width=1024; cv.height=256; const k=cv.getContext('2d');
   k.fillStyle='#1f5f8b'; k.fillRect(0,0,1024,256); k.strokeStyle='#fff'; k.lineWidth=10; k.strokeRect(14,14,996,228);
