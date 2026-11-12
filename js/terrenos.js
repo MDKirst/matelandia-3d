@@ -40,6 +40,9 @@ let tSalvar=null;
 function salvar(){ clearTimeout(tSalvar); tSalvar=setTimeout(()=>{ try{ localStorage.setItem(CHAVE,JSON.stringify(salvo)); }catch(e){ console.warn('não salvou',e); } },400); }
 const fmt=v=>'M$ '+v.toLocaleString('pt-BR');
 function hudSaldo(){ $('saldo').textContent='💰 '+fmt(salvo.saldo); }
+// dinheiro ganho fora daqui (entregas)
+export function ganhar(v){ salvo.saldo=Math.max(0,salvo.saldo+Math.round(v)); salvar(); hudSaldo(); }
+export { fmt };
 
 /* ───────── achar lotes vazios ───────── */
 export const lotes=[];    // {id, A:[x,z], t:[tx,tz], n:[nx,nz], preco, grupo, chao, placa, meu, blocos:Map, ocupa:Set}

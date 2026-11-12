@@ -88,6 +88,9 @@ function distRua(x,z){
   return md;
 }
 
+// pontos na calçada em frente a cada loja (para as entregas): {x,z,nome,ramo}
+export const pontosLoja=[];
+
 export async function carregarLojas(){
   let dados;
   try{ const r=await fetch(DADOS); if(!r.ok) throw new Error('HTTP '+r.status); dados=await r.json(); }
@@ -107,7 +110,7 @@ export async function carregarLojas(){
       if(dentro(x,z,p.pts)){ melhor=p; md=0; break; }
       for(let i=0;i<p.pts.length;i++){ const a=p.pts[i], c=p.pts[(i+1)%p.pts.length], vx=c[0]-a[0], vz=c[1]-a[1];
         let t=((x-a[0])*vx+(z-a[1])*vz)/(vx*vx+vz*vz||1); t=Math.max(0,Math.min(1,t)); const d=Math.hypot(x-a[0]-vx*t,z-a[1]-vz*t); if(d<md){ md=d; melhor=p; } } }
-    const cel=celula(nomeFicticio(ramo[0],x,z), ramo[2]);   // nome inventado, nunca o real
+    const nomeF=nomeFicticio(ramo[0],x,z), cel=celula(nomeF, ramo[2]);   // nome inventado, nunca o real
     if(!melhor){ // totem na calçada
       const h=3.2; pinta(new THREE.BoxGeometry(0.18,h,0.18).translate(x,h/2,z),0x4b5563);
       quadro(cel,[x,h,z+0.06],[1,0],2.6,0.65); quadro(cel,[x,h,z-0.06],[-1,0],2.6,0.65);   // lê dos dois lados
@@ -129,6 +132,7 @@ export async function carregarLojas(){
     // o letreiro olha para fora: a direção ao longo da parede depende do lado
     const tt=[ nn[1], -nn[0] ];   // direita de quem olha a fachada de fora
     quadro(cel,[cx,ys,cz],tt,w,alto);
+    if(ramo[0]!=='fe') pontosLoja.push({x:cx+nn[0]*2.2, z:cz+nn[1]*2.2, nome:nomeF, ramo:ramo[0]});
     if(ramo[3]!==null){ // toldo inclinado + porta
       const y0=ys-alto/2-0.08, y1=y0-0.55, sai=1.1, hw=w/2;
       const P=(s,o,y)=>[cx+tt[0]*s+nn[0]*o, y, cz+tt[1]*s+nn[1]*o];

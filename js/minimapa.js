@@ -6,7 +6,8 @@ const mm=$('mini').getContext('2d'); const MMS=380, ESC=0.75; // px por metro
 
 // rumo: direção da seta do jogador (0 = +Z, sul). veiculos: [{x,z,h,comp,larg}] estacionados;
 // transito: [[x,z],...]
-export function minimapa(px,pz,rumo,veiculos=[],transito=[]){
+// alvo: [x,z] da entrega (fica na borda do mapa se estiver longe)
+export function minimapa(px,pz,rumo,veiculos=[],transito=[],alvo=null){
   const alc=MMS/2/ESC;
   mm.fillStyle='#22352a'; mm.fillRect(0,0,MMS,MMS);
   mm.save(); mm.translate(MMS/2,MMS/2); mm.scale(ESC,ESC); mm.translate(-px,-pz);
@@ -25,5 +26,8 @@ export function minimapa(px,pz,rumo,veiculos=[],transito=[]){
   mm.save(); mm.translate(MMS/2,MMS/2); mm.rotate(-rumo);
   mm.fillStyle='#F97316'; mm.strokeStyle='#111'; mm.lineWidth=3;
   mm.beginPath(); mm.moveTo(0,18); mm.lineTo(11,-12); mm.lineTo(0,-5); mm.lineTo(-11,-12); mm.closePath(); mm.fill(); mm.stroke(); mm.restore();
+  if(alvo){ let dx=(alvo[0]-px)*ESC, dz=(alvo[1]-pz)*ESC; const d=Math.hypot(dx,dz), lim=MMS/2-16; if(d>lim){ dx*=lim/d; dz*=lim/d; }
+    mm.fillStyle='#facc15'; mm.strokeStyle='#111'; mm.lineWidth=3; mm.beginPath(); mm.arc(MMS/2+dx,MMS/2+dz,12,0,Math.PI*2); mm.fill(); mm.stroke();
+    mm.fillStyle='#111'; mm.font='bold 16px system-ui'; mm.textAlign='center'; mm.fillText('📦',MMS/2+dx,MMS/2+dz+6); }
   mm.fillStyle='#fff'; mm.font='bold 22px system-ui'; mm.textAlign='center'; mm.fillText('N',MMS/2,34);
 }

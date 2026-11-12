@@ -34,6 +34,10 @@
   #barra canvas{display:block;width:40px;height:40px;border-radius:4px}
   #barra span{position:absolute;left:4px;top:2px;font-size:11px;font-weight:900;color:#fff;text-shadow:0 1px 2px #000}
   #barra #tirar{color:#fff;padding:0 10px;font-size:13px}
+  #missao{position:fixed;top:58px;left:50%;transform:translateX(-50%);display:none;text-align:center;background:rgba(12,14,18,.72);border:1px solid rgba(250,204,21,.5);border-radius:12px;padding:8px 16px;pointer-events:none}
+  #missaoTxt{font-weight:800;font-size:15px}
+  #missaoDist{color:#fcd34d;font-size:13px;margin-top:2px}
+  #missaoSeta{display:inline-block;font-size:26px;line-height:1;color:#facc15;margin-top:2px;transition:transform .1s}
   #acoes{position:fixed;right:12px;bottom:280px;display:none;flex-direction:column;gap:6px}
   #acoes button{font-size:13px;padding:9px 12px;border-radius:10px;box-shadow:0 3px 10px rgba(0,0,0,.45)}
   #usar{position:fixed;right:18px;bottom:190px;width:74px;height:74px;border-radius:50%;font-size:14px;display:none;box-shadow:0 4px 14px rgba(0,0,0,.5)}
@@ -41,7 +45,7 @@
   #home{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;gap:28px;padding:24px;box-sizing:border-box;
     background:linear-gradient(90deg,rgba(8,10,14,.92) 0%,rgba(8,10,14,.72) 45%,rgba(8,10,14,.25) 100%);z-index:10;transition:opacity .35s}
   #home.fora{opacity:0;pointer-events:none}
-  body.em-home #top,body.em-home #help,body.em-home #mini,body.em-home #street,body.em-home #dica,body.em-home #velo,body.em-home #usar,body.em-home #procurado,body.em-home #acoes,body.em-home #barra{display:none!important}
+  body.em-home #top,body.em-home #help,body.em-home #mini,body.em-home #street,body.em-home #dica,body.em-home #velo,body.em-home #usar,body.em-home #procurado,body.em-home #acoes,body.em-home #barra,body.em-home #missao{display:none!important}
   #home .lado{max-width:420px}
   #home h1{margin:0;font-size:clamp(40px,7vw,76px);line-height:.95;font-weight:900;letter-spacing:-1px}
   #home h1 span{color:#F97316;display:block}
@@ -60,6 +64,7 @@
   #nomePers small{display:block;color:#94a3b8;font-weight:500;font-size:11px}
   @media (max-width:760px){#home{flex-direction:column-reverse;gap:10px;justify-content:flex-end;overflow:auto;background:rgba(8,10,14,.86)}
     #prev{width:200px;height:240px} #home .ctrl{display:none} #home .sub{margin:8px 0 14px}}
+  @media (max-width:900px){#missao{top:auto;bottom:250px}}
   @media (max-width:700px){#help{display:none}#mini{width:130px;height:130px}#top{max-width:210px}}
 </style>
 <script type="importmap">
@@ -88,7 +93,7 @@
   <b>Arrastar mouse</b> girar câmera · <b>Scroll</b> zoom<br>
   <b>E</b> entrar/sair do veículo · <b>Espaço</b> freio de mão<br>
   <b>T</b> conversar · <b>G</b> cumprimentar · <b>H</b> seguir · <b>X</b> assustar<br>
-  <b>B</b> comprar terreno · <b>C</b> construir (1–8 bloco, clique põe, direito tira)<br>
+  <b>N</b> entrega (no veículo) · <b>B</b> comprar terreno · <b>C</b> construir<br>
   <b>M</b> som · <b>[ ]</b> detalhe do satélite · <b>Esc</b> menu<br>
   Celular: esquerda anda, direita gira
 </div>
@@ -99,6 +104,7 @@
 <div id="velo"></div>
 <div id="procurado"></div>
 <div id="barra"></div>
+<div id="missao"><div id="missaoTxt"></div><div id="missaoSeta">⬆</div><div id="missaoDist"></div></div>
 <div id="aviso"></div>
 <button id="usar">Entrar</button>
 <div id="acoes"><button data-acao="conversar">💬 Conversar</button><button data-acao="cumprimentar">👋 Cumprimentar</button><button data-acao="seguir">🚶 Seguir</button><button data-acao="assustar">😱 Assustar</button></div>
@@ -111,6 +117,7 @@
     <div class="ctrl">
       <b>WASD</b> andar · <b>Shift</b> correr · <b>E</b> entrar no veículo<br>
       <b>T</b> conversar · <b>G</b> cumprimentar · <b>H</b> chamar para seguir · <b>X</b> assustar<br>
+      <b>N</b> entregas para ganhar M$ · <b>B</b> comprar terreno · <b>C</b> construir<br>
       <b>Mouse</b> girar a câmera · <b>Scroll</b> zoom · <b>M</b> som · <b>Esc</b> volta a esta tela<br>
       Celular: lado esquerdo anda, lado direito gira
     </div>

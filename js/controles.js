@@ -21,6 +21,7 @@ addEventListener('keydown',e=>{
   if(ACOES[e.code]&&!e.repeat) pedido.acao=ACOES[e.code];
   if(e.code==='KeyB'&&!e.repeat) pedido.comprar=true;
   if(e.code==='KeyC'&&!e.repeat) pedido.obra=true;
+  if(e.code==='KeyN'&&!e.repeat) pedido.entrega=true;
   if(e.code==='KeyR') av.giroExtra+=Math.PI/2;
   if(e.code==='KeyM'&&!e.repeat){ $('status').textContent=alternarSom()?'🔊 Som ligado (M)':'🔇 Som desligado (M)'; setTimeout(status,2500); }
   if(e.code==='BracketRight'||e.code==='BracketLeft'){

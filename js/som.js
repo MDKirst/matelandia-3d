@@ -46,6 +46,14 @@ export function somPancada(){
   if(!ctx) return; const t=ctx.currentTime; baque(t,95,45,0.22,0.8); rajada(t,0.12,0.35,'lowpass',600);
 }
 
+// plim de coleta (2 notas) e de entrega paga (3 notas subindo)
+export function somEntrega(pago){
+  if(!ctx) return; const t=ctx.currentTime, notas=pago?[659,784,1047]:[784,1047];
+  notas.forEach((f,i)=>{ const o=ctx.createOscillator(); o.type='triangle'; o.frequency.value=f;
+    const g=ctx.createGain(), t0=t+i*0.11; g.gain.setValueAtTime(0.0001,t0); g.gain.exponentialRampToValueAtTime(0.35,t0+0.02); g.gain.exponentialRampToValueAtTime(0.001,t0+0.35);
+    o.connect(g).connect(mestre); o.start(t0); o.stop(t0+0.4); });
+}
+
 // sirene: um oscilador só, sobe e desce (lamento); volume pela distância da viatura mais perto
 let sirene=null;
 export function somSirene(dist){
