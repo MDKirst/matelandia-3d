@@ -297,6 +297,9 @@ async function ligarNuvem(){
       delete salvo.terrenos[id]; ganhar(l.preco); avisar('Um terreno seu já tinha dono: dinheiro devolvido'); }
     for(const l of lotes){ if(meu(l)&&!salvo.terrenos[l.id]) salvo.terrenos[l.id]={blocos:[]}; } salvar();
   });
-  for(const l of lotes) ouvirBlocos(l.id, m=>{ l.blocos=m; refazer(l); });
+  // só aceita o que o jogo sabe desenhar: dado estragado no banco não pode travar o jogo de ninguém
+  const valido=(k,v)=>{ if(!Number.isInteger(v)||v<0||tipoDe(v)>=BLOCOS.length||v>=100+BLOCOS.length) return false;
+    const c=k.split(',').map(Number); return c.length===3&&c.every(Number.isInteger)&&c[0]>=0&&c[0]<W&&c[1]>=0&&c[1]<D&&c[2]>=0&&c[2]<ALT; };
+  for(const l of lotes) ouvirBlocos(l.id, m=>{ for(const [k,v] of m) if(!valido(k,v)) m.delete(k); if(m.size>6000) return; l.blocos=m; refazer(l); });
 }
 export const lotesMeus=()=>lotes.filter(meu);
