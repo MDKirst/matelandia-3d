@@ -1,0 +1,235 @@
+// Terrenos à venda e construção com blocos (tudo salvo no navegador de cada jogador).
+//  - Lotes: espaços vazios de verdade atrás das calçadas (sem prédio, sem muro, fora das praças),
+//    12 × 24 m, de frente para a rua; estacas nos cantos e placa VENDE-SE com o preço.
+//  - B compra (se tiver saldo M$); C entra/sai do modo construção dentro do SEU terreno;
+//    1–8 escolhem o bloco; clique esquerdo coloca, direito tira (no celular: botão Colocar/Tirar).
+//  - Blocos de 1 m em grade alinhada com o lote; texturas desenhadas aqui (nada de outro jogo).
+import * as THREE from 'three';
+import { scene, camera, cv, flat, $ } from './cena.js';
+import { ruas, predios } from './cidade.js';
+import { bloqueado, definirBloqueioExtra } from './mundo.js';
+import { substituidoPorMarco } from './marcos.js';
+import { LX0, LZ0, LX1, LZ1 } from './geo.js';
+
+const W=12, D=24, ALT=20;                          // largura (frente), fundo, altura máxima em blocos
+const COM_CALCADA=new Set(['primary','secondary','tertiary','residential','unclassified','living_street']);
+const CALCADA=2.6, GUIA=0.3;
+const CHAVE='matelandia3d.mundo';
+const SALDO_INICIAL=20000;
+
+/* ───────── blocos ───────── */
+function tex(pinta){ const cv=document.createElement('canvas'); cv.width=cv.height=64; const k=cv.getContext('2d'); pinta(k); const t=new THREE.CanvasTexture(cv); t.colorSpace=THREE.SRGBColorSpace; t.magFilter=THREE.NearestFilter; t.minFilter=THREE.NearestMipmapLinearFilter; return t; }
+const ruido=(k,c,n=300,a=.12)=>{ for(let i=0;i<n;i++){ k.fillStyle=`rgba(${c},${Math.random()*a})`; k.fillRect(Math.random()*64|0,Math.random()*64|0,2,2); } };
+export const BLOCOS=[
+  { nome:'Tijolo',   t:tex(k=>{ k.fillStyle='#a8513a'; k.fillRect(0,0,64,64); k.fillStyle='#d8cfc0'; for(let y=0;y<64;y+=16){ k.fillRect(0,y,64,2); const o=(y/16)%2?16:0; for(let x=o;x<64;x+=32) k.fillRect(x,y,2,16); } ruido(k,'0,0,0'); }) },
+  { nome:'Reboco',   t:tex(k=>{ k.fillStyle='#ece5d6'; k.fillRect(0,0,64,64); ruido(k,'120,110,90',500,.1); }) },
+  { nome:'Madeira',  t:tex(k=>{ k.fillStyle='#9a6a3e'; k.fillRect(0,0,64,64); k.fillStyle='rgba(60,35,15,.5)'; for(let x=0;x<64;x+=16) k.fillRect(x,0,2,64); for(let i=0;i<30;i++){ k.fillStyle='rgba(60,35,15,.25)'; k.fillRect(Math.random()*64|0,Math.random()*64|0,1,8); } }) },
+  { nome:'Telha',    t:tex(k=>{ k.fillStyle='#b5582f'; k.fillRect(0,0,64,64); for(let y=0;y<64;y+=12){ k.fillStyle='rgba(80,25,10,.45)'; k.fillRect(0,y+9,64,3); for(let x=(y/12)%2?8:0;x<64;x+=16){ k.fillStyle='rgba(255,200,160,.18)'; k.fillRect(x,y,8,9); } } }) },
+  { nome:'Vidro',    t:tex(k=>{ k.fillStyle='rgba(150,200,230,.45)'; k.fillRect(0,0,64,64); k.fillStyle='#e8eef2'; k.fillRect(0,0,64,3); k.fillRect(0,61,64,3); k.fillRect(0,0,3,64); k.fillRect(61,0,3,64); k.fillStyle='rgba(255,255,255,.5)'; k.fillRect(10,10,6,24); }), vidro:true },
+  { nome:'Concreto', t:tex(k=>{ k.fillStyle='#9ea2a4'; k.fillRect(0,0,64,64); ruido(k,'40,40,40',600,.12); k.fillStyle='rgba(60,60,60,.35)'; k.fillRect(0,31,64,2); }) },
+  { nome:'Pedra',    t:tex(k=>{ k.fillStyle='#7d7a74'; k.fillRect(0,0,64,64); for(let i=0;i<14;i++){ k.fillStyle=`rgb(${110+Math.random()*50|0},${105+Math.random()*45|0},${95+Math.random()*40|0})`; k.beginPath(); k.ellipse(Math.random()*64,Math.random()*64,6+Math.random()*8,5+Math.random()*6,Math.random()*3,0,7); k.fill(); } }) },
+  { nome:'Grama',    t:tex(k=>{ k.fillStyle='#5f8f3a'; k.fillRect(0,0,64,64); for(let i=0;i<250;i++){ k.fillStyle=Math.random()<.5?'#4f7d2f':'#78a84b'; k.fillRect(Math.random()*64|0,Math.random()*64|0,1,3); } }) },
+];
+const geoBloco=new THREE.BoxGeometry(1,1,1);
+const mats=BLOCOS.map(b=>new THREE.MeshLambertMaterial({map:b.t, transparent:!!b.vidro, opacity:b.vidro?0.85:1}));
+
+/* ───────── estado salvo ───────── */
+let salvo={ saldo:SALDO_INICIAL, terrenos:{} };   // terrenos: id → { blocos:[[i,j,k,tipo],...] }
+try{ const s=JSON.parse(localStorage.getItem(CHAVE)); if(s&&typeof s.saldo==='number') salvo=s; }catch(e){}
+let tSalvar=null;
+function salvar(){ clearTimeout(tSalvar); tSalvar=setTimeout(()=>{ try{ localStorage.setItem(CHAVE,JSON.stringify(salvo)); }catch(e){ console.warn('não salvou',e); } },400); }
+const fmt=v=>'M$ '+v.toLocaleString('pt-BR');
+function hudSaldo(){ $('saldo').textContent='💰 '+fmt(salvo.saldo); }
+
+/* ───────── achar lotes vazios ───────── */
+export const lotes=[];    // {id, A:[x,z], t:[tx,tz], n:[nx,nz], preco, grupo, chao, placa, meu, blocos:Map, ocupa:Set}
+function paralela(pts,off){ const n=pts.length, q=[]; for(let i=0;i<n;i++){ const a=pts[Math.max(i-1,0)], c=pts[Math.min(i+1,n-1)]; let dx=c[0]-a[0], dz=c[1]-a[1]; const l=Math.hypot(dx,dz)||1; q.push([pts[i][0]+dz/l*off, pts[i][1]-dx/l*off]); } return q; }
+function pertoDeRua(x,z,f){
+  for(const r of ruas){ if(r.pe) continue; const b=r.bb; if(x<b[0]-30||x>b[2]+30||z<b[1]-30||z>b[3]+30) continue;
+    for(let i=0;i<r.pts.length-1;i++){ const a=r.pts[i], c=r.pts[i+1], vx=c[0]-a[0], vz=c[1]-a[1]; let t=((x-a[0])*vx+(z-a[1])*vz)/(vx*vx+vz*vz||1); t=Math.max(0,Math.min(1,t));
+      if(Math.hypot(x-a[0]-vx*t,z-a[1]-vz*t)<r.w/2+CALCADA+f) return true; } }
+  return false;
+}
+function lotesVazios(){
+  const cand=[];
+  const vias=ruas.filter(r=>!r.pe&&COM_CALCADA.has(r.tipo)).sort((a,b)=>(a.pts[0][0]+a.pts[0][1])-(b.pts[0][0]+b.pts[0][1]));   // ordem fixa: mesmo id sempre
+  for(const r of vias) for(const lado of [1,-1]){
+    const q=paralela(r.pts, lado*(r.w/2+GUIA+CALCADA+0.6));
+    for(let i=0;i<q.length-1;i++){
+      const a=q[i], b=q[i+1], L=Math.hypot(b[0]-a[0],b[1]-a[1]); if(L<W+4) continue;
+      const t=[(b[0]-a[0])/L,(b[1]-a[1])/L], n0=[-t[1],t[0]];
+      // fundo do lote = lado que se afasta do eixo da rua
+      const meio=[(a[0]+b[0])/2,(a[1]+b[1])/2], e0=r.pts[i], e1=r.pts[i+1]||e0, eixo=[(e0[0]+e1[0])/2,(e0[1]+e1[1])/2];
+      const nn=((meio[0]-eixo[0])*n0[0]+(meio[1]-eixo[1])*n0[1])>=0?n0:[-n0[0],-n0[1]];
+      for(let s=2; s+W<L-2; s+=W+2){
+        let A=[a[0]+t[0]*s, a[1]+t[1]*s], tt=t;
+        if(nn[0]*(-tt[1])+nn[1]*tt[0]<0){ A=[A[0]+tt[0]*W, A[1]+tt[1]*W]; tt=[-tt[0],-tt[1]]; }   // garante n = esquerda de t (casa com a rotação do grupo)
+        const cx=A[0]+tt[0]*W/2+nn[0]*D/2, cz=A[1]+tt[1]*W/2+nn[1]*D/2;
+        if(Math.hypot(cx,cz)>1100||cx<LX0+30||cx>LX1-30||cz<LZ0+30||cz>LZ1-30) continue;
+        cand.push({A,t:tt,n:nn,cx,cz});
+      }
+    }
+  }
+  cand.sort((p,q)=>Math.hypot(p.cx,p.cz)-Math.hypot(q.cx,q.cz));     // primeiro os perto do centro
+  const ok=[];
+  for(const c of cand){
+    if(ok.length>=70) break;
+    if(ok.some(o=>Math.hypot(o.cx-c.cx,o.cz-c.cz)<16)) continue;
+    let livre=true;
+    for(let u=0.5;u<=W-0.5&&livre;u+=2.75) for(let v=0.5;v<=D-0.5&&livre;v+=2.9){
+      const x=c.A[0]+c.t[0]*u+c.n[0]*v, z=c.A[1]+c.t[1]*u+c.n[1]*v;
+      if(bloqueado(x,z)||substituidoPorMarco(x,z,'muro',0)||(v>1&&pertoDeRua(x,z,0.2))) livre=false; }
+    if(livre) ok.push(c);
+  }
+  return ok;
+}
+
+/* ───────── placa ───────── */
+function placa(l1,l2,cor){
+  const c=document.createElement('canvas'); c.width=512; c.height=256; const k=c.getContext('2d');
+  k.fillStyle=cor; k.fillRect(0,0,512,256); k.strokeStyle='#fff'; k.lineWidth=12; k.strokeRect(8,8,496,240);
+  k.fillStyle='#fff'; k.textAlign='center'; let fs=92; k.font=`900 ${fs}px system-ui,sans-serif`; while(k.measureText(l1).width>460&&fs>40){ fs-=4; k.font=`900 ${fs}px system-ui,sans-serif`; } k.fillText(l1,256,118);
+  k.font='800 66px system-ui,sans-serif'; k.fillText(l2,256,206);
+  const t=new THREE.CanvasTexture(c); t.colorSpace=THREE.SRGBColorSpace;
+  const g=new THREE.Group();
+  const quadro=new THREE.Mesh(new THREE.PlaneGeometry(2.4,1.2),new THREE.MeshBasicMaterial({map:t,side:THREE.DoubleSide})); quadro.position.y=1.9; g.add(quadro);
+  for(const x of [-0.9,0.9]){ const p=new THREE.Mesh(new THREE.BoxGeometry(0.1,1.4,0.1),new THREE.MeshLambertMaterial({color:0x6b4f36})); p.position.set(x,0.7,0); g.add(p); }
+  return g;
+}
+const matChao=new THREE.MeshBasicMaterial(flat({color:0x9c8a6a,transparent:true,opacity:0.35}));
+const matEstaca=new THREE.MeshLambertMaterial({color:0xf97316});
+
+function montarLote(c,idx){
+  const id=Math.round(c.cx)+'_'+Math.round(c.cz);
+  const grupo=new THREE.Group(); grupo.position.set(c.A[0],0,c.A[1]); grupo.rotation.y=Math.atan2(-c.t[1],c.t[0]);   // local +x = frente (t), +z = fundo (n)
+  // chão do lote (também é o alvo do raio da construção)
+  const chao=new THREE.Mesh(new THREE.PlaneGeometry(W,D).rotateX(-Math.PI/2).translate(W/2,0,D/2),matChao); chao.renderOrder=-6.6; grupo.add(chao);
+  for(const [x,z] of [[0,0],[W,0],[0,D],[W,D]]){ const e=new THREE.Mesh(new THREE.BoxGeometry(0.12,0.9,0.12),matEstaca); e.position.set(x,0.45,z); grupo.add(e); }
+  const l={id, A:c.A, t:c.t, n:c.n, preco:Math.round((W*D*(22+((idx*37)%17)))/500)*500, grupo, chao, placa:null, blocos:new Map(), ocupa:new Set(), inst:[]};
+  l.cx=c.cx; l.cz=c.cz;
+  scene.add(grupo); trocarPlaca(l);
+  // terreno já comprado neste navegador
+  const s=salvo.terrenos[id]; if(s){ for(const [i,j,k,tp] of s.blocos||[]) l.blocos.set(i+','+j+','+k,tp); refazer(l); }
+  lotes.push(l);
+}
+const meu=l=>!!salvo.terrenos[l.id];
+function trocarPlaca(l){
+  if(l.placa) l.grupo.remove(l.placa);
+  l.placa=meu(l)?placa('MEU TERRENO',`${W} × ${D} m`,'#c2410c'):placa('VENDE-SE',fmt(l.preco),'#15803d');
+  l.placa.position.set(W/2,0,0.8); l.placa.rotation.y=Math.PI;   // de frente para a rua
+  l.grupo.add(l.placa);
+}
+
+/* ───────── blocos do lote: uma InstancedMesh por tipo ───────── */
+const M4=new THREE.Matrix4();
+function refazer(l){
+  for(const m of l.inst) l.grupo.remove(m); l.inst=[];
+  const porTipo=BLOCOS.map(()=>[]); l.ocupa=new Set();
+  for(const [k,tp] of l.blocos){ const [i,j,y]=k.split(',').map(Number); porTipo[tp].push([i,j,y]); if(y<=1) l.ocupa.add(i+','+j); }
+  porTipo.forEach((lista,tp)=>{ if(!lista.length) return;
+    const im=new THREE.InstancedMesh(geoBloco,mats[tp],lista.length); im.userData.tipo=tp; im.userData.celulas=lista;
+    lista.forEach(([i,j,y],n)=>{ M4.makeTranslation(i+0.5,y+0.5,j+0.5); im.setMatrixAt(n,M4); });
+    im.instanceMatrix.needsUpdate=true; l.grupo.add(im); l.inst.push(im); });
+  if(meu(l)){ salvo.terrenos[l.id].blocos=[...l.blocos].map(([k,tp])=>[...k.split(',').map(Number),tp]); salvar(); }
+}
+// bloco no chão/primeiro andar bloqueia passagem (pessoa, carro, polícia)
+function bloqueiaBloco(x,z){
+  for(const l of lotes){ if(!l.ocupa.size) continue;
+    const dx=x-l.A[0], dz=z-l.A[1], u=dx*l.t[0]+dz*l.t[1], v=dx*l.n[0]+dz*l.n[1];
+    if(u<0||v<0||u>=W||v>=D) continue;
+    if(l.ocupa.has(Math.floor(u)+','+Math.floor(v))) return true; }
+  return false;
+}
+
+/* ───────── compra, modo construção ───────── */
+export const obra={ ativa:false, lote:null, tipo:0, tirar:false };
+function loteEm(x,z,margem=0){
+  for(const l of lotes){ const dx=x-l.A[0], dz=z-l.A[1], u=dx*l.t[0]+dz*l.t[1], v=dx*l.n[0]+dz*l.n[1];
+    if(u>=-margem&&v>=-margem-3&&u<=W+margem&&v<=D+margem) return l; }
+  return null;
+}
+let aviso=null;
+function avisar(t){ const a=$('aviso'); a.textContent=t; a.style.opacity=1; clearTimeout(aviso); aviso=setTimeout(()=>a.style.opacity=0,2500); }
+export function comprar(x,z){
+  const l=loteEm(x,z,1); if(!l) return false;
+  if(meu(l)){ avisar('Este terreno já é seu'); return true; }
+  if(salvo.saldo<l.preco){ avisar(`Saldo insuficiente (${fmt(salvo.saldo)})`); return true; }
+  salvo.saldo-=l.preco; salvo.terrenos[l.id]={blocos:[]}; salvar(); hudSaldo(); trocarPlaca(l);
+  avisar('Terreno comprado! C para construir'); return true;
+}
+export function alternarObra(x,z){
+  if(obra.ativa){ sairObra(); return; }
+  const l=loteEm(x,z,0); if(!l||!meu(l)){ avisar(l?'Compre o terreno primeiro (B)':'Entre no seu terreno para construir'); return; }
+  obra.ativa=true; obra.lote=l; $('barra').style.display='flex'; fantasma.visible=true; marcarBarra();
+}
+function sairObra(){ obra.ativa=false; obra.lote=null; $('barra').style.display='none'; fantasma.visible=false; }
+
+// dica do que dá para fazer aqui
+export function dicaTerreno(x,z){
+  const l=loteEm(x,z,1); if(!l) { if(obra.ativa) sairObra(); return ''; }
+  if(obra.ativa) return 'Clique: colocar · Botão direito: tirar · 1–8: bloco · C: sair da obra';
+  return meu(l)?'C construir no seu terreno':`B comprar terreno (${fmt(l.preco)}) · saldo ${fmt(salvo.saldo)}`;
+}
+
+/* ───────── mira: raio do mouse até o lote ───────── */
+const ray=new THREE.Raycaster(), ndc=new THREE.Vector2();
+const fantasma=new THREE.Mesh(geoBloco,new THREE.MeshBasicMaterial({color:0xffffff,transparent:true,opacity:0.35,depthWrite:false}));
+fantasma.add(new THREE.LineSegments(new THREE.EdgesGeometry(geoBloco),new THREE.LineBasicMaterial({color:0xf97316})));
+fantasma.visible=false;
+let alvo=null;   // {lote, por:[i,j,k] (onde colocar), tira:[i,j,k] (o que tirar)}
+function mirar(cx,cy){
+  const l=obra.lote; if(!l) return;
+  const r=cv.getBoundingClientRect(); ndc.set((cx-r.left)/r.width*2-1, -(cy-r.top)/r.height*2+1);
+  ray.setFromCamera(ndc,camera);
+  const hit=ray.intersectObjects([...l.inst,l.chao],false)[0];
+  alvo=null; fantasma.visible=false; if(!hit) return;
+  let por, tira=null;
+  if(hit.object.isInstancedMesh){ const c=hit.object.userData.celulas[hit.instanceId], n=hit.face.normal; tira=c; por=[c[0]+Math.round(n.x),c[1]+Math.round(n.z),c[2]+Math.round(n.y)]; }
+  else { const p=l.grupo.worldToLocal(hit.point.clone()); por=[Math.floor(p.x),Math.floor(p.z),0]; }
+  const dentro=c=>c[0]>=0&&c[1]>=0&&c[0]<W&&c[1]<D&&c[2]>=0&&c[2]<ALT;
+  if(!dentro(por)) por=null;
+  alvo={por,tira};
+  const mostra=obra.tirar?tira:por; if(!mostra) return;
+  if(fantasma.parent!==l.grupo) l.grupo.add(fantasma);
+  fantasma.position.set(mostra[0]+0.5,mostra[2]+0.5,mostra[1]+0.5); fantasma.scale.setScalar(obra.tirar?1.04:1);
+  fantasma.material.color.setHex(obra.tirar?0xff4444:0xffffff); fantasma.visible=true;
+}
+function agir(tirar){
+  const l=obra.lote; if(!l||!alvo) return;
+  if(tirar){ if(alvo.tira){ l.blocos.delete(alvo.tira.join(',')); refazer(l); } }
+  else if(alvo.por){ const k=alvo.por.join(','); if(l.blocos.size>=6000) return avisar('Limite de blocos neste terreno');
+    l.blocos.set(k,obra.tipo); refazer(l); }
+}
+let ini=null;
+cv.addEventListener('pointerdown',e=>{ ini={x:e.clientX,y:e.clientY,b:e.button}; });
+cv.addEventListener('pointermove',e=>{ if(obra.ativa&&e.pointerType==='mouse') mirar(e.clientX,e.clientY); });
+cv.addEventListener('pointerup',e=>{
+  if(!obra.ativa||!ini) return; const m=Math.hypot(e.clientX-ini.x,e.clientY-ini.y), b=ini.b; ini=null;
+  if(m>6) return;                                                   // foi arrasto de câmera, não clique
+  mirar(e.clientX,e.clientY); agir(b===2||obra.tirar);
+});
+cv.addEventListener('contextmenu',e=>{ if(obra.ativa) e.preventDefault(); });
+addEventListener('keydown',e=>{
+  if(!obra.ativa) return;
+  const n=parseInt(e.key); if(n>=1&&n<=BLOCOS.length){ obra.tipo=n-1; marcarBarra(); }
+  if(e.code==='Escape'){ sairObra(); e.stopImmediatePropagation(); }
+},true);
+
+/* ───────── barra de blocos ───────── */
+function montarBarra(){
+  const b=$('barra'); b.replaceChildren();
+  BLOCOS.forEach((bl,i)=>{ const d=document.createElement('button'); d.className='bloco'; d.title=bl.nome;
+    const img=document.createElement('canvas'); img.width=img.height=40; img.getContext('2d').drawImage(bl.t.image,0,0,40,40);
+    const n=document.createElement('span'); n.textContent=i+1; d.append(img,n);
+    d.onclick=ev=>{ obra.tipo=i; obra.tirar=false; marcarBarra(); ev.currentTarget.blur(); }; b.append(d); });
+  const t=document.createElement('button'); t.id='tirar'; t.textContent='Tirar'; t.onclick=ev=>{ obra.tirar=!obra.tirar; marcarBarra(); ev.currentTarget.blur(); }; b.append(t);
+}
+function marcarBarra(){ [...$('barra').querySelectorAll('.bloco')].forEach((d,i)=>d.classList.toggle('sel',i===obra.tipo&&!obra.tirar)); $('tirar').classList.toggle('sel',obra.tirar); }
+
+export function iniciarTerrenos(){
+  definirBloqueioExtra(bloqueiaBloco);
+  lotesVazios().forEach(montarLote);
+  montarBarra(); hudSaldo();
+  return lotes.length;
+}
+export const lotesMeus=()=>lotes.filter(meu);

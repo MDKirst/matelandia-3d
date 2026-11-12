@@ -19,6 +19,8 @@ addEventListener('keydown',e=>{
   if((e.code==='KeyE'||e.code==='KeyF')&&!e.repeat) pedido.usar=true;
   const ACOES={KeyT:'conversar',KeyG:'cumprimentar',KeyH:'seguir',KeyX:'assustar'};
   if(ACOES[e.code]&&!e.repeat) pedido.acao=ACOES[e.code];
+  if(e.code==='KeyB'&&!e.repeat) pedido.comprar=true;
+  if(e.code==='KeyC'&&!e.repeat) pedido.obra=true;
   if(e.code==='KeyR') av.giroExtra+=Math.PI/2;
   if(e.code==='KeyM'&&!e.repeat){ $('status').textContent=alternarSom()?'🔊 Som ligado (M)':'🔇 Som desligado (M)'; setTimeout(status,2500); }
   if(e.code==='BracketRight'||e.code==='BracketLeft'){

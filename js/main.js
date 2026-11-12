@@ -20,6 +20,7 @@ import { baterNoCarro } from './transito.js';
 import { quandoAtropelar, interagir, pedestrePerto, atualizarBaloes, quantosSeguem } from './pedestres.js';
 import { iniciarPolicia, atualizarPolicia, crime, posicoesPolicia } from './policia.js';
 import { somBatida, somExplosao, somPancada, somSirene } from './som.js';
+import { iniciarTerrenos, comprar, alternarObra, dicaTerreno, obra, lotesMeus } from './terrenos.js';
 import { minimapa } from './minimapa.js';
 import { frota, iniciarVeiculos, veiculoPerto, entrar, sair, dirigir, dentroDeVeiculo, frente, esquerda } from './veiculos.js';
 import * as veic from './veiculos.js';
@@ -64,7 +65,7 @@ function aPe(dt){
     const {yaw}=cam;
     const vx=(-Math.sin(yaw)*iy+Math.cos(yaw)*ix), vz=(-Math.cos(yaw)*iy-Math.sin(yaw)*ix), l=Math.hypot(vx,vz);
     const vel=(correndo?CORRER:ANDAR)*forca*dt, dx=vx/l*vel, dz=vz/l*vel;
-    if(dentroDoTransito(p.x,p.z)||!travado(p.x+dx,p.z+dz)){ p.x+=dx; p.z+=dz; }   // se um carro parou em cima, deixa sair
+    if(travado(p.x,p.z)||!travado(p.x+dx,p.z+dz)){ p.x+=dx; p.z+=dz; }   // já dentro de algo (carro parou em cima, bloco posto no pé): deixa sair
     else if(!travado(p.x+dx,p.z)) p.x+=dx;
     else if(!travado(p.x,p.z+dz)) p.z+=dz;
     const a=Math.atan2(vx,vz); let d=a-rumo; d=Math.atan2(Math.sin(d),Math.cos(d)); rumo+=d*Math.min(1,dt*10);
@@ -124,6 +125,8 @@ function quadro(){
   const dt=Math.min(relogio.getDelta(),0.05);
   if(home.aberta){ pedido.usar=false; jogador.visible=false; }          // tela inicial: ninguém se mexe
   else { if(pedido.usar){ pedido.usar=false; trocarVeiculo(); }
+    if(pedido.comprar){ pedido.comprar=false; if(!veic.dirigindo) comprar(jogador.position.x,jogador.position.z); }
+    if(pedido.obra){ pedido.obra=false; if(!veic.dirigindo) alternarObra(jogador.position.x,jogador.position.z); }
     if(pedido.acao){ const a=pedido.acao; pedido.acao=null;                     // T/G/H/X com um pedestre perto
       if(!veic.dirigindo){ const p=jogador.position, alvo=pedestrePerto(p.x,p.z);
         if(alvo){ rumo=Math.atan2(alvo.x-p.x,alvo.z-p.z); if(a==='cumprimentar') gesto=2.2; interagir(a,p.x,p.z); } } }
@@ -137,7 +140,9 @@ function quadro(){
   $('usar').style.display=(perto||veic.dirigindo)&&matchMedia('(pointer:coarse)').matches?'block':'none';
   $('usar').textContent=veic.dirigindo?'Sair':'Entrar';
   // pedestre perto (a pé): mostra as ações
-  const gente=!home.aberta&&!veic.dirigindo&&!perto&&pedestrePerto(p.x,p.z);
+  const terr=!home.aberta&&!veic.dirigindo&&!perto?dicaTerreno(p.x,p.z):'';
+  if(terr){ $('dica').style.display='block'; $('dica').textContent=terr; }
+  const gente=!home.aberta&&!veic.dirigindo&&!perto&&!terr&&pedestrePerto(p.x,p.z);
   if(gente){ $('dica').style.display='block'; $('dica').textContent='T conversar · G cumprimentar · H '+(gente.modo==='seguir'?'dispensar':'chamar')+' · X assustar'+(quantosSeguem()?` · ${quantosSeguem()} seguindo`:''); }
   $('acoes').style.display=gente&&matchMedia('(pointer:coarse)').matches?'flex':'none';
 
@@ -186,6 +191,8 @@ carregarCidade().then(async()=>{
   progresso('Chamando o povo para a rua…');
   try{ const l=lugaresCache=(await (await fetch('dados/lugares.json')).json()).lugares; await iniciarPedestres(l, jogador.position.x, jogador.position.z); }catch(e){ console.warn('pedestres',e); }
   const p=jogador.position, [x,z]=pontoLivre(p.x,p.z); p.set(x,0,z);   // não nascer dentro de uma casa
+  progresso('Demarcando terrenos…');
+  console.info('terrenos', iniciarTerrenos());
   progresso('Ligando os motores…');
   await iniciarVeiculos(); await iniciarTransito(jogador.position.x,jogador.position.z);
   await iniciarPolicia(lugaresCache);
