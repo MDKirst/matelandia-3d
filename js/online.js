@@ -10,12 +10,15 @@ import { clone as clonarEsqueleto } from 'three/addons/utils/SkeletonUtils.js';
 import { scene, $ } from './cena.js';
 
 const TRYSTERO='https://cdn.jsdelivr.net/npm/trystero@0.26.0/+esm';
-const CONFIG={ appId:'matelandia3d-cidade-2026' }, SALA='matelandia';
+// ?sala=nome no link = sala particular (grupo de amigos ou teste), separada da sala pública
+const PARTICULAR=(new URLSearchParams(location.search).get('sala')||'').toLowerCase().replace(/[^a-z0-9-]/g,'').slice(0,24);
+const CONFIG={ appId:'matelandia3d-cidade-2026' }, SALA=PARTICULAR?'particular-'+PARTICULAR:'matelandia';
 const LIMITE=15, SALAS_MAX=20, ESPERA=4000;   // até 15 por sala; cheia → abre a próxima
 const loader=new GLTFLoader(); loader.setMeshoptDecoder(MeshoptDecoder);
 
 // filtro simples de nome (sem HTML, sem palavrão, até 16 letras)
 const FEIO=/(porra|caralh|puta|merda|bucet|foder|fod[ae]|viad|cuzao|cuzão|arrombad|piroc|xoxot|vagabund|desgraç|corno|bosta)/gi;
+export const limparFala=s=>(s||'').replace(/[\u0000-\u001f<>]/g,'').replace(/\s+/g,' ').trim().slice(0,120).replace(FEIO,'***');
 export function limparNome(s){ s=(s||'').replace(/[<>&"'`]/g,'').replace(/\s+/g,' ').trim().slice(0,16).replace(FEIO,'***'); return s||'Visitante'; }
 
 export const online={ ativo:false, sala:null, envio:null, outros:new Map(), eu:null, tentativa:0 };
@@ -40,14 +43,18 @@ export async function entrarOnline(nome, personagem){
     online.sala=sala; online.ativo=true; tEnvio=1;
     const est=sala.makeAction('est'); online.envio=est;
     est.onMessage=(d,{peerId})=>receber(peerId,d);
+    const fala=sala.makeAction('fala'); online.fala=fala;
+    fala.onMessage=(d,{peerId})=>ouvir(peerId,d);
+    $('chatBtn').style.display='inline-block'; $('chat').style.display='flex';
+    linha(null,`Você entrou na sala ${PARTICULAR||online.num||1}. Aperte Enter para conversar.`);
     sala.onPeerJoin=()=>{ tEnvio=1; hud(); };                         // manda o estado já para quem chegou
     sala.onPeerLeave=id=>{ remover(id); hud(); };
     hud();
   }catch(e){ if(sala&&!online.ativo){ try{ sala.leave(); }catch(_){} } console.warn('online indisponível',e); $('online').textContent='🌐 online indisponível'; }
   finally{ online.entrando=false; }
 }
-export function sairOnline(){ online.tentativa++; if(online.sala){ try{ online.sala.leave(); }catch(e){} } online.ativo=false; online.sala=null; for(const id of [...online.outros.keys()]) remover(id); hud(); }
-function hud(){ const n=online.outros.size; $('online').textContent=online.ativo?`🌐 sala ${online.num||1} · ${n?n+(n>1?' jogadores':' jogador'):'ninguém por perto ainda'}`:''; }
+export function sairOnline(){ online.tentativa++; if(online.sala){ try{ online.sala.leave(); }catch(e){} } online.ativo=false; online.sala=null; online.fala=null; fecharChat(); $('chatBtn').style.display='none'; $('chat').style.display='none'; for(const id of [...online.outros.keys()]) remover(id); hud(); }
+function hud(){ const n=online.outros.size; $('online').textContent=online.ativo?`🌐 ${PARTICULAR?'sala '+PARTICULAR+(online.num>1?' '+online.num:''):'sala '+(online.num||1)} · ${n?n+(n>1?' jogadores':' jogador'):'ninguém por perto ainda'}`:''; }
 
 // meu estado (chamado todo quadro pelo main): x,z,r (rumo), a (animação), vt (veículo) e vh (rumo do veículo)
 export function enviarEstado(dt, s){
@@ -112,6 +119,60 @@ export function atualizarOnline(dt){
     if(o.boneco){ o.boneco.rotation.y=o.r; const n=o.acoes[a.a]||o.acoes.parado; if(n&&n!==o.atual){ if(o.atual) o.atual.fadeOut(0.25); n.reset().fadeIn(0.25).play(); o.atual=n; } o.mixer.update(dt); }
     if(o.veic){ o.veic.position.set(o.x,0,o.z); if(a.vh!=null){ let dh=a.vh-o.veic.rotation.y; dh=Math.atan2(Math.sin(dh),Math.cos(dh)); o.veic.rotation.y+=dh*k; } }
     if(o.tag) o.tag.position.y=o.vt?3.2:2.25;
+    if(o.balao){ o.balao.position.y=(o.vt?3.2:2.25)+0.75; if(agora>o.balaoFim){ o.grupo.remove(o.balao); o.balao=null; } }
   }
 }
 export const posicoesJogadores=()=>[...online.outros.values()].map(o=>[o.x,o.z]);
+
+/* ───────── chat da sala ───────── */
+// Enter abre a caixa, Enter envia, Esc fecha. A fala aparece no histórico e num balão sobre o jogador.
+let ultimoEnvio=0; const ultFala=new Map();
+function linha(nome, txt, eu=false){
+  const d=document.createElement('div');
+  if(nome==null){ d.className='sis'; d.textContent=txt; }
+  else{ if(eu) d.className='eu'; const b=document.createElement('b'); b.textContent=nome+': '; d.append(b, txt); }
+  const log=$('chatLog'); log.append(d); while(log.children.length>8) log.firstChild.remove();
+  setTimeout(()=>d.classList.add('velha'),15000);
+}
+function balao(txt){
+  const cv=document.createElement('canvas'); cv.width=512; cv.height=96; const k=cv.getContext('2d');
+  k.font='600 30px system-ui,sans-serif'; let t=txt; while(k.measureText(t).width>470&&t.length>4) t=t.slice(0,-2);
+  if(t!==txt) t=t.trimEnd()+'…';
+  const w=Math.min(500,k.measureText(t).width+36);
+  k.fillStyle='rgba(255,255,255,.94)'; k.beginPath(); k.roundRect(256-w/2,6,w,62,16); k.fill();
+  k.beginPath(); k.moveTo(244,66); k.lineTo(256,88); k.lineTo(268,66); k.fill();
+  k.fillStyle='#111827'; k.textAlign='center'; k.textBaseline='middle'; k.fillText(t,256,38);
+  const tx=new THREE.CanvasTexture(cv); tx.colorSpace=THREE.SRGBColorSpace;
+  const s=new THREE.Sprite(new THREE.SpriteMaterial({map:tx,depthTest:false,transparent:true})); s.scale.set(4.2,0.79,1); s.renderOrder=22; return s;
+}
+function ouvir(id,d){
+  if(!d||typeof d.t!=='string') return;
+  const o=online.outros.get(id), agora=performance.now();
+  if(agora-(ultFala.get(id)||0)<700) return; ultFala.set(id,agora);           // anti-flood
+  const txt=limparFala(d.t); if(!txt) return;
+  linha(o?.nome||limparNome(d.n), txt);
+  if(!o) return;                                                           // ainda não sabemos onde ele está: só o histórico
+  if(o.balao) o.grupo.remove(o.balao);
+  o.balao=balao(txt); o.balaoFim=agora+7000; o.grupo.add(o.balao);
+}
+function enviarFala(){
+  const inp=$('chatIn'), txt=limparFala(inp.value); inp.value='';
+  if(!txt||!online.fala) return;
+  const agora=performance.now(); if(agora-ultimoEnvio<800) return; ultimoEnvio=agora;
+  try{ online.fala.send({t:txt, n:online.eu?.n}); }catch(e){}
+  linha(online.eu?.n||'Você', txt, true);
+}
+function abrirChat(){ if(!online.ativo) return; $('chat').classList.add('aberto'); const i=$('chatIn'); i.focus(); }
+function fecharChat(){ $('chat').classList.remove('aberto'); $('chatIn').blur(); }
+$('chatIn').addEventListener('keydown',e=>{
+  e.stopPropagation();                                                   // não anda nem abre o menu enquanto digita
+  if(e.key==='Enter'){ enviarFala(); fecharChat(); }
+  else if(e.key==='Escape') fecharChat();
+});
+$('chatIn').addEventListener('blur',()=>$('chat').classList.remove('aberto'));
+addEventListener('keydown',e=>{
+  if(e.key!=='Enter'||!online.ativo||document.body.classList.contains('em-home')) return;
+  if(document.activeElement&&document.activeElement.tagName==='INPUT') return;
+  e.preventDefault(); abrirChat();
+});
+$('chatBtn').addEventListener('click',e=>{ e.currentTarget.blur(); abrirChat(); });

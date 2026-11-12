@@ -58,6 +58,16 @@
   #home .jogador input[type=text],#nomeJog{background:#0b0d11;border:1px solid #334155;color:#e2e8f0;border-radius:9px;padding:10px 12px;font-size:15px}
   #home .jogador label{font-size:13px;color:#cbd5e1;display:flex;gap:8px;align-items:center}
   #online{margin-top:4px;font-size:12px;color:#7dd3fc}
+  #chat{position:fixed;left:12px;bottom:270px;width:min(360px,calc(100vw - 24px));display:none;flex-direction:column;gap:4px;pointer-events:none}
+  #chatLog{display:flex;flex-direction:column;gap:3px}
+  #chatLog div{background:rgba(12,14,18,.72);border-radius:8px;padding:5px 9px;font-size:13.5px;line-height:1.35;color:#e2e8f0;transition:opacity .6s;overflow-wrap:anywhere}
+  #chatLog div.velha{opacity:0}
+  #chatLog b{color:#fcd34d} #chatLog .eu b{color:#7dd3fc} #chatLog .sis{color:#94a3b8;font-style:italic}
+  #chatIn{display:none;pointer-events:auto;background:#0b0d11;border:1px solid #38bdf8;color:#e2e8f0;border-radius:9px;padding:9px 11px;font-size:15px}
+  #chat.aberto #chatIn{display:block} #chat.aberto #chatLog div.velha{opacity:1}
+  #chatBtn{display:none}
+  body.em-home #chat{display:none!important}
+  @media (max-width:700px){#chat{bottom:160px}}
   #home .carrega{margin-top:10px;font-size:12px;color:#fcd34d;min-height:16px}
   #escolha{display:flex;flex-direction:column;align-items:center;background:rgba(15,23,42,.6);border:1px solid rgba(255,255,255,.08);border-radius:16px;padding:14px 14px 16px}
   #escolha .titulo{font-size:12px;letter-spacing:2px;color:#94a3b8;text-transform:uppercase}
@@ -86,6 +96,7 @@
   <div id="status">Iniciando…</div>
   <div id="btns">
     <button id="menu" class="sec">☰ Menu (Esc)</button>
+    <button id="chatBtn" class="sec">💬 Chat (Enter)</button>
   </div>
   <input id="tp" placeholder="Ir para: lat, lon  (Enter)">
   <div id="coord" style="margin-top:6px;font-size:11px;color:#94a3b8"></div>
@@ -100,6 +111,7 @@
   <b>T</b> conversar · <b>G</b> cumprimentar · <b>H</b> seguir · <b>X</b> assustar<br>
   <b>N</b> entrega (no veículo) · <b>B</b> comprar terreno · <b>C</b> construir<br>
   <b>M</b> som · <b>[ ]</b> detalhe do satélite · <b>Esc</b> menu<br>
+  <b>Enter</b> chat com os jogadores (online)<br>
   Celular: esquerda anda, direita gira
 </div>
 
@@ -111,6 +123,7 @@
 <div id="barra"></div>
 <div id="missao"><div id="missaoTxt"></div><div id="missaoSeta">⬆</div><div id="missaoDist"></div></div>
 <div id="aviso"></div>
+<div id="chat"><div id="chatLog"></div><input id="chatIn" maxlength="120" placeholder="Mensagem para a sala (Enter envia, Esc fecha)" autocomplete="off"></div>
 <button id="usar">Entrar</button>
 <div id="acoes"><button data-acao="conversar">💬 Conversar</button><button data-acao="cumprimentar">👋 Cumprimentar</button><button data-acao="seguir">🚶 Seguir</button><button data-acao="assustar">😱 Assustar</button></div>
 <div id="home">
