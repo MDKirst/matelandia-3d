@@ -1,0 +1,6 @@
+Personagens: Quaternius, "Ultimate Animated Character Pack" (CC0 1.0, dominio publico),
+baixados em 11/11/2026 em GLB da redistribuicao publica do GDevelop
+(asset-resources.gdevelop.io, "3D Animated Characters", autor Quaternius, CC0), porque o
+Google Drive oficial (quaternius.com) recusou o download por excesso de acessos.
+Enxugados por tools/otimizar-pessoa.mjs (so parado/andar/correr/sentar/acenar/mexer,
+malha quantizada, meshopt): 43,7 MB -> 16,6 MB.

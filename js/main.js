@@ -12,6 +12,7 @@ import { carregarPredios, atualizarTelhados } from './predios.js';
 import { construirMarcos } from './marcos.js';
 import { carregarLojas } from './lojas.js';
 import { construirDetalhes, alturaLombada } from './detalhes.js';
+import { iniciarPedestres, atualizarPedestres, posicoesPedestres } from './pedestres.js';
 import { minimapa } from './minimapa.js';
 import { frota, iniciarVeiculos, veiculoPerto, entrar, sair, dirigir, dentroDeVeiculo, frente, esquerda } from './veiculos.js';
 import * as veic from './veiculos.js';
@@ -22,7 +23,13 @@ import { iniciarTransito, atualizarTransito, posicoesTransito } from './transito
   const muro=(cx,cz,l,gira)=>{ const w=new THREE.Mesh(new THREE.PlaneGeometry(l,H),m); w.position.set(cx,H/2,cz); if(gira) w.rotation.y=Math.PI/2; scene.add(w); };
   muro((LX0+LX1)/2,LZ0,LX1-LX0,false); muro((LX0+LX1)/2,LZ1,LX1-LX0,false); muro(LX0,(LZ0+LZ1)/2,LZ1-LZ0,true); muro(LX1,(LZ0+LZ1)/2,LZ1-LZ0,true); }
 
-const travado=(x,z)=>bloqueado(x,z)||dentroDeVeiculo(x,z);
+// a pé: prédio, veículo estacionado ou carro do trânsito (antes o avatar entrava no carro)
+function dentroDoTransito(x,z){
+  for(const [tx,tz,ry,meio=2.2,larg=1.1] of posicoesTransito()){ const dx=x-tx, dz=z-tz; if(Math.abs(dx)>10||Math.abs(dz)>10) continue;
+    const fx=-Math.sin(ry), fz=-Math.cos(ry); if(Math.abs(dx*fx+dz*fz)<meio+0.3 && Math.abs(-dx*fz+dz*fx)<larg+0.3) return true; }
+  return false;
+}
+const travado=(x,z)=>bloqueado(x,z)||dentroDeVeiculo(x,z)||dentroDoTransito(x,z);
 
 // carro do trânsito na frente do veículo do jogador?
 // (se já estão encostados, deixa se afastar: senão o veículo travava para sempre)
@@ -49,7 +56,7 @@ function aPe(dt){
     const {yaw}=cam;
     const vx=(-Math.sin(yaw)*iy+Math.cos(yaw)*ix), vz=(-Math.cos(yaw)*iy-Math.sin(yaw)*ix), l=Math.hypot(vx,vz);
     const vel=(correndo?CORRER:ANDAR)*forca*dt, dx=vx/l*vel, dz=vz/l*vel;
-    if(!travado(p.x+dx,p.z+dz)){ p.x+=dx; p.z+=dz; }
+    if(dentroDoTransito(p.x,p.z)||!travado(p.x+dx,p.z+dz)){ p.x+=dx; p.z+=dz; }   // se um carro parou em cima, deixa sair
     else if(!travado(p.x+dx,p.z)) p.x+=dx;
     else if(!travado(p.x,p.z+dz)) p.z+=dz;
     const a=Math.atan2(vx,vz); let d=a-rumo; d=Math.atan2(Math.sin(d),Math.cos(d)); rumo+=d*Math.min(1,dt*10);
@@ -106,7 +113,9 @@ function quadro(){
   $('usar').textContent=veic.dirigindo?'Sair':'Entrar';
 
   const D=veic.dirigindo, outros=[[p.x,p.z,D?D.comp/2:0.5,D?D.larg/2:0.5], ...frota.filter(c=>c!==D).map(c=>[c.obj.position.x,c.obj.position.z,c.comp/2,c.larg/2])];
+  for(const [x,z] of posicoesPedestres()) outros.push([x,z,0.3,0.3]);   // o trânsito para para pedestre na pista
   atualizarTransito(dt,p.x,p.z,outros);
+  atualizarPedestres(dt,{x:p.x,z:p.z,dirigindo:!!veic.dirigindo,v:veic.dirigindo?veic.dirigindo.v:0});
 
   const {yaw,pitch,dist}=cam;
   alvo.set(p.x,veic.dirigindo?1.8:1.45,p.z);
@@ -136,6 +145,7 @@ carregarCidade().then(async()=>{
   construirMarcos(predios, ruaLonge); status();
   console.info('lojas', await carregarLojas());
   console.info('detalhes', await construirDetalhes());
+  try{ const l=(await (await fetch('dados/lugares.json')).json()).lugares; await iniciarPedestres(l, jogador.position.x, jogador.position.z); }catch(e){ console.warn('pedestres',e); }
   const p=jogador.position, [x,z]=pontoLivre(p.x,p.z); p.set(x,0,z);   // não nascer dentro de uma casa
   await iniciarVeiculos(); await iniciarTransito(jogador.position.x,jogador.position.z); });
 quadro();

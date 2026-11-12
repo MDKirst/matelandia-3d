@@ -1,4 +1,4 @@
-// Lojas e serviços com o nome real (dados/lugares.json: OSM + Overture places, gerado por
+// Lojas e serviços nos lugares reais, com NOME FICTÍCIO (dados/lugares.json: OSM + Overture places, gerado por
 // tools/baixar_lugares.py). Cada lugar vai para o prédio mais perto, na parede virada para a
 // rua: letreiro com o nome, toldo com a cor do ramo e porta. Sem prédio por perto, vira um
 // totem na calçada. Os nomes são desenhados em poucas texturas grandes (atlas).
@@ -25,6 +25,28 @@ const RAMOS = [
 const PADRAO = ['servico', null, '#334155', 0x64748b];
 const ramoDe = l=>RAMOS.find(r=>r[1].test(l.cat||''))||RAMOS.find(r=>r[1].test(l.n))||PADRAO;
 // lugar que não é loja de rua (loteamento, bairro, rodovia, órgão sem fachada…)
+// Nome FICTÍCIO no letreiro (pedido do Maicon): o lugar, o ramo e a cor vêm dos dados reais,
+// mas o nome é inventado, sorteado de forma fixa pela posição (sai igual toda vez).
+const TIPO_NOME = {
+  comida:  ['Lanchonete','Restaurante','Pizzaria','Padaria','Sorveteria','Bar','Pastelaria','Churrascaria','Cafeteria','Doceria'],
+  mercado: ['Mercado','Supermercado','Mercearia','Açougue','Hortifruti','Atacado'],
+  saude:   ['Farmácia','Clínica','Odonto','Ótica','Laboratório','Fisioterapia','Pet Shop'],
+  banco:   ['Cooperativa','Banco','Lotérica','Seguros','Crédito'],
+  carro:   ['Auto Peças','Mecânica','Borracharia','Auto Posto','Lava-Car','Moto Peças','Funilaria'],
+  moda:    ['Boutique','Modas','Calçados','Salão','Barbearia','Estética'],
+  casa:    ['Materiais','Móveis','Vidraçaria','Elétrica','Tintas','Celulares','Informática'],
+  fe:      ['Igreja','Comunidade','Capela'],
+  servico: ['Escritório','Contabilidade','Imobiliária','Gráfica','Autoescola','Studio','Agência','Despachante'],
+};
+const COMPLEMENTO = ['Bom Sabor','Sol Nascente','Pé Vermelho','Bela Vista','Três Marias','Vale Verde','Recanto','Primavera','Horizonte','Estrela',
+  'Boa Esperança','Novo Tempo','Dois Irmãos','Ipê Amarelo','Araucária','Colonial','Do Bairro','Central','Imperial','Oeste','Fronteira','Progresso',
+  'Família','Bem-Estar','Arco-Íris','Campo Verde','Serra Azul','Rio Claro','Do Povo','União'];
+const COMPLEMENTO_FE = ['Boa Nova','Fonte de Vida','Esperança','Paz e Luz','Monte Sião','Nova Aliança'];
+function nomeFicticio(ramo,x,z){
+  const h=k=>{ const s=Math.sin(x*12.9898+z*78.233+k*37.719)*43758.5453; return s-Math.floor(s); };
+  const id=ramo==='mercado0'?'mercado':ramo, tipos=TIPO_NOME[id]||TIPO_NOME.servico, comp=id==='fe'?COMPLEMENTO_FE:COMPLEMENTO;
+  return tipos[(h(1)*tipos.length)|0]+' '+comp[(h(2)*comp.length)|0];
+}
 const NAO_LOJA = /loteamento|lotemento|residencial|jardim |condom[ií]nio|bairro|rodovia|br-?277|^pr-|estrada|promo[cç]/i;
 
 /* ───────── atlas de nomes ───────── */
@@ -85,7 +107,7 @@ export async function carregarLojas(){
       if(dentro(x,z,p.pts)){ melhor=p; md=0; break; }
       for(let i=0;i<p.pts.length;i++){ const a=p.pts[i], c=p.pts[(i+1)%p.pts.length], vx=c[0]-a[0], vz=c[1]-a[1];
         let t=((x-a[0])*vx+(z-a[1])*vz)/(vx*vx+vz*vz||1); t=Math.max(0,Math.min(1,t)); const d=Math.hypot(x-a[0]-vx*t,z-a[1]-vz*t); if(d<md){ md=d; melhor=p; } } }
-    const cel=celula(l.n, ramo[2]);
+    const cel=celula(nomeFicticio(ramo[0],x,z), ramo[2]);   // nome inventado, nunca o real
     if(!melhor){ // totem na calçada
       const h=3.2; pinta(new THREE.BoxGeometry(0.18,h,0.18).translate(x,h/2,z),0x4b5563);
       quadro(cel,[x,h,z+0.06],[1,0],2.6,0.65); quadro(cel,[x,h,z-0.06],[-1,0],2.6,0.65);   // lê dos dois lados
