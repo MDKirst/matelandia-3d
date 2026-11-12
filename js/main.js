@@ -14,6 +14,11 @@ import { carregarLojas } from './lojas.js';
 import { construirDetalhes, alturaLombada } from './detalhes.js';
 import { iniciarPedestres, atualizarPedestres, posicoesPedestres } from './pedestres.js';
 import { home, pronto, progresso } from './home.js';
+import { atualizarEfeitos } from './efeitos.js';
+import { danificar, efeitosVeiculos } from './veiculos.js';
+import { baterNoCarro } from './transito.js';
+import { quandoAtropelar } from './pedestres.js';
+import { iniciarPolicia, atualizarPolicia, crime, posicoesPolicia } from './policia.js';
 import { minimapa } from './minimapa.js';
 import { frota, iniciarVeiculos, veiculoPerto, entrar, sair, dirigir, dentroDeVeiculo, frente, esquerda } from './veiculos.js';
 import * as veic from './veiculos.js';
@@ -26,7 +31,7 @@ import { iniciarTransito, atualizarTransito, posicoesTransito } from './transito
 
 // a pé: prédio, veículo estacionado ou carro do trânsito (antes o avatar entrava no carro)
 function dentroDoTransito(x,z){
-  for(const [tx,tz,ry,meio=2.2,larg=1.1] of posicoesTransito()){ const dx=x-tx, dz=z-tz; if(Math.abs(dx)>10||Math.abs(dz)>10) continue;
+  for(const [tx,tz,ry,meio=2.2,larg=1.1] of [...posicoesTransito(),...posicoesPolicia()]){ const dx=x-tx, dz=z-tz; if(Math.abs(dx)>10||Math.abs(dz)>10) continue;
     const fx=-Math.sin(ry), fz=-Math.cos(ry); if(Math.abs(dx*fx+dz*fz)<meio+0.3 && Math.abs(-dx*fz+dz*fx)<larg+0.3) return true; }
   return false;
 }
@@ -36,7 +41,7 @@ const travado=(x,z)=>bloqueado(x,z)||dentroDeVeiculo(x,z)||dentroDoTransito(x,z)
 // (se já estão encostados, deixa se afastar: senão o veículo travava para sempre)
 function bateNoTransito(c,x,z,h){
   const p=c.obj.position;
-  for(const [tx,tz,,meio=2.2,larg=1.1] of posicoesTransito()){
+  for(const [tx,tz,,meio=2.2,larg=1.1] of [...posicoesTransito(),...posicoesPolicia()]){
     const enc=(px,pz,ph)=>{ const [fx,fz]=frente(ph), [ex,ez]=esquerda(ph), dx=tx-px, dz=tz-pz;
       return Math.abs(dx*fx+dz*fz)<c.comp/2+meio-0.1 && Math.abs(dx*ex+dz*ez)<c.larg/2+larg; };
     if(!enc(x,z,h)) continue;
@@ -45,6 +50,7 @@ function bateNoTransito(c,x,z,h){
   return false;
 }
 
+let lugaresCache=[];
 const relogio=new THREE.Clock(), alvo=new THREE.Vector3(); let rumo=0, tLento=0, passo=0, ruaAtual='', orbita=0.6;
 function aPe(dt){
   let ix=(tecla.KeyD||tecla.ArrowRight?1:0)-(tecla.KeyA||tecla.ArrowLeft?1:0);
@@ -76,7 +82,12 @@ function aoVolante(dt){
   let acel=(tecla.KeyW||tecla.ArrowUp?1:0)-(tecla.KeyS||tecla.ArrowDown?1:0);
   let giro=(tecla.KeyA||tecla.ArrowLeft?1:0)-(tecla.KeyD||tecla.ArrowRight?1:0);
   if(toque.joy){ acel=-toque.joy.y; giro=-toque.joy.x; }
-  dirigir(dt, acel, giro, tecla.Space, bateNoTransito);
+  const v0=Math.abs(c.v);
+  if(dirigir(dt, acel, giro, tecla.Space, bateNoTransito) && v0>4){            // bateu: estraga o veículo
+    danificar(c,v0);
+    const [fx,fz]=frente(c.h), q=c.obj.position, alvoT=baterNoCarro(q.x+fx*c.comp*0.6,q.z+fz*c.comp*0.6,v0);
+    if(alvoT&&v0>9) crime(1,'Batida');
+  }
   const p=c.obj.position; jogador.position.set(p.x,0,p.z); rumo=c.h+Math.PI;
   // quebra-mola: eixo da frente e de trás sobem; quanto mais rápido, maior o pulo
   { const [fx,fz]=frente(c.h), a=c.comp*0.35, yf=alturaLombada(p.x+fx*a,p.z+fz*a), yt=alturaLombada(p.x-fx*a,p.z-fz*a), k=1+Math.max(0,Math.abs(c.v)-6)*0.25;
@@ -84,9 +95,16 @@ function aoVolante(dt){
   // câmera vem para trás do veículo quando ele anda (parado, dá para olhar em volta)
   if(Math.abs(c.v)>0.6){ let d=c.h-cam.yaw; d=Math.atan2(Math.sin(d),Math.cos(d)); cam.yaw+=d*Math.min(1,dt*2.5); }
   cam.dist+= (c.tipo.cam-cam.dist)*Math.min(1,dt*3);
-  const s=document.createElement('small'); s.textContent=' km/h · '+c.tipo.nome;
+  const s=document.createElement('small'); s.textContent=' km/h · '+c.tipo.nome+(c.quebrado?' · QUEBRADO':c.dano>0?` · motor ${Math.round(100-c.dano)}%`:'');
   $('velo').replaceChildren(String(Math.round(Math.abs(c.v)*3.6)), s);
 }
+
+// preso: desce do veículo e aparece na frente do posto da PM
+function prender(posto){
+  if(veic.dirigindo){ sair(); jogador.visible=true; cam.dist=distAPe; $('velo').style.display='none'; }
+  const [x,z]=pontoLivre(posto[0]+6,posto[1]+6); jogador.position.set(x,0,z);
+}
+quandoAtropelar(()=>crime(1,'Atropelamento'));
 
 function trocarVeiculo(){
   if(veic.dirigindo){
@@ -117,8 +135,10 @@ function quadro(){
   const D=veic.dirigindo, outros=[[p.x,p.z,D?D.comp/2:0.5,D?D.larg/2:0.5], ...frota.filter(c=>c!==D).map(c=>[c.obj.position.x,c.obj.position.z,c.comp/2,c.larg/2])];
   for(const [x,z] of posicoesPedestres()) outros.push([x,z,0.3,0.3]);   // o trânsito para para pedestre na pista
   atualizarTransito(dt,p.x,p.z,outros);
-  atualizarPedestres(dt,{x:p.x,z:p.z,dirigindo:!!veic.dirigindo,v:veic.dirigindo?veic.dirigindo.v:0},
-    [...frota.map(c=>[c.obj.position.x,c.obj.position.z,c.h,c.comp/2,c.larg/2]), ...posicoesTransito()]);   // pedestre não atravessa veículo
+  atualizarPedestres(dt,{x:p.x,z:p.z,dirigindo:!!D,v:D?D.v:0, veic:D?{x:D.obj.position.x,z:D.obj.position.z,h:D.h,meio:D.comp/2,larg:D.larg/2,v:D.v}:null},
+    [...frota.filter(c=>c!==D).map(c=>[c.obj.position.x,c.obj.position.z,c.h,c.comp/2,c.larg/2]), ...posicoesTransito(), ...posicoesPolicia()]);   // pedestre não atravessa veículo
+  if(!home.aberta) atualizarPolicia(dt,{x:p.x,z:p.z,dirigindo:!!D,v:D?D.v:0},prender);
+  efeitosVeiculos(dt); atualizarEfeitos(dt);
 
   if(home.aberta){ orbita+=dt*0.04;                                    // sobrevoo lento da cidade atrás da tela inicial
     alvo.set(p.x,0,p.z); camera.position.set(p.x+Math.sin(orbita)*170, 85, p.z+Math.cos(orbita)*170); camera.lookAt(alvo); }
@@ -154,10 +174,11 @@ carregarCidade().then(async()=>{
   console.info('lojas', await carregarLojas());
   console.info('detalhes', await construirDetalhes());
   progresso('Chamando o povo para a rua…');
-  try{ const l=(await (await fetch('dados/lugares.json')).json()).lugares; await iniciarPedestres(l, jogador.position.x, jogador.position.z); }catch(e){ console.warn('pedestres',e); }
+  try{ const l=lugaresCache=(await (await fetch('dados/lugares.json')).json()).lugares; await iniciarPedestres(l, jogador.position.x, jogador.position.z); }catch(e){ console.warn('pedestres',e); }
   const p=jogador.position, [x,z]=pontoLivre(p.x,p.z); p.set(x,0,z);   // não nascer dentro de uma casa
   progresso('Ligando os motores…');
   await iniciarVeiculos(); await iniciarTransito(jogador.position.x,jogador.position.z);
+  await iniciarPolicia(lugaresCache);
   pronto(); });
 quadro();
 // gancho para testes no console

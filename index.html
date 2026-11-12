@@ -25,12 +25,14 @@
   #dica{position:fixed;left:50%;bottom:64px;transform:translateX(-50%);font-weight:700;font-size:15px;text-shadow:0 2px 0 #000,0 0 8px #000;pointer-events:none;display:none}
   #velo{position:fixed;right:22px;bottom:118px;text-align:right;font-weight:900;font-size:clamp(26px,4vw,46px);text-shadow:0 2px 0 #000,0 0 12px rgba(0,0,0,.8);pointer-events:none;display:none}
   #velo small{font-size:.4em;font-weight:700;color:#fcd34d}
+  #procurado{position:fixed;top:14px;left:50%;transform:translateX(-50%);font-size:34px;letter-spacing:4px;color:#facc15;text-shadow:0 2px 0 #000,0 0 10px rgba(0,0,0,.8);pointer-events:none}
+  #aviso{position:fixed;top:30%;left:50%;transform:translate(-50%,-50%);font-size:clamp(26px,5vw,58px);font-weight:900;text-align:center;text-shadow:0 3px 0 #000,0 0 18px rgba(0,0,0,.9);pointer-events:none;opacity:0;transition:opacity .4s;z-index:5}
   #usar{position:fixed;right:18px;bottom:190px;width:74px;height:74px;border-radius:50%;font-size:14px;display:none;box-shadow:0 4px 14px rgba(0,0,0,.5)}
   /* tela inicial */
   #home{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;gap:28px;padding:24px;box-sizing:border-box;
     background:linear-gradient(90deg,rgba(8,10,14,.92) 0%,rgba(8,10,14,.72) 45%,rgba(8,10,14,.25) 100%);z-index:10;transition:opacity .35s}
   #home.fora{opacity:0;pointer-events:none}
-  body.em-home #top,body.em-home #help,body.em-home #mini,body.em-home #street,body.em-home #dica,body.em-home #velo,body.em-home #usar{display:none!important}
+  body.em-home #top,body.em-home #help,body.em-home #mini,body.em-home #street,body.em-home #dica,body.em-home #velo,body.em-home #usar,body.em-home #procurado{display:none!important}
   #home .lado{max-width:420px}
   #home h1{margin:0;font-size:clamp(40px,7vw,76px);line-height:.95;font-weight:900;letter-spacing:-1px}
   #home h1 span{color:#F97316;display:block}
@@ -83,6 +85,8 @@
 <div id="street"></div>
 <div id="dica"></div>
 <div id="velo"></div>
+<div id="procurado"></div>
+<div id="aviso"></div>
 <button id="usar">Entrar</button>
 <div id="home">
   <div class="lado">

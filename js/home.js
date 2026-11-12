@@ -70,8 +70,9 @@ function jogar(){
   const p=PERSONAGENS[idx]; guardar(p.id);
   if(escolhido!==p.id){ escolhido=p.id; baixar(p).then(buf=>usarPersonagem(p.arq,buf.slice(0))).catch(()=>usarPersonagem(p.arq)); }
   home.aberta=false; $('home').classList.add('fora'); document.body.classList.remove('em-home'); $('jogar').blur();
+  setTimeout(()=>{ if(!home.aberta) $('home').style.display='none'; },400);   // some de vez depois do esmaecimento
 }
-function abrir(){ home.aberta=true; $('home').classList.remove('fora'); document.body.classList.add('em-home'); relogio.getDelta(); }
+function abrir(){ home.aberta=true; $('home').style.display=''; requestAnimationFrame(()=>$('home').classList.remove('fora')); document.body.classList.add('em-home'); relogio.getDelta(); }
 // a cidade avisa quando dá para jogar
 export function pronto(){ const b=$('jogar'); b.disabled=false; b.textContent='JOGAR'; $('carrega').textContent=''; }
 export function progresso(txt){ $('carrega').textContent=txt; }

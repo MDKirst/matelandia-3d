@@ -7,6 +7,7 @@ import { MeshoptDecoder } from 'three/addons/libs/meshopt_decoder.module.js';
 import { scene } from './cena.js';
 import { ruas } from './cidade.js';
 import { lombadas, alturaLombada } from './detalhes.js';
+import { fumaca, fogo } from './efeitos.js';
 
 // só modelos gerados por IA 3D, já em metros e com a frente em -Z; peso = chance de sair.
 // suv/picape/cavalo: TRELLIS deste projeto. Os demais vieram do Couro & Asfalto (imagem do Gemini →
@@ -56,7 +57,7 @@ function colocar(c, px, pz){
     const r=ok[Math.random()*ok.length|0], i=Math.random()*(r.pts.length-1)|0, p=r.pts[i], d=Math.hypot(p[0]-px,p[1]-pz);
     if(d<RAIO_NASCE[0]||d>RAIO_NASCE[1]) continue;
     let dir=Math.random()<0.5?1:-1; if(!pode(r,dir)) dir=-dir;
-    c.r=r; c.dir=dir; c.i=dir===1?i:i+1; c.s=0; c.v=c.vAlvo=0; c.obj.visible=true; return true;
+    c.r=r; c.dir=dir; c.i=dir===1?i:i+1; c.s=0; c.v=c.vAlvo=0; c.obj.visible=true; c.quebrado=0; c.forte=false; return true;
   }
   c.obj.visible=false; c.r=null; return false;
 }
@@ -106,6 +107,12 @@ export function atualizarTransito(dt, px, pz, outros){
   for(const c of carros){
     if(!c.r || Math.hypot(c.obj.position.x-px,c.obj.position.z-pz)>RAIO_SOME){ colocar(c,px,pz); if(!c.r) continue; }
     let P=pose(c);
+    if(c.quebrado){                                          // batido pelo jogador: parado soltando fumaça (some quando ficar longe)
+      c.quebrado=Math.max(0.001,c.quebrado-dt); c.v=0; c.acum=(c.acum||0)+dt*(c.quebrado>20?14:6);
+      const fx=-Math.sin(c.obj.rotation.y), fz=-Math.cos(c.obj.rotation.y);
+      while(c.acum>=1){ c.acum-=1; const x=c.obj.position.x+fx*c.meio*0.75, z=c.obj.position.z+fz*c.meio*0.75;
+        if(c.forte&&Math.random()<0.35) fogo(x,1.1,z,0.9); else fumaca(x,1.3,z,c.forte?0.8:0.3); }
+      continue; }
     // tem algo até 9 m à frente, na mesma faixa?
     let livre=true;
     // rf = meia-largura na frente/trás, rl = meia-largura de lado
@@ -136,6 +143,14 @@ export function atualizarTransito(dt, px, pz, outros){
     const alvo=Math.atan2(-P.ux,-P.uz); let d=alvo-c.obj.rotation.y; d=Math.atan2(Math.sin(d),Math.cos(d));
     c.obj.rotation.y += d*Math.min(1,dt*6);
   }
+}
+
+// o jogador bateu num carro do trânsito: o mais perto do ponto quebra (forte = pega fogo)
+export function baterNoCarro(x,z,impacto){
+  let alvo=null, md=9; for(const c of carros){ if(!c.r||!c.obj.visible) continue; const d=Math.hypot(c.obj.position.x-x,c.obj.position.z-z); if(d<md){ md=d; alvo=c; } }
+  if(!alvo) return null;
+  alvo.quebrado=40; alvo.forte=alvo.forte||impacto>14; alvo.v=0;
+  return alvo;
 }
 
 // para o minimapa e para a colisão do veículo do jogador

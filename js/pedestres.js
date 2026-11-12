@@ -48,7 +48,8 @@ function naCalcada(p){
 
 function vestir(p, m){
   const obj=clonarEsqueleto(m.cena), alt=1.58+Math.random()*0.3, e=alt/m.altura;
-  obj.scale.multiplyScalar(e); p.pe=-m.base*e;   // pés no chão obj.traverse(o=>{ if(o.isMesh){ o.frustumCulled=false; } });
+  obj.scale.multiplyScalar(e); p.pe=-m.base*e;   // pés no chão
+  obj.rotation.order='YXZ'; p.y=0; p.queda=0;      // YXZ: deita para trás no próprio eixo obj.traverse(o=>{ if(o.isMesh){ o.frustumCulled=false; } });
   scene.add(obj);
   p.obj=obj; p.mixer=new THREE.AnimationMixer(obj); p.acoes={}; p.atual=null; p.modelo=m;
   for(const [n,c] of Object.entries(m.anims)) p.acoes[n]=p.mixer.clipAction(c);
@@ -71,14 +72,16 @@ function nascer(p, px, pz){
     const a=sorte()*Math.PI*2, d=sorte()*pr.r, cx=pr.c[0]+Math.cos(a)*d, cz=pr.c[1]+Math.sin(a)*d;
     vestir(p,m); p.modo='conversa'; p.x=cx; p.z=cz; p.rumo=sorte()*Math.PI*2; p.t=8+sorte()*25; p.r=null; return true;
   }
-  for(let t=0;t<40;t++){
-    const r=vias[(Math.random()*vias.length)|0], i=(Math.random()*(r.pts.length-1))|0, q=r.pts[i], d=Math.hypot(q[0]-px,q[1]-pz);
+  for(let t=0;t<120;t++){
+    const r=vias[(Math.random()*vias.length)|0], i=(Math.random()*(r.pts.length-1))|0, a=r.pts[i], b=r.pts[i+1], t0=Math.random();
+    const q=[a[0]+(b[0]-a[0])*t0, a[1]+(b[1]-a[1])*t0], d=Math.hypot(q[0]-px,q[1]-pz);   // ponto no meio do trecho, não só no vértice
     if(d<RAIO_NASCE[0]||d>RAIO_NASCE[1]) continue;
     // rua sem comércio por perto aceita menos gente
     const comercio=lojas.some(l=>Math.abs(l[0]-q[0])<60&&Math.abs(l[1]-q[1])<60);
     if(!comercio&&sorte()<0.55) continue;
     const dir=sorte()<0.5?1:-1;
-    vestir(p,m); Object.assign(p,{modo:'andar', r, dir, i:dir===1?i:i+1, s:sorte()*3, lado:sorte()<0.5?1:-1, vel:1.1+sorte()*0.5, t:0, espera:0, visto:new Set()}); ladoCerto(p);
+    const Lseg=Math.hypot(b[0]-a[0],b[1]-a[1]);
+    vestir(p,m); Object.assign(p,{modo:'andar', r, dir, i:dir===1?i:i+1, s:(dir===1?t0:1-t0)*Lseg, lado:sorte()<0.5?1:-1, vel:1.1+sorte()*0.5, t:0, espera:0, visto:new Set()}); ladoCerto(p);
     const c=naCalcada(p); p.x=c.x; p.z=c.z; p.rumo=Math.atan2(c.ux,c.uz); return true;
   }
   return false;
@@ -113,14 +116,39 @@ export async function iniciarPedestres(lugares, px, pz){
   for(let k=0;k<QTD;k++){ const p={}; nascer(p,px,pz); gente.push(p); }
 }
 
-// jogador: {x,z, dirigindo, v (m/s), h}; veiculos: [[x,z,ry,meio,larg]] (do jogador, estacionados e trânsito)
+// avisa quem quiser saber (a polícia) que alguém foi atropelado
+let aoAtropelar=()=>{};
+export function quandoAtropelar(f){ aoAtropelar=f; }
+
+// jogador: {x,z, dirigindo, v (m/s), h, veic:{x,z,h,meio,larg,v}}; veiculos: [[x,z,ry,meio,larg]] (do jogador, estacionados e trânsito)
 export function atualizarPedestres(dt, jog, veiculos=[]){
   const {x:px, z:pz}=jog;
   for(const p of gente){
     if(!p.obj||Math.hypot(p.x-px,p.z-pz)>RAIO_SOME){ nascer(p,px,pz); if(!p.obj) continue; }
     const dJog=Math.hypot(p.x-px,p.z-pz);
+    // atropelado: o veículo do jogador encostou nele andando
+    const V=jog.veic;
+    if(V&&Math.abs(V.v)>2.2&&p.modo!=='caido'&&p.modo!=='levantar'){
+      const fx=-Math.sin(V.h), fz=-Math.cos(V.h), dx=p.x-V.x, dz=p.z-V.z;
+      if(Math.abs(dx*fx+dz*fz)<V.meio+0.35&&Math.abs(-dx*fz+dz*fx)<V.larg+0.35){
+        const sv=Math.sign(V.v), lado=Math.sign(-dx*fz+dz*fx)||1, k=Math.abs(V.v);
+        p.modo='caido'; p.t=7+Math.random()*4; p.queda=0;
+        p.vx=fx*sv*k*0.55-fz*lado*1.5; p.vz=fz*sv*k*0.55+fx*lado*1.5; p.vy=2+k*0.18;
+        p.rumo=Math.atan2(-fx*sv,-fz*sv);                 // de frente para o carro: cai de costas
+        animar(p,'parado'); aoAtropelar(p.x,p.z,k);
+      }
+    }
+    if(p.modo==='caido'){
+      p.x+=p.vx*dt; p.z+=p.vz*dt; p.y+=p.vy*dt; p.vy-=9.8*dt;
+      if(p.y<=0){ p.y=0; p.vy=0; p.vx*=Math.max(0,1-6*dt); p.vz*=Math.max(0,1-6*dt); }
+      p.queda=Math.min(1,p.queda+dt*3); p.t-=dt;
+      if(p.t<=0) p.modo='levantar';
+    } else if(p.modo==='levantar'){
+      p.queda=Math.max(0,p.queda-dt*1.5);
+      if(p.queda===0){ const ax=p.x-px, az=p.z-pz, l=Math.hypot(ax,az)||1; p.modo='fugir'; p.fx=ax/l; p.fz=az/l; p.t=2.5; }
+    }
     // carro vindo rápido perto: sai correndo para o lado de fora
-    if(jog.dirigindo&&Math.abs(jog.v)>3&&dJog<9&&p.modo!=='fugir'){
+    else if(jog.dirigindo&&Math.abs(jog.v)>3&&dJog<9&&p.modo!=='fugir'){
       const ax=p.x-px, az=p.z-pz, l=Math.hypot(ax,az)||1; p.modo='fugir'; p.fx=ax/l; p.fz=az/l; p.t=1.6; }
     if(p.modo==='fugir'){
       p.x+=p.fx*4.5*dt; p.z+=p.fz*4.5*dt; p.rumo=Math.atan2(p.fx,p.fz); animar(p,'correr'); p.t-=dt;
@@ -159,7 +187,7 @@ export function atualizarPedestres(dt, jog, veiculos=[]){
       if(p.t<=0) nascer(p,px,pz);
     }
     if(!p.obj) continue;                              // renasceu sem achar lugar: tenta no próximo quadro
-    p.obj.position.set(p.x,p.pe||0,p.z); p.obj.rotation.y=p.rumo;
+    p.obj.position.set(p.x,(p.pe||0)+p.y+(p.queda>0?0.12:0),p.z); p.obj.rotation.y=p.rumo; p.obj.rotation.x=-p.queda*Math.PI/2;
     if(dJog<RAIO_ANIMA) p.mixer.update(dt);           // longe, congela a animação (economiza)
   }
 }

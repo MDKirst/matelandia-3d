@@ -8,6 +8,7 @@ import { scene, $ } from './cena.js';
 import { ruas } from './cidade.js';
 import { bloqueado } from './mundo.js';
 import { LX0, LZ0, LX1, LZ1 } from './geo.js';
+import { fumaca, fogo, explosao } from './efeitos.js';
 
 // vmax em m/s, acel em m/s², entre = distância entre-eixos (raio de curva), cam = distância da câmera
 const TIPOS = [
@@ -63,7 +64,8 @@ export async function iniciarVeiculos(){
     const obj=g.scene, tam=new THREE.Box3().setFromObject(obj).getSize(new THREE.Vector3());
     obj.traverse(o=>{ if(o.isMesh){ o.material.side=THREE.FrontSide; } });
     const L=lugares[k]; obj.rotation.order='YXZ'; obj.position.set(L.x,0,L.z); obj.rotation.y=L.h; scene.add(obj);   // YXZ: arfagem e rolagem no eixo do próprio veículo
-    frota.push({tipo, obj, h:L.h, v:0, comp:tam.z, larg:tam.x}); ok();
+    const mats=[]; obj.traverse(o=>{ if(o.isMesh){ o.material=o.material.clone(); mats.push([o.material,o.material.color.clone()]); } });
+    frota.push({tipo, obj, h:L.h, v:0, comp:tam.z, larg:tam.x, alt:tam.y, dano:0, quebrado:false, acum:0, queima:0, mats}); ok();
   }, undefined, e=>{ console.warn('veículo',tipo.arq,e); ok(); }))));
 }
 
@@ -88,11 +90,13 @@ export function sair(){
 // um passo de física do veículo dirigido. acel: -1..1 (W/S), giro: -1..1 (A/D), freio de mão
 export function dirigir(dt, acel, giro, freio, obstaculo){
   const c=dirigindo, T=c.tipo;
+  if(c.quebrado) acel=Math.min(0,acel)*0;                                       // motor morto: só rola e freia
   if(acel>0) c.v += (c.v<0 ? T.acel*2.2 : T.acel)*acel*dt;                       // frente (freia se estava de ré)
   else if(acel<0) c.v += (c.v>0 ? -T.acel*2.2 : -T.acel*0.6)*(-acel)*dt;         // freio, depois ré
   else c.v -= Math.sign(c.v)*Math.min(Math.abs(c.v), 1.6*dt);                   // rolagem
   if(freio) c.v -= Math.sign(c.v)*Math.min(Math.abs(c.v), 12*dt);
-  c.v = Math.max(-T.vmax*0.3, Math.min(T.vmax, c.v));
+  const vmax=T.vmax*(1-0.55*Math.max(0,c.dano-50)/50);                          // muito batido perde força
+  c.v = Math.max(-vmax*0.3, Math.min(vmax, c.v));
   // bicicleta: quanto mais rápido, menos esterço
   const esterco = giro*0.6;
   // giro do modelo de bicicleta, limitado pela aderência (~1,2 g): em alta não dá cavalo de pau
@@ -100,7 +104,9 @@ export function dirigir(dt, acel, giro, freio, obstaculo){
   const wMax = 12/Math.max(Math.abs(c.v),1); w = Math.max(-wMax, Math.min(wMax, w));
   const nh = c.h + w*dt;
   const [fx,fz]=frente(nh), p=c.obj.position, nx=p.x+fx*c.v*dt, nz=p.z+fz*c.v*dt;
-  const bate = contorno(c,nx,nz,nh).some(([x,z])=>bloqueado(x,z)||x<LX0+2||x>LX1-2||z<LZ0+2||z>LZ1-2) || dentroDeOutro(c,nx,nz,nh) || obstaculo?.(c,nx,nz,nh);
+  const parede=(x0,z0,h0)=>contorno(c,x0,z0,h0).some(([x,z])=>bloqueado(x,z)||x<LX0+2||x>LX1-2||z<LZ0+2||z>LZ1-2);
+  // já encostado num prédio/muro (nasceu ou foi parar em cima): deixa se mexer para sair
+  const bate = (parede(nx,nz,nh)&&!parede(p.x,p.z,c.h)) || dentroDeOutro(c,nx,nz,nh) || obstaculo?.(c,nx,nz,nh);
   if(bate){ c.v *= -0.25; return true; }
   p.set(nx,p.y,nz); c.h=nh; c.obj.rotation.y=nh;
   // leve inclinação na curva e no freio, só para dar vida
@@ -116,3 +122,27 @@ function dentroDeVeiculo2(o,x,z){ const dx=x-o.obj.position.x, dz=z-o.obj.positi
   return Math.abs(dx*fx+dz*fz)<o.comp/2 && Math.abs(dx*ex+dz*ez)<o.larg/2; }
 
 export { frente, esquerda };
+
+/* ───────── dano: fumaça cinza > fumaça preta > fogo > quebra ───────── */
+export function danificar(c, impacto){
+  if(c.quebrado) return;
+  c.dano=Math.min(100, c.dano+(impacto-3.5)*7);
+  // a lataria escurece conforme apanha
+  const k=1-0.55*c.dano/100; for(const [m,cor] of c.mats) m.color.copy(cor).multiplyScalar(k);
+  if(c.dano>=100){ c.quebrado=true; c.queima=25; c.v=0; for(const [m] of c.mats) m.color.setRGB(0.18,0.17,0.16);
+    const p=motor(c); explosao(p.x,p.y,p.z); }
+}
+const P=new THREE.Vector3();
+function motor(c){ return c.obj.localToWorld(P.set(0,c.alt*0.6,-c.comp*0.36)); }   // capô (frente = -Z)
+export function efeitosVeiculos(dt){
+  for(const c of frota){
+    if(c.dano<35&&!c.quebrado) continue;
+    if(c.quebrado) c.queima=Math.max(0,c.queima-dt);
+    const fogoForte=c.quebrado&&c.queima>0, comFogo=c.dano>=70;
+    c.acum+=dt*(fogoForte?40:comFogo?22:10);
+    while(c.acum>=1){ c.acum-=1; const p=motor(c);
+      if(fogoForte){ if(Math.random()<0.6) fogo(p.x,p.y,p.z,1.6); else fumaca(p.x,p.y+0.8,p.z,1,1.6); }
+      else if(comFogo&&Math.random()<0.45) fogo(p.x,p.y,p.z,0.8);
+      else fumaca(p.x,p.y+0.2,p.z, Math.min(1,(c.dano-35)/50)); }
+  }
+}
