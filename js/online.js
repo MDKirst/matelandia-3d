@@ -18,21 +18,22 @@ const loader=new GLTFLoader(); loader.setMeshoptDecoder(MeshoptDecoder);
 const FEIO=/(porra|caralh|puta|merda|bucet|foder|fod[ae]|viad|cuzao|cuzão|arrombad|piroc|xoxot|vagabund|desgraç|corno|bosta)/gi;
 export function limparNome(s){ s=(s||'').replace(/[<>&"'`]/g,'').replace(/\s+/g,' ').trim().slice(0,16).replace(FEIO,'***'); return s||'Visitante'; }
 
-export const online={ ativo:false, sala:null, envio:null, outros:new Map(), eu:null };
+export const online={ ativo:false, sala:null, envio:null, outros:new Map(), eu:null, tentativa:0 };
 let arquivos={}, tEnvio=0;
 
 export async function entrarOnline(nome, personagem){
   online.eu={ n:limparNome(nome), p:personagem };
   if(online.ativo||online.entrando){ return; }
-  online.entrando=true;
+  online.entrando=true; const tentativa=++online.tentativa;
+  let sala=null;
   try{
     const { joinRoom } = await import(TRYSTERO);
     // salas automáticas: entra na 1ª que tiver menos de LIMITE jogadores
-    let sala=null;
     for(let i=1;i<=SALAS_MAX;i++){
       $('online').textContent=`🌐 procurando sala ${i}…`;
       sala=joinRoom(CONFIG,`${SALA}-${i}`);
       await new Promise(ok=>setTimeout(ok,ESPERA));                   // tempo para os que já estão lá aparecerem
+      if(tentativa!==online.tentativa){ try{ sala.leave(); }catch(e){} return; }   // desligou o online no meio da busca
       if(Object.keys(sala.getPeers()).length<LIMITE||i===SALAS_MAX){ online.num=i; break; }
       try{ sala.leave(); }catch(e){}
     }
@@ -42,10 +43,10 @@ export async function entrarOnline(nome, personagem){
     sala.onPeerJoin=()=>{ tEnvio=1; hud(); };                         // manda o estado já para quem chegou
     sala.onPeerLeave=id=>{ remover(id); hud(); };
     hud();
-  }catch(e){ console.warn('online indisponível',e); $('online').textContent='🌐 online indisponível'; }
+  }catch(e){ if(sala&&!online.ativo){ try{ sala.leave(); }catch(_){} } console.warn('online indisponível',e); $('online').textContent='🌐 online indisponível'; }
   finally{ online.entrando=false; }
 }
-export function sairOnline(){ if(online.sala){ try{ online.sala.leave(); }catch(e){} } online.ativo=false; online.sala=null; for(const id of [...online.outros.keys()]) remover(id); hud(); }
+export function sairOnline(){ online.tentativa++; if(online.sala){ try{ online.sala.leave(); }catch(e){} } online.ativo=false; online.sala=null; for(const id of [...online.outros.keys()]) remover(id); hud(); }
 function hud(){ const n=online.outros.size; $('online').textContent=online.ativo?`🌐 sala ${online.num||1} · ${n?n+(n>1?' jogadores':' jogador'):'ninguém por perto ainda'}`:''; }
 
 // meu estado (chamado todo quadro pelo main): x,z,r (rumo), a (animação), vt (veículo) e vh (rumo do veículo)
