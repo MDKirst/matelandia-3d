@@ -186,7 +186,7 @@ carregarCidade().then(async()=>{
   progresso('Levantando os prédios…');
   await carregarPredios();
   // árvore e banco não vão para cima da rua
-  const ruaLonge=(x,z)=>!ruas.some(r=>!r.pe&&x>r.bb[0]-12&&x<r.bb[2]+12&&z>r.bb[1]-12&&z<r.bb[3]+12&&r.pts.some((q,i)=>{ const n=r.pts[i+1]; if(!n) return false; const vx=n[0]-q[0], vz=n[1]-q[1]; let t=((x-q[0])*vx+(z-q[1])*vz)/(vx*vx+vz*vz||1); t=Math.max(0,Math.min(1,t)); return Math.hypot(x-q[0]-vx*t,z-q[1]-vz*t)<r.w/2+1.5; }));
+  const ruaLonge=(x,z,folga=1.5)=>!ruas.some(r=>!r.pe&&x>r.bb[0]-12&&x<r.bb[2]+12&&z>r.bb[1]-12&&z<r.bb[3]+12&&r.pts.some((q,i)=>{ const n=r.pts[i+1]; if(!n) return false; const vx=n[0]-q[0], vz=n[1]-q[1]; let t=((x-q[0])*vx+(z-q[1])*vz)/(vx*vx+vz*vz||1); t=Math.max(0,Math.min(1,t)); return Math.hypot(x-q[0]-vx*t,z-q[1]-vz*t)<r.w/2+folga; }));   // folga: quanto além da beira da pista
   construirMarcos(predios, ruaLonge); status();
   progresso('Abrindo as lojas…');
   console.info('lojas', await carregarLojas());

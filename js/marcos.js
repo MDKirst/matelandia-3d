@@ -115,7 +115,7 @@ function bloco(x0,x1,z0,z1,and,telhado){
   poe(t,cx,H+alt/2,cz,ry,telhado==='ceramica'?0xb05a3a:0x8fa0b4);
   ret(x0,x1,z0,z1);
 }
-function colegio(){
+function colegio(ruaLonge){
   for(const b of BLOCOS) bloco(...b);
   // ginásio de esportes do CEEC: paredes + cobertura em arco
   const [x0,x1,z0,z1]=[-708,-680,148,192], w=x1-x0, cx=(x0+x1)/2, cz=(z0+z1)/2, H=8;
@@ -126,9 +126,20 @@ function colegio(){
   mural(x1+0.08,cz,z1-z0-2,H-2.6,Math.PI/2); mural(cx,z1+0.08,w-2,H-2.6,0);          // mural nas faces da esquina
   ret(x0,x1,z0,z1);
   // muro do lote com portão na Rua Napoleão Laureano (sul)
-  const [L0,L1,M0,M1]=LOTE_COLEGIO, h=2.6, e=0.25, portao=[-752,-740], CINZA=0xb3b2ab;
+  // o retângulo do lote no OSM invade a rua: cada lado recua até sair da pista + calçada (3,3 m da beira)
+  let [L0,L1,M0,M1]=LOTE_COLEGIO; const livre=(x,z)=>ruaLonge(x,z,3.3);
+  for(let k=0;k<40&&!(livre(L0,(M0+M1)/2)&&livre(L0,M0+8)&&livre(L0,M1-8));k++) L0+=0.5;
+  for(let k=0;k<40&&!(livre(L1,(M0+M1)/2)&&livre(L1,M0+8)&&livre(L1,M1-8));k++) L1-=0.5;
+  for(let k=0;k<40&&!(livre((L0+L1)/2,M0)&&livre(L0+8,M0)&&livre(L1-8,M0));k++) M0+=0.5;
+  for(let k=0;k<40&&!(livre((L0+L1)/2,M1)&&livre(L0+8,M1)&&livre(L1-8,M1));k++) M1-=0.5;
+  const h=2.6, e=0.25, portao=[-752,-740], CINZA=0xb3b2ab;
   // muro alto de placas de concreto com pilar a cada 2 m
-  const muro=(xa,za,xb,zb)=>{ const L=Math.hypot(xb-xa,zb-za), ry=Math.atan2(zb-za,xb-xa);
+  const muro=(xa,za,xb,zb)=>{
+    // corta o trecho que cair em cima de rua (esquinas)
+    const N=Math.ceil(Math.hypot(xb-xa,zb-za)), ok=[]; for(let s=0;s<=N;s++){ const t=s/N; ok.push(livre(xa+(xb-xa)*t,za+(zb-za)*t)); }
+    let s0=ok.indexOf(true), s1=ok.lastIndexOf(true); if(s0<0) return;
+    const A=[xa+(xb-xa)*s0/N,za+(zb-za)*s0/N], B=[xa+(xb-xa)*s1/N,za+(zb-za)*s1/N]; [xa,za,xb,zb]=[A[0],A[1],B[0],B[1]];
+    const L=Math.hypot(xb-xa,zb-za), ry=Math.atan2(zb-za,xb-xa); if(L<1) return;
     caixa(L,h,e,(xa+xb)/2,0,(za+zb)/2,CINZA,-ry);
     for(let s=0;s<=L;s+=2){ const t=s/L; caixa(0.32,h+0.12,0.4,xa+(xb-xa)*t,0,za+(zb-za)*t,0x9d9c95,-ry); }
     if(Math.abs(xb-xa)>Math.abs(zb-za)) ret(Math.min(xa,xb),Math.max(xa,xb),za-e,za+e); else ret(xa-e,xa+e,Math.min(za,zb),Math.max(za,zb)); };
@@ -207,7 +218,7 @@ function pracaBiazus(ruaLonge){
 }
 
 export function construirMarcos(predios, ruaLonge){
-  igreja(); colegio(); pracaMunicipal(ruaLonge); pracaBiazus(ruaLonge);
+  igreja(); colegio(ruaLonge); pracaMunicipal(ruaLonge); pracaBiazus(ruaLonge);
   const g=mergeGeometries(geos,false); geos.forEach(x=>x.dispose());
   if(g) scene.add(new THREE.Mesh(g,new THREE.MeshLambertMaterial({vertexColors:true,side:THREE.DoubleSide})));
   if(pisos.length){ const p=mergeGeometries(pisos,false); const m=new THREE.Mesh(p,matPiso); m.renderOrder=-7; m.frustumCulled=false; scene.add(m); }
