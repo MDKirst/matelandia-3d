@@ -19,6 +19,8 @@ addEventListener('keydown',e=>{
   if((e.code==='KeyE'||e.code==='KeyF')&&!e.repeat) pedido.usar=true;
   const ACOES={KeyT:'conversar',KeyG:'cumprimentar',KeyH:'seguir',KeyX:'assustar'};
   if(ACOES[e.code]&&!e.repeat) pedido.acao=ACOES[e.code];
+  if(e.code==='KeyJ'&&!e.repeat) pedido.golpe='soco';
+  if(e.code==='KeyK'&&!e.repeat) pedido.golpe='chute';
   if(e.code==='KeyB'&&!e.repeat) pedido.comprar=true;
   if(e.code==='KeyC'&&!e.repeat) pedido.obra=true;
   if(e.code==='KeyN'&&!e.repeat) pedido.entrega=true;
@@ -57,3 +59,4 @@ $('tp').addEventListener('keydown',e=>{
 });
 $('usar').addEventListener('click',e=>{ pedido.usar=true; e.currentTarget.blur(); });
 for(const b of document.querySelectorAll('#acoes button')) b.addEventListener('click',e=>{ pedido.acao=b.dataset.acao; e.currentTarget.blur(); });
+for(const b of document.querySelectorAll('#luta button')) b.addEventListener('click',e=>{ pedido.golpe=b.dataset.golpe; e.currentTarget.blur(); });

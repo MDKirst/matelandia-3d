@@ -28,6 +28,12 @@
   #procurado{position:fixed;top:14px;left:50%;transform:translateX(-50%);font-size:34px;letter-spacing:4px;color:#facc15;text-shadow:0 2px 0 #000,0 0 10px rgba(0,0,0,.8);pointer-events:none}
   #aviso{position:fixed;top:30%;left:50%;transform:translate(-50%,-50%);font-size:clamp(26px,5vw,58px);font-weight:900;text-align:center;text-shadow:0 3px 0 #000,0 0 18px rgba(0,0,0,.9);pointer-events:none;opacity:0;transition:opacity .4s;z-index:5}
   #saldo{margin-top:6px;font-weight:800;color:#fcd34d;font-size:13px}
+  #energia{margin-top:6px;display:flex;align-items:center;gap:7px;font-size:12px;font-weight:700}
+  #energiaFundo{flex:1;height:10px;background:rgba(255,255,255,.12);border-radius:6px;overflow:hidden;max-width:170px}
+  #energiaBarra{height:100%;width:100%;background:#22c55e;transition:width .15s}
+  #luta{position:fixed;right:104px;bottom:190px;display:none;flex-direction:column;gap:8px}
+  #luta button{width:58px;height:58px;border-radius:50%;font-size:24px;padding:0;box-shadow:0 4px 14px rgba(0,0,0,.5)}
+  body.em-home #luta{display:none!important}
   #barra{position:fixed;left:50%;bottom:44px;transform:translateX(-50%);display:none;gap:6px;background:rgba(12,14,18,.72);padding:6px;border-radius:12px}
   #barra button{position:relative;padding:3px;background:#1f2937;border:2px solid transparent;border-radius:8px}
   #barra button.sel{border-color:#F97316;background:#3b2412}
@@ -101,6 +107,7 @@
   <input id="tp" placeholder="Ir para: lat, lon  (Enter)">
   <div id="coord" style="margin-top:6px;font-size:11px;color:#94a3b8"></div>
   <div id="saldo"></div>
+  <div id="energia" title="Energia">❤️ <div id="energiaFundo"><div id="energiaBarra"></div></div><span id="energiaTxt">100%</span></div>
   <div id="online"></div>
 </div>
 
@@ -109,6 +116,7 @@
   <b>Arrastar mouse</b> girar câmera · <b>Scroll</b> zoom<br>
   <b>E</b> entrar/sair do veículo · <b>Espaço</b> freio de mão<br>
   <b>T</b> conversar · <b>G</b> cumprimentar · <b>H</b> seguir · <b>X</b> assustar<br>
+  <b>J</b> soco · <b>K</b> chute<br>
   <b>N</b> entrega (no veículo) · <b>B</b> comprar terreno · <b>C</b> construir<br>
   <b>M</b> som · <b>[ ]</b> detalhe do satélite · <b>Esc</b> menu<br>
   <b>Enter</b> chat com os jogadores (online)<br>
@@ -125,6 +133,7 @@
 <div id="aviso"></div>
 <div id="chat"><div id="chatLog"></div><input id="chatIn" maxlength="120" placeholder="Mensagem para a sala (Enter envia, Esc fecha)" autocomplete="off"></div>
 <button id="usar">Entrar</button>
+<div id="luta"><button data-golpe="soco" title="Soco (J)">👊</button><button data-golpe="chute" title="Chute (K)">🦶</button></div>
 <div id="acoes"><button data-acao="conversar">💬 Conversar</button><button data-acao="cumprimentar">👋 Cumprimentar</button><button data-acao="seguir">🚶 Seguir</button><button data-acao="assustar">😱 Assustar</button></div>
 <div id="home">
   <div class="lado">

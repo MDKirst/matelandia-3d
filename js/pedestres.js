@@ -255,6 +255,25 @@ export function interagir(acao, jx, jz){
   else if(acao==='assustar'){ const ax=p.x-jx, az=p.z-jz, l=Math.hypot(ax,az)||1; p.modo='fugir'; p.fx=ax/l; p.fz=az/l; p.t=3; falar(p,sorteia(FALAS.susto),2); }
   return true;
 }
+// soco/chute do jogador: acerta o pedestre logo à frente (até 1,8 m, num cone de ~70°)
+// devolve null, 'acertou' ou 'nocaute' (caiu: a polícia fica sabendo)
+const FALAS_DOR=['Ai!','Ui!','Tá maluco?!','Para com isso!','Socorro, polícia!','Aiii!'];
+export function golpearPedestre(jx,jz,fx,fz,tipo){
+  let alvo=null, md=1.8;
+  for(const p of gente){ if(!p.obj||p.modo==='caido'||p.modo==='levantar') continue;
+    const dx=p.x-jx, dz=p.z-jz, d=Math.hypot(dx,dz); if(d>=md||d<0.01) continue;
+    if((dx*fx+dz*fz)/d<0.35) continue; md=d; alvo=p; }
+  if(!alvo) return null;
+  const p=alvo; p.energia=(p.energia??100)-(tipo==='chute'?40:24);
+  if(p.energia<=0){
+    p.energia=100; p.modo='caido'; p.t=6+Math.random()*3; p.queda=0;
+    const k=tipo==='chute'?3.2:2.2; p.vx=fx*k; p.vz=fz*k; p.vy=1.2; p.rumo=Math.atan2(-fx,-fz);   // cai de costas
+    animar(p,'parado'); return 'nocaute';
+  }
+  p.x+=fx*0.35; p.z+=fz*0.35;                                  // tranco
+  p.modo='fugir'; p.fx=fx; p.fz=fz; p.t=2.5; falar(p,sorteia(FALAS_DOR),2);
+  return 'acertou';
+}
 export const quantosSeguem=()=>gente.filter(o=>o.modo==='seguir'||(o.modo==='papo'&&o.antes==='seguir')).length;
 
 // para o trânsito e para o minimapa

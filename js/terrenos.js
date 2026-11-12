@@ -132,7 +132,8 @@ function montarLote(c,idx){
 const meu=l=>!!salvo.terrenos[l.id];
 function trocarPlaca(l){
   if(l.placa) l.grupo.remove(l.placa);
-  l.placa=meu(l)?placa('MEU TERRENO',`${W} × ${D} m`,'#c2410c'):placa('VENDE-SE',fmt(l.preco),'#15803d');
+  l.placa=null; if(meu(l)) return;                                  // comprado: a placa sai
+  l.placa=placa('VENDE-SE',fmt(l.preco),'#15803d');
   l.placa.position.set(W/2,0,0.8); l.placa.rotation.y=Math.PI;   // de frente para a rua
   l.grupo.add(l.placa);
 }

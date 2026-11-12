@@ -8,6 +8,7 @@ import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { MeshoptDecoder } from 'three/addons/libs/meshopt_decoder.module.js';
 import { clone as clonarEsqueleto } from 'three/addons/utils/SkeletonUtils.js';
 import { scene, $ } from './cena.js';
+import { DUR, poseGolpe, barraSprite, pintarBarra } from './luta.js';
 
 const TRYSTERO='https://cdn.jsdelivr.net/npm/trystero@0.26.0/+esm';
 // ?sala=nome no link = sala particular (grupo de amigos ou teste), separada da sala pública
@@ -45,6 +46,8 @@ export async function entrarOnline(nome, personagem){
     est.onMessage=(d,{peerId})=>receber(peerId,d);
     const fala=sala.makeAction('fala'); online.fala=fala;
     fala.onMessage=(d,{peerId})=>ouvir(peerId,d);
+    const pancada=sala.makeAction('pancada'); online.pancada=pancada;
+    pancada.onMessage=(d,{peerId})=>apanhei(peerId,d);
     $('chatBtn').style.display='inline-block'; $('chat').style.display='flex';
     linha(null,`Você entrou na sala ${PARTICULAR||online.num||1}. Aperte Enter para conversar.`);
     sala.onPeerJoin=()=>{ tEnvio=1; hud(); };                         // manda o estado já para quem chegou
@@ -53,7 +56,7 @@ export async function entrarOnline(nome, personagem){
   }catch(e){ if(sala&&!online.ativo){ try{ sala.leave(); }catch(_){} } console.warn('online indisponível',e); $('online').textContent='🌐 online indisponível'; }
   finally{ online.entrando=false; }
 }
-export function sairOnline(){ online.tentativa++; if(online.sala){ try{ online.sala.leave(); }catch(e){} } online.ativo=false; online.sala=null; online.fala=null; fecharChat(); $('chatBtn').style.display='none'; $('chat').style.display='none'; for(const id of [...online.outros.keys()]) remover(id); hud(); }
+export function sairOnline(){ online.tentativa++; if(online.sala){ try{ online.sala.leave(); }catch(e){} } online.ativo=false; online.sala=null; online.fala=null; online.pancada=null; fecharChat(); $('chatBtn').style.display='none'; $('chat').style.display='none'; for(const id of [...online.outros.keys()]) remover(id); hud(); }
 function hud(){ const n=online.outros.size; $('online').textContent=online.ativo?`🌐 ${PARTICULAR?'sala '+PARTICULAR+(online.num>1?' '+online.num:''):'sala '+(online.num||1)} · ${n?n+(n>1?' jogadores':' jogador'):'ninguém por perto ainda'}`:''; }
 
 // meu estado (chamado todo quadro pelo main): x,z,r (rumo), a (animação), vt (veículo) e vh (rumo do veículo)
@@ -61,7 +64,7 @@ export function enviarEstado(dt, s){
   if(!online.ativo||!online.envio) return;
   tEnvio+=dt; if(tEnvio<0.1) return; tEnvio=0;
   const r=v=>Math.round(v*100)/100;
-  try{ online.envio.send({ n:online.eu.n, p:online.eu.p, x:r(s.x), z:r(s.z), r:r(s.r), a:s.a, vt:s.vt||null, vh:s.vh!=null?r(s.vh):null }); }catch(e){}
+  try{ online.envio.send({ n:online.eu.n, p:online.eu.p, x:r(s.x), z:r(s.z), r:r(s.r), a:s.a, vt:s.vt||null, vh:s.vh!=null?r(s.vh):null, e:Math.round(s.e??100), c:s.c?1:0, g:s.g||null }); }catch(e){}
 }
 
 /* ───────── jogadores remotos ───────── */
@@ -81,6 +84,9 @@ async function receber(id,d){
   o.alvo=d; o.visto=performance.now();
   const nome=limparNome(d.n);
   if(nome!==o.nome){ if(o.tag) o.grupo.remove(o.tag); o.tag=etiqueta(nome); o.grupo.add(o.tag); o.nome=nome; }
+  if(!o.barra){ o.barra=barraSprite(); o.grupo.add(o.barra); }
+  pintarBarra(o.barra, typeof d.e==='number'?d.e:100);
+  if(Array.isArray(d.g)&&d.g[0]!==o.gSeq){ if(o.gSeq!==undefined&&DUR[d.g[1]]) o.golpe={tipo:d.g[1],t:0}; o.gSeq=d.g[0]; }
   if(d.p&&d.p!==o.pid){ o.pid=d.p; vestir(o,d.p); }
   if((d.vt||null)!==o.vt){ o.vt=d.vt||null; trocarVeiculo(o); }
 }
@@ -96,6 +102,7 @@ async function vestir(o,pid){
   const A=c=>c?o.mixer.clipAction(c):null;
   o.acoes={ parado:A(achar(/^parado$|idle/i)), andar:A(achar(/^andar$|walk/i)), correr:A(achar(/^correr$|run/i)), acenar:A(achar(/acenar|wave|clap/i)) };
   if(o.tag){ o.tag.position.y=2.25; }
+  b.rotation.order='YXZ'; b.userData.pe=b.position.y;
   if(o.veic) o.boneco.visible=false;
 }
 async function trocarVeiculo(o){
@@ -116,9 +123,13 @@ export function atualizarOnline(dt){
     o.x+=(a.x-o.x)*k; o.z+=(a.z-o.z)*k;
     let dr=(a.r||0)-o.r; dr=Math.atan2(Math.sin(dr),Math.cos(dr)); o.r+=dr*k;
     o.grupo.position.set(o.x,0,o.z);
-    if(o.boneco){ o.boneco.rotation.y=o.r; const n=o.acoes[a.a]||o.acoes.parado; if(n&&n!==o.atual){ if(o.atual) o.atual.fadeOut(0.25); n.reset().fadeIn(0.25).play(); o.atual=n; } o.mixer.update(dt); }
+    o.q=Math.max(0,Math.min(1,(o.q||0)+(a.c?dt*3:-dt*1.5)));             // caído (desmaiou na briga)
+    if(o.boneco){ o.boneco.rotation.y=o.r; o.boneco.rotation.x=-o.q*Math.PI/2; o.boneco.position.y=o.q*0.12+o.boneco.userData.pe;
+      const n=o.q>0?o.acoes.parado:(o.acoes[a.a]||o.acoes.parado); if(n&&n!==o.atual){ if(o.atual) o.atual.fadeOut(0.25); n.reset().fadeIn(0.25).play(); o.atual=n; } o.mixer.update(dt);
+      if(o.golpe){ o.golpe.t+=dt; const T=o.golpe.t/DUR[o.golpe.tipo]; if(T>=1) o.golpe=null; else poseGolpe(o.boneco,o.golpe.tipo,T,Math.sin(o.r),Math.cos(o.r)); } }
     if(o.veic){ o.veic.position.set(o.x,0,o.z); if(a.vh!=null){ let dh=a.vh-o.veic.rotation.y; dh=Math.atan2(Math.sin(dh),Math.cos(dh)); o.veic.rotation.y+=dh*k; } }
     if(o.tag) o.tag.position.y=o.vt?3.2:2.25;
+    if(o.barra){ o.barra.position.y=(o.vt?3.2:2.25)-0.36; o.barra.visible=!o.vt; }
     if(o.balao){ o.balao.position.y=(o.vt?3.2:2.25)+0.75; if(agora>o.balaoFim){ o.grupo.remove(o.balao); o.balao=null; } }
   }
 }
@@ -176,3 +187,27 @@ addEventListener('keydown',e=>{
   e.preventDefault(); abrirChat();
 });
 $('chatBtn').addEventListener('click',e=>{ e.currentTarget.blur(); abrirChat(); });
+
+/* ───────── briga entre jogadores ───────── */
+// quem bate decide se acertou (tem a posição dos outros); quem apanha confere a distância e desconta
+export function golpearJogador(jx,jz,fx,fz,tipo,dano){
+  if(!online.pancada) return null;
+  let alvo=null, md=1.9;
+  for(const o of online.outros.values()){ if(o.vt||o.alvo.c) continue;
+    const dx=o.x-jx, dz=o.z-jz, d=Math.hypot(dx,dz); if(d>=md||d<0.01) continue;
+    if((dx*fx+dz*fz)/d<0.35) continue; md=d; alvo=o; }
+  if(!alvo) return null;
+  try{ online.pancada.send({d:dano, fx:Math.round(fx*100)/100, fz:Math.round(fz*100)/100}, alvo.id); }catch(e){}
+  return alvo.nome||'jogador';
+}
+let aoApanhar=()=>{}, minhaPos=()=>[0,0];
+export function quandoApanhar(f, pos){ aoApanhar=f; minhaPos=pos; }
+const ultPancada=new Map();
+function apanhei(id,d){
+  const o=online.outros.get(id); if(!o||!d) return;
+  const dano=Number(d.d), fx=Number(d.fx), fz=Number(d.fz);
+  if(!(dano>0&&dano<=20)||!isFinite(fx)||!isFinite(fz)) return;
+  const [x,z]=minhaPos(); if(Math.hypot(o.x-x,o.z-z)>3.5) return;            // longe demais: ignora (lag ou trapaça)
+  const agora=performance.now(); if(agora-(ultPancada.get(id)||0)<300) return; ultPancada.set(id,agora);
+  const l=Math.hypot(fx,fz)||1; aoApanhar(dano, fx/l, fz/l, o.nome||'Alguém');
+}

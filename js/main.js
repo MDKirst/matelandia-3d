@@ -22,7 +22,9 @@ import { iniciarPolicia, atualizarPolicia, crime, posicoesPolicia } from './poli
 import { somBatida, somExplosao, somPancada, somSirene } from './som.js';
 import { iniciarTerrenos, comprar, alternarObra, dicaTerreno, obra, lotesMeus } from './terrenos.js';
 import { alternarCorrida, atualizarCorrida, alvoCorrida } from './entregas.js';
-import { entrarOnline, sairOnline, enviarEstado, atualizarOnline, posicoesJogadores } from './online.js';
+import { entrarOnline, sairOnline, enviarEstado, atualizarOnline, posicoesJogadores, golpearJogador, quandoApanhar } from './online.js';
+import { vida, golpe, golpear, atualizarLuta, levarPancada, poseGolpe, DUR, DANO } from './luta.js';
+import { golpearPedestre } from './pedestres.js';
 addEventListener('matelandia:jogar',e=>{ const d=e.detail; if(d.online) entrarOnline(d.nome,d.personagem); else sairOnline(); });
 import { minimapa } from './minimapa.js';
 import { frota, iniciarVeiculos, veiculoPerto, entrar, sair, dirigir, dentroDeVeiculo, frente, esquerda } from './veiculos.js';
@@ -62,8 +64,10 @@ function aPe(dt){
   let iy=(tecla.KeyW||tecla.ArrowUp?1:0)-(tecla.KeyS||tecla.ArrowDown?1:0);
   let correndo=tecla.ShiftLeft||tecla.ShiftRight;
   if(toque.joy){ ix=toque.joy.x; iy=-toque.joy.y; if(Math.hypot(ix,iy)>0.92) correndo=true; }
+  if(vida.caido>0||golpe.tipo){ ix=0; iy=0; }                          // desmaiado ou no meio do golpe: parado
   const forca=Math.min(1,Math.hypot(ix,iy)); let estado='parado';
   const p=jogador.position;
+  if(vida.empurra){ const [ex,ez]=vida.empurra; vida.empurra=null; if(!travado(p.x+ex,p.z+ez)){ p.x+=ex; p.z+=ez; } }
   if(forca>0.12){
     const {yaw}=cam;
     const vx=(-Math.sin(yaw)*iy+Math.cos(yaw)*ix), vz=(-Math.cos(yaw)*iy-Math.sin(yaw)*ix), l=Math.hypot(vx,vz);
@@ -75,10 +79,12 @@ function aPe(dt){
     estado=correndo?'correr':'andar'; passo+=dt*(correndo?13:8);
   }
   p.x=Math.max(LX0+3,Math.min(LX1-3,p.x)); p.z=Math.max(LZ0+3,Math.min(LZ1-3,p.z));
-  jogador.rotation.y=rumo; suporte.rotation.y=av.giroExtra;
+  jogador.rotation.y=rumo; suporte.rotation.order='YXZ'; suporte.rotation.y=av.giroExtra;
+  suporte.rotation.x=-vida.queda*Math.PI/2; suporte.position.y=vida.queda*0.12;   // desmaiado: deitado de costas
   if(gesto>0){ gesto-=dt; if(estado==='parado') estado='acenar'; }       // acenando para alguém
   estadoAPe=estado;
   animar(estado); if(av.mixer) av.mixer.update(dt);
+  if(golpe.tipo) poseGolpe(suporte, golpe.tipo, golpe.t/DUR[golpe.tipo], Math.sin(rumo), Math.cos(rumo));
   if(av.boneco){ const s=estado==='parado'?0:Math.sin(passo)*(estado==='correr'?0.9:0.55), q=av.boneco.userData.partes;
     q[0].rotation.x=s; q[1].rotation.x=-s; q[2].rotation.x=-s; q[3].rotation.x=s; }
 }
@@ -113,6 +119,15 @@ function prender(posto){
 }
 quandoAtropelar(()=>{ somPancada(); crime(1,'Atropelamento'); });
 
+// soco/chute no meio do golpe: acerta pedestre ou outro jogador logo à frente
+function acertar(tipo){
+  const p=jogador.position, fx=Math.sin(rumo), fz=Math.cos(rumo);
+  const ped=golpearPedestre(p.x,p.z,fx,fz,tipo), jog=golpearJogador(p.x,p.z,fx,fz,tipo,DANO[tipo]);
+  if(ped||jog) somPancada();
+  if(ped==='nocaute') crime(1,'Agressão');
+}
+quandoApanhar((dano,fx,fz)=>{ if(veic.dirigindo) return; if(levarPancada(dano,fx,fz)) somPancada(); }, ()=>[jogador.position.x,jogador.position.z]);
+
 function trocarVeiculo(){
   if(veic.dirigindo){
     const [x,z,h]=sair(); jogador.position.set(x,0,z); jogador.visible=true; rumo=h-Math.PI/2; // olhando para fora do veículo cam.dist=distAPe;
@@ -128,13 +143,15 @@ function quadro(){
   requestAnimationFrame(quadro);
   const dt=Math.min(relogio.getDelta(),0.05);
   if(home.aberta){ pedido.usar=false; jogador.visible=false; }          // tela inicial: ninguém se mexe
-  else { if(pedido.usar){ pedido.usar=false; trocarVeiculo(); }
+  else { if(pedido.usar){ pedido.usar=false; if(!(vida.caido>0)) trocarVeiculo(); }
     if(pedido.entrega){ pedido.entrega=false; alternarCorrida(veic.dirigindo); }
     if(pedido.comprar){ pedido.comprar=false; if(!veic.dirigindo) comprar(jogador.position.x,jogador.position.z); }
     if(pedido.obra){ pedido.obra=false; if(!veic.dirigindo) alternarObra(jogador.position.x,jogador.position.z); }
     if(pedido.acao){ const a=pedido.acao; pedido.acao=null;                     // T/G/H/X com um pedestre perto
       if(!veic.dirigindo){ const p=jogador.position, alvo=pedestrePerto(p.x,p.z);
         if(alvo){ rumo=Math.atan2(alvo.x-p.x,alvo.z-p.z); if(a==='cumprimentar') gesto=2.2; interagir(a,p.x,p.z); } } }
+    if(pedido.golpe){ const g=pedido.golpe; pedido.golpe=null; if(!veic.dirigindo) golpear(g); }
+    atualizarLuta(dt, acertar);
     if(veic.dirigindo) aoVolante(dt); else { jogador.visible=true; aPe(dt); } }
   const p=jogador.position;
 
@@ -150,6 +167,7 @@ function quadro(){
   const gente=!home.aberta&&!veic.dirigindo&&!perto&&!terr&&pedestrePerto(p.x,p.z);
   if(gente){ $('dica').style.display='block'; $('dica').textContent='T conversar · G cumprimentar · H '+(gente.modo==='seguir'?'dispensar':'chamar')+' · X assustar'+(quantosSeguem()?` · ${quantosSeguem()} seguindo`:''); }
   $('acoes').style.display=gente&&matchMedia('(pointer:coarse)').matches?'flex':'none';
+  $('luta').style.display=!home.aberta&&!veic.dirigindo&&matchMedia('(pointer:coarse)').matches?'flex':'none';
 
   const D=veic.dirigindo, outros=[[p.x,p.z,D?D.comp/2:0.5,D?D.larg/2:0.5], ...frota.filter(c=>c!==D).map(c=>[c.obj.position.x,c.obj.position.z,c.comp/2,c.larg/2])];
   for(const [x,z] of posicoesPedestres()) outros.push([x,z,0.3,0.3]);   // o trânsito para para pedestre na pista
@@ -160,7 +178,7 @@ function quadro(){
   efeitosVeiculos(dt); atualizarEfeitos(dt); atualizarBaloes(dt);
   if(!home.aberta) atualizarCorrida(dt, veic.dirigindo);
   // online: manda meu estado e move os outros jogadores
-  if(!home.aberta){ const D2=veic.dirigindo; enviarEstado(dt,{x:p.x,z:p.z,r:rumo,a:D2?'parado':estadoAPe,vt:D2?D2.tipo.id:null,vh:D2?D2.h:null}); }
+  if(!home.aberta){ const D2=veic.dirigindo; enviarEstado(dt,{x:p.x,z:p.z,r:rumo,a:D2?'parado':estadoAPe,vt:D2?D2.tipo.id:null,vh:D2?D2.h:null,e:vida.e,c:vida.caido>0,g:[golpe.seq,golpe.tipo||'']}); }
   atualizarOnline(dt);
   { let d=null; for(const [x,z] of posicoesPolicia()){ const k=Math.hypot(x-p.x,z-p.z); if(d===null||k<d) d=k; } somSirene(d); }   // sirene pela viatura mais perto
 
@@ -208,4 +226,4 @@ carregarCidade().then(async()=>{
   pronto(); });
 quadro();
 // gancho para testes no console
-window.__jogo={jogador,ruas,predios,tecla,frota,veic,pedido,lim:[LX0,LZ0,LX1,LZ1],cam:(d,p,y)=>{cam.dist=d;cam.pitch=p;cam.yaw=y;}};
+window.__jogo={vida,golpe,golpear,jogador,ruas,predios,tecla,frota,veic,pedido,lim:[LX0,LZ0,LX1,LZ1],cam:(d,p,y)=>{cam.dist=d;cam.pitch=p;cam.yaw=y;}};
