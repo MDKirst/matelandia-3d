@@ -2,7 +2,7 @@
 <html lang="pt-BR">
 <head>
 <meta charset="utf-8">
-<title>Matelândia 3D — protótipo</title>
+<title>Matelândia 3D</title>
 <meta name="viewport" content="width=device-width,initial-scale=1,user-scalable=no">
 <style>
   html,body{margin:0;height:100%;overflow:hidden;background:#bfd9ee;font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;color:#fff}
@@ -26,7 +26,29 @@
   #velo{position:fixed;right:22px;bottom:118px;text-align:right;font-weight:900;font-size:clamp(26px,4vw,46px);text-shadow:0 2px 0 #000,0 0 12px rgba(0,0,0,.8);pointer-events:none;display:none}
   #velo small{font-size:.4em;font-weight:700;color:#fcd34d}
   #usar{position:fixed;right:18px;bottom:190px;width:74px;height:74px;border-radius:50%;font-size:14px;display:none;box-shadow:0 4px 14px rgba(0,0,0,.5)}
-  #drop{position:fixed;inset:0;display:none;align-items:center;justify-content:center;background:rgba(249,115,22,.35);font-size:28px;font-weight:800;pointer-events:none}
+  /* tela inicial */
+  #home{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;gap:28px;padding:24px;box-sizing:border-box;
+    background:linear-gradient(90deg,rgba(8,10,14,.92) 0%,rgba(8,10,14,.72) 45%,rgba(8,10,14,.25) 100%);z-index:10;transition:opacity .35s}
+  #home.fora{opacity:0;pointer-events:none}
+  body.em-home #top,body.em-home #help,body.em-home #mini,body.em-home #street,body.em-home #dica,body.em-home #velo,body.em-home #usar{display:none!important}
+  #home .lado{max-width:420px}
+  #home h1{margin:0;font-size:clamp(40px,7vw,76px);line-height:.95;font-weight:900;letter-spacing:-1px}
+  #home h1 span{color:#F97316;display:block}
+  #home .sub{color:#cbd5e1;font-size:15px;margin:12px 0 22px;line-height:1.5}
+  #home .jogar{font-size:20px;padding:14px 34px;border-radius:12px;box-shadow:0 6px 24px rgba(249,115,22,.45)}
+  #home .jogar:disabled{opacity:.5;cursor:wait}
+  #home .ctrl{margin-top:22px;font-size:12.5px;color:#94a3b8;line-height:1.7}
+  #home .ctrl b{color:#e2e8f0}
+  #home .carrega{margin-top:10px;font-size:12px;color:#fcd34d;min-height:16px}
+  #escolha{display:flex;flex-direction:column;align-items:center;background:rgba(15,23,42,.6);border:1px solid rgba(255,255,255,.08);border-radius:16px;padding:14px 14px 16px}
+  #escolha .titulo{font-size:12px;letter-spacing:2px;color:#94a3b8;text-transform:uppercase}
+  #prev{width:260px;height:330px;display:block}
+  #escolha .linha{display:flex;align-items:center;gap:12px}
+  #escolha .seta{background:#1f2937;color:#fff;width:40px;height:40px;border-radius:50%;font-size:18px;padding:0}
+  #nomePers{min-width:150px;text-align:center;font-weight:800;font-size:17px}
+  #nomePers small{display:block;color:#94a3b8;font-weight:500;font-size:11px}
+  @media (max-width:760px){#home{flex-direction:column-reverse;gap:10px;justify-content:flex-end;overflow:auto;background:rgba(8,10,14,.86)}
+    #prev{width:200px;height:240px} #home .ctrl{display:none} #home .sub{margin:8px 0 14px}}
   @media (max-width:700px){#help{display:none}#mini{width:130px;height:130px}#top{max-width:210px}}
 </style>
 <script type="importmap">
@@ -36,15 +58,14 @@
 }}
 </script>
 </head>
-<body>
+<body class="em-home">
 <canvas id="c"></canvas>
 
 <div id="top" class="panel">
-  <h1><span>Matelândia</span> 3D · protótipo</h1>
+  <h1><span>Matelândia</span> 3D</h1>
   <div id="status">Iniciando…</div>
   <div id="btns">
-    <label class="btn">Carregar avatar (.glb)<input id="file" type="file" accept=".glb,.gltf,model/gltf-binary" hidden></label>
-    <button id="rm" class="sec" hidden>Voltar ao padrão</button>
+    <button id="menu" class="sec">☰ Menu (Esc)</button>
   </div>
   <input id="tp" placeholder="Ir para: lat, lon  (Enter)">
   <div id="coord" style="margin-top:6px;font-size:11px;color:#94a3b8"></div>
@@ -54,7 +75,7 @@
   <b>WASD / setas</b> andar · <b>Shift</b> correr<br>
   <b>Arrastar mouse</b> girar câmera · <b>Scroll</b> zoom<br>
   <b>E</b> entrar/sair do veículo · <b>Espaço</b> freio de mão<br>
-  <b>R</b> girar avatar 90° · <b>[ ]</b> detalhe do satélite<br>
+  <b>[ ]</b> detalhe do satélite · <b>Esc</b> menu<br>
   Celular: esquerda anda, direita gira
 </div>
 
@@ -63,7 +84,28 @@
 <div id="dica"></div>
 <div id="velo"></div>
 <button id="usar">Entrar</button>
-<div id="drop">Solte o .glb aqui</div>
+<div id="home">
+  <div class="lado">
+    <h1>Matelândia <span>3D</span></h1>
+    <div class="sub">Ande, dirija e explore Matelândia&nbsp;-&nbsp;PR com as ruas, os prédios e o satélite de verdade.</div>
+    <button id="jogar" class="jogar" disabled>Carregando…</button>
+    <div class="carrega" id="carrega"></div>
+    <div class="ctrl">
+      <b>WASD</b> andar · <b>Shift</b> correr · <b>E</b> entrar no veículo<br>
+      <b>Mouse</b> girar a câmera · <b>Scroll</b> zoom · <b>Esc</b> volta a esta tela<br>
+      Celular: lado esquerdo anda, lado direito gira
+    </div>
+  </div>
+  <div id="escolha">
+    <div class="titulo">Escolha o personagem</div>
+    <canvas id="prev" width="520" height="660"></canvas>
+    <div class="linha">
+      <button class="seta" id="ant" aria-label="Personagem anterior">‹</button>
+      <div id="nomePers"></div>
+      <button class="seta" id="prox" aria-label="Próximo personagem">›</button>
+    </div>
+  </div>
+</div>
 <div id="attr">Imagens © Esri, Maxar, Earthstar Geographics · Dados de ruas e prédios © colaboradores do OpenStreetMap · Prédios e lojas © Overture Maps Foundation</div>
 
 <script type="module" src="js/main.js"></script>

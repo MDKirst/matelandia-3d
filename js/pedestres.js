@@ -78,11 +78,20 @@ function nascer(p, px, pz){
     const comercio=lojas.some(l=>Math.abs(l[0]-q[0])<60&&Math.abs(l[1]-q[1])<60);
     if(!comercio&&sorte()<0.55) continue;
     const dir=sorte()<0.5?1:-1;
-    vestir(p,m); Object.assign(p,{modo:'andar', r, dir, i:dir===1?i:i+1, s:sorte()*3, lado:sorte()<0.5?1:-1, vel:1.1+sorte()*0.5, t:0, visto:new Set()});
+    vestir(p,m); Object.assign(p,{modo:'andar', r, dir, i:dir===1?i:i+1, s:sorte()*3, lado:sorte()<0.5?1:-1, vel:1.1+sorte()*0.5, t:0, espera:0, visto:new Set()}); ladoCerto(p);
     const c=naCalcada(p); p.x=c.x; p.z=c.z; p.rumo=Math.atan2(c.ux,c.uz); return true;
   }
   return false;
 }
+
+// rua de mão única (avenida de pista dupla): só a calçada de fora (direita de quem segue a mão);
+// a de dentro dá no canteiro central
+const ladoCerto=p=>{ if(p.r.mao) p.lado=p.dir*p.r.mao; };
+// meia-volta no meio do trecho
+function meiaVolta(p){ const L=naCalcada(p).L; p.i=p.i+p.dir; p.dir=-p.dir; p.s=Math.max(0,L-p.s); if(p.r.mao) ladoCerto(p); else p.lado=-p.lado; }
+// ponto dentro de algum veículo (caixa girada com folga): [x,z,ry,meio,larg]
+const emVeiculo=(x,z,vs,f=0.5)=>vs.some(([vx,vz,ry,meio,larg])=>{ const dx=x-vx, dz=z-vz; if(Math.abs(dx)>12||Math.abs(dz)>12) return false;
+  const fx=-Math.sin(ry), fz=-Math.cos(ry); return Math.abs(dx*fx+dz*fz)<meio+f && Math.abs(-dx*fz+dz*fx)<larg+f; });
 
 // fim do trecho: segue a rua, vira na esquina (pode atravessar) ou volta
 function esquina(p){
@@ -90,8 +99,8 @@ function esquina(p){
   if(j+p.dir>=0&&j+p.dir<p.r.pts.length&&sorte()<0.8){ p.i=j; return; }
   const op=[];
   for(const {r,i} of nos.get(chave(p.r.pts[j]))||[]){ if(r===p.r) continue; for(const dir of [1,-1]) if(i+dir>=0&&i+dir<r.pts.length) op.push({r,i,dir}); }
-  if(op.length&&sorte()<0.85){ const o=op[(sorte()*op.length)|0]; p.r=o.r; p.i=o.i; p.dir=o.dir; if(sorte()<0.3) p.lado=-p.lado; return; }  // atravessa às vezes
-  p.i=j; p.dir=-p.dir; p.lado=-p.lado;                                                                  // volta pela mesma calçada
+  if(op.length&&sorte()<0.85){ const o=op[(sorte()*op.length)|0]; p.r=o.r; p.i=o.i; p.dir=o.dir; if(sorte()<0.3) p.lado=-p.lado; ladoCerto(p); return; }  // atravessa às vezes
+  p.i=j; p.dir=-p.dir; p.lado=-p.lado; ladoCerto(p);                                                     // volta pela mesma calçada
 }
 
 export async function iniciarPedestres(lugares, px, pz){
@@ -104,8 +113,8 @@ export async function iniciarPedestres(lugares, px, pz){
   for(let k=0;k<QTD;k++){ const p={}; nascer(p,px,pz); gente.push(p); }
 }
 
-// jogador: {x,z, dirigindo, v (m/s), h}
-export function atualizarPedestres(dt, jog){
+// jogador: {x,z, dirigindo, v (m/s), h}; veiculos: [[x,z,ry,meio,larg]] (do jogador, estacionados e trânsito)
+export function atualizarPedestres(dt, jog, veiculos=[]){
   const {x:px, z:pz}=jog;
   for(const p of gente){
     if(!p.obj||Math.hypot(p.x-px,p.z-pz)>RAIO_SOME){ nascer(p,px,pz); if(!p.obj) continue; }
@@ -124,11 +133,18 @@ export function atualizarPedestres(dt, jog){
       const fx=Math.sin(p.rumo), fz=Math.cos(p.rumo), fr=(px-p.x)*fx+(pz-p.z)*fz;
       if(!jog.dirigindo&&dJog<2.2&&fr>0){ animar(p, p.acoes.acenar?'acenar':'parado'); p.rumo=Math.atan2(px-p.x,pz-p.z); }
       else {
+        // veículo no caminho (atravessando a rua ou carro na calçada): espera; travado 3 s, volta
+        const sv={r:p.r,i:p.i,dir:p.dir,s:p.s,lado:p.lado};
         p.s+=p.vel*dt; let c=naCalcada(p), g=0;
         while(p.s>=c.L&&g++<6){ p.s-=c.L; esquina(p); c=naCalcada(p); }
+        const frente=[c.x+c.ux*0.9, c.z+c.uz*0.9];
+        if(emVeiculo(c.x,c.z,veiculos)||emVeiculo(frente[0],frente[1],veiculos)){
+          Object.assign(p,sv); c=naCalcada(p); animar(p,'parado'); p.espera+=dt;
+          if(p.espera>3){ p.espera=0; meiaVolta(p); c=naCalcada(p); }
+        } else p.espera=0;
         p.x=c.x; p.z=c.z;
         const alvo=Math.atan2(c.ux,c.uz); let d=alvo-p.rumo; d=Math.atan2(Math.sin(d),Math.cos(d)); p.rumo+=d*Math.min(1,dt*6);
-        animar(p,'andar',p.vel/1.3);
+        if(!p.espera) animar(p,'andar',p.vel/1.3);
         // loja do lado da calçada: às vezes para olhando a vitrine
         for(const l of lojas){ if(Math.abs(l[0]-p.x)>7||Math.abs(l[1]-p.z)>7) continue; const k=l[0]+'_'+l[1]; if(p.visto.has(k)) continue; p.visto.add(k);
           if(sorte()<0.35){ p.modo='vitrine'; p.t=3+sorte()*7; p.rumo=Math.atan2(l[0]-p.x,l[1]-p.z); } break; }

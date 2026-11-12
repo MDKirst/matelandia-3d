@@ -1,5 +1,5 @@
-// Avatar em terceira pessoa: GLB padrão (assets/), GLB do usuário (guardado no IndexedDB)
-// ou, se nada carregar, um boneco de caixas
+// Avatar em terceira pessoa: o personagem escolhido na tela inicial (Maicon ou um da Quaternius);
+// se o arquivo não carregar, um boneco de caixas
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { DRACOLoader } from 'three/addons/loaders/DRACOLoader.js';
@@ -26,17 +26,17 @@ function criarBoneco(){
   g.userData.partes=[membro(0x1f2937,-0.12,0.85,0.85),membro(0x1f2937,0.12,0.85,0.85),membro(0xF97316,-0.31,1.45,0.6),membro(0xF97316,0.31,1.45,0.6)];
   return g;
 }
-function usarBoneco(){ suporte.clear(); av.mixer=null; av.acoes={}; av.acaoAtual=null; av.boneco=criarBoneco(); suporte.add(av.boneco); $('rm').hidden=true; }
-usarBoneco();
+function usarBoneco(){ suporte.clear(); av.mixer=null; av.acoes={}; av.acaoAtual=null; av.boneco=criarBoneco(); suporte.add(av.boneco); }
+// sem boneco de caixas de saída: o avatar só aparece quando o personagem escolhido carrega
 
 const gltfLoader=new GLTFLoader();
 const draco=new DRACOLoader(); draco.setDecoderPath('https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/libs/draco/gltf/');
 gltfLoader.setDRACOLoader(draco); gltfLoader.setMeshoptDecoder(MeshoptDecoder);
 
-function carregarGLB(buf,salvar,padrao){
+function carregarGLB(buf){
   gltfLoader.parse(buf,'',gltf=>{
     const m=gltf.scene; m.updateMatrixWorld(true);
-    const cx=new THREE.Box3().setFromObject(m), tam=cx.getSize(new THREE.Vector3()), centro=cx.getCenter(new THREE.Vector3());
+    const cx=new THREE.Box3().setFromObject(m,true), tam=cx.getSize(new THREE.Vector3()), centro=cx.getCenter(new THREE.Vector3());
     if(!(tam.y>0)){ $('status').textContent='Não consegui medir esse modelo.'; return; }
     const esc=ALTURA_AVATAR/tam.y;
     m.position.set(-centro.x*esc,-cx.min.y*esc,-centro.z*esc); m.scale.multiplyScalar(esc);
@@ -51,10 +51,6 @@ function carregarGLB(buf,salvar,padrao){
       const A=c=>c?mixer.clipAction(c):null;
       av.acoes={parado:A(parado), andar:A(andar||correr||unico), correr:A(correr||andar||unico)};
     }
-    $('rm').hidden=!!padrao;
-    $('status').textContent=`Avatar carregado · ${gltf.animations.length} animação(ões)`+(gltf.animations.length?'':' — sem animação, ele desliza');
-    setTimeout(status,4000);
-    if(salvar) guardar(buf);
   },err=>{ console.error(err); $('status').textContent='Erro ao ler o GLB: '+(err.message||err); });
 }
 
@@ -67,22 +63,11 @@ export function animar(estado){
   av.acaoAtual=nova;
 }
 
-// avatar padrão: arquivo em assets/ (se falhar, fica o boneco de caixas)
-async function padrao(){
-  try{ const r=await fetch(AVATAR_PADRAO); if(!r.ok) throw new Error('HTTP '+r.status); carregarGLB(await r.arrayBuffer(),false,true); }
-  catch(e){ console.warn('Avatar padrão indisponível:',e); usarBoneco(); }
+// Personagem escolhido na tela inicial (não há mais upload de .glb): carrega o arquivo e troca
+let pedido=0;
+// buf: o arquivo já baixado pela prévia da tela inicial (entra na hora, sem baixar de novo)
+export async function usarPersonagem(url, buf){
+  const meu=++pedido;
+  try{ if(!buf){ const r=await fetch(url); if(!r.ok) throw new Error('HTTP '+r.status); buf=await r.arrayBuffer(); } if(meu===pedido) carregarGLB(buf); }
+  catch(e){ console.warn('Personagem indisponível:',url,e); if(meu===pedido) usarBoneco(); }
 }
-
-// guarda o avatar escolhido pelo usuário no navegador para não precisar recarregar toda vez
-function db(){ return new Promise((ok,no)=>{ const r=indexedDB.open('matelandia3d',1); r.onupgradeneeded=()=>r.result.createObjectStore('a'); r.onsuccess=()=>ok(r.result); r.onerror=()=>no(r.error); }); }
-async function guardar(buf){ try{ const d=await db(); d.transaction('a','readwrite').objectStore('a').put(buf,'avatar'); }catch(e){} }
-async function esquecer(){ try{ const d=await db(); d.transaction('a','readwrite').objectStore('a').delete('avatar'); }catch(e){} }
-async function restaurar(){ try{ const d=await db(); const r=d.transaction('a').objectStore('a').get('avatar'); r.onsuccess=()=>{ if(r.result) carregarGLB(r.result,false); else padrao(); }; r.onerror=()=>padrao(); }catch(e){ padrao(); } }
-restaurar();
-
-const lerArquivo=f=>{ if(f) f.arrayBuffer().then(b=>carregarGLB(b,true)); };
-$('file').addEventListener('change',e=>{ lerArquivo(e.target.files[0]); e.target.value=''; });
-$('rm').addEventListener('click',()=>{ esquecer(); padrao(); });
-addEventListener('dragover',e=>{ e.preventDefault(); $('drop').style.display='flex'; });
-addEventListener('dragleave',()=>{ $('drop').style.display='none'; });
-addEventListener('drop',e=>{ e.preventDefault(); $('drop').style.display='none'; lerArquivo(e.dataTransfer.files[0]); });

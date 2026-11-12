@@ -13,6 +13,7 @@ import { construirMarcos } from './marcos.js';
 import { carregarLojas } from './lojas.js';
 import { construirDetalhes, alturaLombada } from './detalhes.js';
 import { iniciarPedestres, atualizarPedestres, posicoesPedestres } from './pedestres.js';
+import { home, pronto, progresso } from './home.js';
 import { minimapa } from './minimapa.js';
 import { frota, iniciarVeiculos, veiculoPerto, entrar, sair, dirigir, dentroDeVeiculo, frente, esquerda } from './veiculos.js';
 import * as veic from './veiculos.js';
@@ -44,7 +45,7 @@ function bateNoTransito(c,x,z,h){
   return false;
 }
 
-const relogio=new THREE.Clock(), alvo=new THREE.Vector3(); let rumo=0, tLento=0, passo=0, ruaAtual='';
+const relogio=new THREE.Clock(), alvo=new THREE.Vector3(); let rumo=0, tLento=0, passo=0, ruaAtual='', orbita=0.6;
 function aPe(dt){
   let ix=(tecla.KeyD||tecla.ArrowRight?1:0)-(tecla.KeyA||tecla.ArrowLeft?1:0);
   let iy=(tecla.KeyW||tecla.ArrowUp?1:0)-(tecla.KeyS||tecla.ArrowDown?1:0);
@@ -101,8 +102,9 @@ function trocarVeiculo(){
 function quadro(){
   requestAnimationFrame(quadro);
   const dt=Math.min(relogio.getDelta(),0.05);
-  if(pedido.usar){ pedido.usar=false; trocarVeiculo(); }
-  if(veic.dirigindo) aoVolante(dt); else aPe(dt);
+  if(home.aberta){ pedido.usar=false; jogador.visible=false; }          // tela inicial: ninguém se mexe
+  else { if(pedido.usar){ pedido.usar=false; trocarVeiculo(); }
+    if(veic.dirigindo) aoVolante(dt); else { jogador.visible=true; aPe(dt); } }
   const p=jogador.position;
 
   // dica de entrar / botão do celular
@@ -115,12 +117,15 @@ function quadro(){
   const D=veic.dirigindo, outros=[[p.x,p.z,D?D.comp/2:0.5,D?D.larg/2:0.5], ...frota.filter(c=>c!==D).map(c=>[c.obj.position.x,c.obj.position.z,c.comp/2,c.larg/2])];
   for(const [x,z] of posicoesPedestres()) outros.push([x,z,0.3,0.3]);   // o trânsito para para pedestre na pista
   atualizarTransito(dt,p.x,p.z,outros);
-  atualizarPedestres(dt,{x:p.x,z:p.z,dirigindo:!!veic.dirigindo,v:veic.dirigindo?veic.dirigindo.v:0});
+  atualizarPedestres(dt,{x:p.x,z:p.z,dirigindo:!!veic.dirigindo,v:veic.dirigindo?veic.dirigindo.v:0},
+    [...frota.map(c=>[c.obj.position.x,c.obj.position.z,c.h,c.comp/2,c.larg/2]), ...posicoesTransito()]);   // pedestre não atravessa veículo
 
-  const {yaw,pitch,dist}=cam;
-  alvo.set(p.x,veic.dirigindo?1.8:1.45,p.z);
-  camera.position.set(p.x+dist*Math.sin(yaw)*Math.cos(pitch), alvo.y+dist*Math.sin(pitch), p.z+dist*Math.cos(yaw)*Math.cos(pitch));
-  camera.lookAt(alvo);
+  if(home.aberta){ orbita+=dt*0.04;                                    // sobrevoo lento da cidade atrás da tela inicial
+    alvo.set(p.x,0,p.z); camera.position.set(p.x+Math.sin(orbita)*170, 85, p.z+Math.cos(orbita)*170); camera.lookAt(alvo); }
+  else { const {yaw,pitch,dist}=cam;
+    alvo.set(p.x,veic.dirigindo?1.8:1.45,p.z);
+    camera.position.set(p.x+dist*Math.sin(yaw)*Math.cos(pitch), alvo.y+dist*Math.sin(pitch), p.z+dist*Math.cos(yaw)*Math.cos(pitch));
+    camera.lookAt(alvo); }
   base.position.set(p.x,0,p.z);
   satelite.atualizar(p.x,p.z);
   atualizarTelhados(dt,p.x,p.z);
@@ -138,16 +143,22 @@ function quadro(){
 }
 
 status();
+progresso('Carregando ruas…');
 carregarCidade().then(async()=>{
+  progresso('Levantando os prédios…');
   await carregarPredios();
   // árvore e banco não vão para cima da rua
   const ruaLonge=(x,z)=>!ruas.some(r=>!r.pe&&x>r.bb[0]-12&&x<r.bb[2]+12&&z>r.bb[1]-12&&z<r.bb[3]+12&&r.pts.some((q,i)=>{ const n=r.pts[i+1]; if(!n) return false; const vx=n[0]-q[0], vz=n[1]-q[1]; let t=((x-q[0])*vx+(z-q[1])*vz)/(vx*vx+vz*vz||1); t=Math.max(0,Math.min(1,t)); return Math.hypot(x-q[0]-vx*t,z-q[1]-vz*t)<r.w/2+1.5; }));
   construirMarcos(predios, ruaLonge); status();
+  progresso('Abrindo as lojas…');
   console.info('lojas', await carregarLojas());
   console.info('detalhes', await construirDetalhes());
+  progresso('Chamando o povo para a rua…');
   try{ const l=(await (await fetch('dados/lugares.json')).json()).lugares; await iniciarPedestres(l, jogador.position.x, jogador.position.z); }catch(e){ console.warn('pedestres',e); }
   const p=jogador.position, [x,z]=pontoLivre(p.x,p.z); p.set(x,0,z);   // não nascer dentro de uma casa
-  await iniciarVeiculos(); await iniciarTransito(jogador.position.x,jogador.position.z); });
+  progresso('Ligando os motores…');
+  await iniciarVeiculos(); await iniciarTransito(jogador.position.x,jogador.position.z);
+  pronto(); });
 quadro();
 // gancho para testes no console
 window.__jogo={jogador,ruas,predios,tecla,frota,veic,pedido,lim:[LX0,LZ0,LX1,LZ1],cam:(d,p,y)=>{cam.dist=d;cam.pitch=p;cam.yaw=y;}};
