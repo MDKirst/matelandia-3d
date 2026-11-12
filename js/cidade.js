@@ -74,17 +74,12 @@ function construir(elements){
       if(pts.length>1){ const a=pts[0], z=pts[pts.length-1]; if(a[0]===z[0]&&a[1]===z[1]) pts.pop(); }
       if(pts.length<3) continue;
       { const b=bbox(pts), A=(b[2]-b[0])*(b[3]-b[1]); if(substituidoPorMarco((b[0]+b[2])/2,(b[1]+b[3])/2,'osm',A)) continue; } // marco feito à mão no lugar
-      let h=parseFloat(t.height)||(parseFloat(t['building:levels'])*3.2)||(3.4+(el.id%7)*0.5);
+      // altura conhecida pela referência: Prefeitura com 3 andares, Câmara com 2
+      const nome=t.name||'', porNome=/prefeitura/i.test(nome)?10.6:/c[âa]mara/i.test(nome)?7.4:0;
+      let h=porNome||parseFloat(t.height)||(parseFloat(t['building:levels'])*3.2)||(3.4+(el.id%7)*0.5);
       h=Math.min(Math.max(h,2.5),120);
-      try{
-        const s=new THREE.Shape(pts.map(p=>new THREE.Vector2(p[0],-p[1])));
-        const g=new THREE.ExtrudeGeometry(s,{depth:h,bevelEnabled:false}).rotateX(-Math.PI/2);
-        const nrm=g.attributes.normal, cor=new Float32Array(nrm.count*3);
-        const pa=PAREDES[el.id%PAREDES.length], te=TELHADOS[el.id%TELHADOS.length];
-        for(let i=0;i<nrm.count;i++){ const c=nrm.getY(i)>0.9?te:pa; cor[i*3]=c.r; cor[i*3+1]=c.g; cor[i*3+2]=c.b; }
-        g.setAttribute('color',new THREE.BufferAttribute(cor,3)); g.deleteAttribute('uv');
-        geos.push(g); predios.push({pts,bb:bbox(pts)});
-      }catch(e){}
+      // a geometria (com fachada e telhado do satélite) é montada em predios.js junto com os do Overture
+      predios.push({pts,bb:bbox(pts),h,osm:true,nome,branco:/prefeitura|c[âa]mara/i.test(nome)});
     } else if(t.highway && LARGURA[t.highway] && t.area!=='yes'){
       const w=LARGURA[t.highway], pe=A_PE.has(t.highway);
       fita(pts,w,pe?P:R);

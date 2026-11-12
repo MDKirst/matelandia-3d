@@ -7,7 +7,7 @@ import * as THREE from 'three';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 import { scene } from './cena.js';
 import { toXZ, toLL, D2R } from './geo.js';
-import { predios, bbox } from './cidade.js';
+import { predios, bbox, ruas } from './cidade.js';
 import { DADOS_PREDIOS, TILE_URL, ZOOM_MAX } from './config.js';
 import { substituidoPorMarco } from './marcos.js';
 
@@ -90,6 +90,31 @@ function quatroAguas(pts,h,alt){
   g.computeVertexNormals(); return g;
 }
 
+// mastros com as bandeiras do Brasil e do Paraná na frente da Prefeitura (parede virada para a rua)
+function bandeira(desenho){ const cv=document.createElement('canvas'); cv.width=210; cv.height=150; desenho(cv.getContext('2d')); const t=new THREE.CanvasTexture(cv); t.colorSpace=THREE.SRGBColorSpace; return t; }
+const BANDEIRAS=[
+  bandeira(k=>{ k.fillStyle='#1f9a46'; k.fillRect(0,0,210,150); k.fillStyle='#f7d117'; k.beginPath(); k.moveTo(105,12); k.lineTo(198,75); k.lineTo(105,138); k.lineTo(12,75); k.fill();
+    k.fillStyle='#233f8f'; k.beginPath(); k.arc(105,75,36,0,7); k.fill(); k.strokeStyle='#fff'; k.lineWidth=6; k.beginPath(); k.arc(105,110,46,-2.35,-0.8); k.stroke(); }),   // Brasil
+  bandeira(k=>{ k.fillStyle='#1f8a4a'; k.fillRect(0,0,210,150); k.fillStyle='#fff'; k.beginPath(); k.moveTo(0,40); k.lineTo(0,0); k.lineTo(40,0); k.lineTo(210,110); k.lineTo(210,150); k.lineTo(170,150); k.fill();
+    k.fillStyle='#233f8f'; k.beginPath(); k.arc(105,75,26,0,7); k.fill(); }),                                                                                 // Paraná (simplificada)
+];
+function bandeiras(pts){
+  let melhor=null, nota=1e9;
+  for(let i=0;i<pts.length;i++){ const a=pts[i], c=pts[(i+1)%pts.length], L=Math.hypot(c[0]-a[0],c[1]-a[1]); if(L<6) continue;
+    const t=[(c[0]-a[0])/L,(c[1]-a[1])/L], m=[(a[0]+c[0])/2,(a[1]+c[1])/2]; let nn=[t[1],-t[0]];
+    if(dentro(m[0]+nn[0]*0.4,m[1]+nn[1]*0.4,pts)) nn=[-nn[0],-nn[1]];
+    let d=1e9; for(const r of ruas){ if(r.pe) continue; const pref=/rui barbosa/i.test(r.nome)?-25:0;   // a frente com os mastros é na R. Rui Barbosa
+      for(let k=0;k<r.pts.length-1;k++){ const p=r.pts[k], q=r.pts[k+1], vx=q[0]-p[0], vz=q[1]-p[1]; let u=((m[0]+nn[0]*4-p[0])*vx+(m[1]+nn[1]*4-p[1])*vz)/(vx*vx+vz*vz||1); u=Math.max(0,Math.min(1,u)); d=Math.min(d,Math.hypot(m[0]+nn[0]*4-p[0]-vx*u,m[1]+nn[1]*4-p[1]-vz*u)+pref); } }
+    if(d<nota){ nota=d; melhor={m,nn,t}; } }
+  if(!melhor) return;
+  const {m,nn,t}=melhor, mastro=new THREE.MeshLambertMaterial({color:0xd9d9d6});
+  [-2.4,0,2.4].forEach((o,i)=>{ const x=m[0]+nn[0]*4.5+t[0]*o, z=m[1]+nn[1]*4.5+t[1]*o;
+    const pole=new THREE.Mesh(new THREE.CylinderGeometry(0.06,0.08,9,8),mastro); pole.position.set(x,4.5,z); scene.add(pole);
+    if(i===2) return;                                                                                  // 3º mastro (município): sem bandeira, não sei o desenho
+    const f=new THREE.Mesh(new THREE.PlaneGeometry(2.1,1.5),new THREE.MeshLambertMaterial({map:BANDEIRAS[i],side:THREE.DoubleSide}));
+    f.position.set(x+t[0]*1.1,8.1,z+t[1]*1.1); f.rotation.y=Math.atan2(nn[0],nn[1]); scene.add(f); });
+}
+
 // tampa plana (laje) na altura h
 function laje(pts,h){
   const g=new THREE.ShapeGeometry(new THREE.Shape(pts.map(p=>new THREE.Vector2(p[0],-p[1])))).rotateX(-Math.PI/2).translate(0,h,0);
@@ -151,6 +176,20 @@ export async function carregarPredios(){
   try{ const r=await fetch(DADOS_PREDIOS); if(!r.ok) throw new Error('HTTP '+r.status); dados=await r.json(); }
   catch(e){ console.warn('Sem '+DADOS_PREDIOS+': cidade fica só com os prédios do OSM',e); return 0; }
   const osm=predios.slice(), quadras=new Map(); let n=0;
+  const quadra=(cx,cz)=>{ const i=Math.floor(cx/Q), j=Math.floor(cz/Q), k=i+'_'+j; if(!quadras.has(k)) quadras.set(k,{i,j,paredes:[],galpoes:[],telhados:[]}); return quadras.get(k); };
+  // prédios do OSM (Prefeitura, Câmara, Rodoviária…): mesma fachada e telhado do satélite dos outros
+  for(const o of osm){ if(!o.osm) continue;
+    let pts=o.pts.slice(), A=area(pts); if(A<0){ pts=pts.reverse(); A=-A; }
+    const cx=(o.bb[0]+o.bb[2])/2, cz=(o.bb[1]+o.bb[3])/2, qd=quadra(cx,cz), r=sorte(cx,cz,1);
+    try{
+      const par=pinta(paredes(pts,o.h,false), o.branco?new THREE.Color(0xf6f6f3):PAREDES[(r*PAREDES.length)|0]);
+      const quatro=pts.length===4&&A<900&&!o.branco;
+      let tel; if(quatro){ const curto=Math.min(Math.hypot(pts[1][0]-pts[0][0],pts[1][1]-pts[0][1]),Math.hypot(pts[2][0]-pts[1][0],pts[2][1]-pts[1][1])); tel=pinta(quatroAguas(pts,o.h,Math.min(curto*0.28,3)),CERAMICA[0]); }
+      else tel=pinta(laje(pts,o.h),FIBRO[1]);
+      (A>600&&!o.branco?qd.galpoes:qd.paredes).push(par); qd.telhados.push(uvs(tel,qd.i*Q,qd.j*Q));
+      if(/prefeitura/i.test(o.nome)) bandeiras(pts);
+    }catch(e){}
+  }
   for(const p of dados.predios){
     let pts=p.c.map(([la,lo])=>toXZ(la,lo));
     let A=area(pts); if(Math.abs(A)<12) continue;              // menor que 12 m²: ruído
@@ -160,9 +199,7 @@ export async function carregarPredios(){
     if(osm.some(o=>cx>=o.bb[0]&&cx<=o.bb[2]&&cz>=o.bb[1]&&cz<=o.bb[3]&&dentro(cx,cz,o.pts))) continue; // já veio do OSM
     const h=altura(p,pts,A,cx,cz), r=sorte(cx,cz,1);
     const quatro=pts.length===4 && A<900;
-    const i=Math.floor(cx/Q), j=Math.floor(cz/Q), k=i+'_'+j;
-    if(!quadras.has(k)) quadras.set(k,{i,j,paredes:[],galpoes:[],telhados:[]});
-    const qd=quadras.get(k);
+    const qd=quadra(cx,cz), i=qd.i, j=qd.j;
     try{
       const par=pinta(paredes(pts,h,false), PAREDES[(r*PAREDES.length)|0]);
       let tel;

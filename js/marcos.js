@@ -51,34 +51,50 @@ const arvore=(x,z,esc=1)=>arvores.push([x,z,esc]);
 
 /* ───────── Igreja Matriz (planta redonda) ───────── */
 function igreja(){
-  // forma/cor/posição pela referência do Maicon (fotos dele só para ter noção): corpo largo e
-  // arredondado, branco com detalhes verdes, janelas em arco e torre alta com cruz do lado oeste
-  const [cx,cz]=IGREJA.c, R=IGREJA.r, H=12, BRANCO=0xf3f2ec, VERDE=0x2f7a55, VERDE2=0x3f8f66;
-  poe(new THREE.CylinderGeometry(R,R,H,40,1,true),cx,H/2,cz,0,BRANCO);                         // parede
-  poe(new THREE.CylinderGeometry(R+0.2,R+0.2,0.8,40,1,true),cx,0.4,cz,0,VERDE);                // rodapé verde
-  poe(new THREE.CylinderGeometry(R+0.25,R+0.25,0.9,40,1,true),cx,H-0.45,cz,0,VERDE);           // cinta verde no alto
-  for(let i=0;i<20;i++){ const a=i/20*Math.PI*2; if(Math.abs(Math.atan2(Math.sin(a),Math.cos(a)))<0.3) continue;   // frente (leste) livre
+  // Paróquia Nossa Senhora de Caravaggio (Igreja Matriz). Forma/cor/posição pela referência do
+  // Maicon (só para ter noção; modelagem própria): corpo arredondado claro, faixa verde-escura no
+  // alto com o nome, janelas em arco, entrada com marquise virada para o oeste (R. Alfredo Chaves),
+  // sem torre; cruz branca alta solta à frente e cruz azul menor do outro lado.
+  const [cx,cz]=IGREJA.c, R=IGREJA.r, H=10.5, PAREDE=0xe3eee6, VERDE=0x2c5a4a, CLARO=0xf2f4ef;
+  poe(new THREE.CylinderGeometry(R,R,H,40,1,true),cx,H/2,cz,0,PAREDE);                        // parede
+  poe(new THREE.CylinderGeometry(R+0.15,R+0.15,0.7,40,1,true),cx,0.35,cz,0,0xc9d3cc);         // rodapé
+  poe(new THREE.CylinderGeometry(R+0.35,R+0.35,2.4,40,1,true),cx,H+1.2,cz,0,VERDE);           // faixa verde-escura no alto
+  for(let i=0;i<22;i++){ const a=i/22*Math.PI*2; if(Math.abs(Math.atan2(Math.sin(a),Math.cos(a))-Math.PI)<0.42||Math.abs(Math.atan2(Math.sin(a),Math.cos(a))+Math.PI)<0.42) continue;   // frente (oeste) fica para a entrada
     const wx=cx+Math.cos(a)*(R+0.06), wz=cz-Math.sin(a)*(R+0.06), ry=a+Math.PI/2;
-    caixa(1.2,5.2,0.22,wx,2.6,wz,0x9cc7dc,ry);                                                 // vidro
-    poe(new THREE.CylinderGeometry(0.6,0.6,0.22,16,1,false,0,Math.PI).rotateX(Math.PI/2).rotateZ(Math.PI/2),wx,7.8,wz,ry,0x9cc7dc);   // arco
-    caixa(1.5,0.25,0.3,wx,2.45,wz,VERDE,ry);                                                   // peitoril
-    const b=a+Math.PI/20; caixa(0.5,H-1.7,0.3,cx+Math.cos(b)*(R+0.1),0.8,cz-Math.sin(b)*(R+0.1),VERDE2,b+Math.PI/2); }   // pilastras
-  poe(new THREE.CylinderGeometry(R,R,0.3,40),cx,H-0.15,cz,0,0xe9e8e2);
-  const cup=new THREE.SphereGeometry(R+0.8,40,10,0,Math.PI*2,0,Math.PI*0.32); cup.scale(1,0.45,1);
-  poe(cup,cx,H-(R+0.8)*0.45*Math.cos(Math.PI*0.32),cz,0,VERDE);                                 // cobertura verde
-  // torre alta e fina do lado oeste, com agulha e cruz
-  const tx=cx-R-1.6, T=26;
-  caixa(4.2,T,4.2,tx,0,cz,BRANCO); caixa(4.5,0.6,4.5,tx,T*0.45,cz,VERDE); caixa(4.5,0.6,4.5,tx,T-0.6,cz,VERDE);
-  for(const [dx,dz] of [[2.11,0],[-2.11,0],[0,2.11],[0,-2.11]]) caixa(dx?0.1:1.6,3.2,dz?0.1:1.6,tx+dx,T-5,cz+dz,0x2a3a44);   // aberturas do sino
-  const agulha=new THREE.ConeGeometry(2.6,9,4); agulha.rotateY(Math.PI/4); poe(agulha,tx,T+4.5,cz,0,VERDE);
-  caixa(0.3,4,0.3,tx,T+9,cz,0xf7f7f2); caixa(2,0.3,0.3,tx,T+11.6,cz,0xf7f7f2);                   // cruz
-  // pórtico de entrada virado para a Praça Biazus (leste)
-  const px=cx+R+3.2;
-  caixa(7,0.5,11,px,4.6,cz,VERDE); for(const dz of [-4.6,-1.6,1.6,4.6]) caixa(0.7,4.6,0.7,px+3,0,cz+dz,BRANCO);
-  caixa(0.3,4.2,4,cx+R+0.1,0,cz,0x6b4a33);                                                     // porta de madeira
-  caixa(8,0.25,13,px,0,cz,0xbdb5a5);                                                           // degrau
-  circulo(cx,cz,R+0.3); ret(tx-2.1,tx+2.1,cz-2.1,cz+2.1);
-  for(const dz of [-4.6,-1.6,1.6,4.6]) retGirado(px+3,cz+dz,0.8,0.8,0);
+    caixa(1.3,5.4,0.22,wx,1.6,wz,0x4c6f9a,ry);                                                 // vitral
+    poe(new THREE.CylinderGeometry(0.65,0.65,0.22,16,1,false,0,Math.PI).rotateX(Math.PI/2).rotateZ(Math.PI/2),wx,7,wz,ry,0x4c6f9a);   // arco
+    caixa(1.6,0.2,0.3,wx,1.5,wz,CLARO,ry);
+    const b=a+Math.PI/22; caixa(0.45,H-0.6,0.28,cx+Math.cos(b)*(R+0.1),0.6,cz-Math.sin(b)*(R+0.1),CLARO,b+Math.PI/2); }   // pilastras claras
+  poe(new THREE.CylinderGeometry(R+0.3,R+0.3,0.3,40),cx,H+2.25,cz,0,0x55605c);               // laje
+  const cup=new THREE.SphereGeometry(R+0.3,40,8,0,Math.PI*2,0,Math.PI*0.22); cup.scale(1,0.35,1);
+  poe(cup,cx,H+2.4-(R+0.3)*0.35*Math.cos(Math.PI*0.22),cz,0,0x6f7a76);                        // cobertura baixa
+  // entrada (oeste): fachada reta, marquise bege e portas de vidro
+  const fx=cx-R+0.6;
+  caixa(1.4,H,16,fx,0,cz,PAREDE); caixa(1.6,2.4,16.4,fx,H,cz,VERDE);
+  caixa(4.2,0.45,12,fx-2.6,4.3,cz,0xd9b98a);                                                   // marquise
+  for(const dz of [-5.4,-1.8,1.8,5.4]) caixa(0.45,4.3,0.45,fx-4.4,0,cz+dz,CLARO);
+  for(const dz of [-3.6,0,3.6]) caixa(0.2,3.2,2.4,fx-0.72,0,cz+dz,0x5f7f9a);                   // portas de vidro
+  caixa(0.7,1.5,0.7,fx-1.2,H+0.35,cz,0xf0ede4); caixa(1.1,0.25,1.1,fx-1.2,H+0.1,cz,0xe0dccf);   // imagem da santa no vão da faixa
+  caixa(6,0.3,15,fx-3.5,0,cz,0xbdb5a5);                                                        // degraus
+  letreiro('IGREJA MATRIZ','Nsa. Sra. de Caravaggio',fx-0.85,H+1.2,cz,-Math.PI/2);
+  // cruzes soltas: branca alta à esquerda de quem chega, azul menor à direita
+  const k1=[fx-9,cz-11], k2=[fx-7,cz+12];
+  caixa(0.7,17,0.7,k1[0],0,k1[1],0xf4f4ef); caixa(0.7,0.7,5,k1[0],13.2,k1[1],0xf4f4ef); caixa(1.6,0.6,1.6,k1[0],0,k1[1],0xd6d3cb);
+  caixa(0.45,8,0.45,k2[0],0,k2[1],0x2f5fb3); caixa(0.45,0.45,3,k2[0],6,k2[1],0x2f5fb3);
+  retGirado(k1[0],k1[1],0.8,0.8,0); retGirado(k2[0],k2[1],0.5,0.5,0);
+  circulo(cx,cz,R+0.3); ret(fx-0.8,fx+0.8,cz-8,cz+8);
+  for(const dz of [-5.4,-1.8,1.8,5.4]) retGirado(fx-4.4,cz+dz,0.5,0.5,0);
+}
+// faixa com o nome da igreja na fachada (verde-escuro, letras claras)
+function letreiro(l1,l2,x,y,z,ry){
+  const cv=document.createElement('canvas'); cv.width=1024; cv.height=160; const k=cv.getContext('2d');
+  k.fillStyle='#2c5a4a'; k.fillRect(0,0,1024,160); k.fillStyle='#e9e3c8'; k.textBaseline='middle';
+  // dois textos, um de cada lado, com vão no meio para a imagem da santa
+  const cabe=(t,peso,max)=>{ let f=64; k.font=`italic ${peso} ${f}px Georgia,serif`; while(k.measureText(t).width>max&&f>24){ f-=2; k.font=`italic ${peso} ${f}px Georgia,serif`; } };
+  cabe(l1,700,400); k.textAlign='left'; k.fillText(l1,24,80);
+  cabe(l2,600,400); k.textAlign='right'; k.fillText(l2,1000,82);
+  const tex=new THREE.CanvasTexture(cv); tex.colorSpace=THREE.SRGBColorSpace;
+  const m=new THREE.Mesh(new THREE.PlaneGeometry(15,2.2),new THREE.MeshBasicMaterial({map:tex})); m.position.set(x,y,z); m.rotation.y=ry; placas.push(m);
 }
 
 /* ───────── Colégio Estadual Euclides da Cunha ───────── */

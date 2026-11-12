@@ -95,7 +95,7 @@ export async function carregarLojas(){
   let dados;
   try{ const r=await fetch(DADOS); if(!r.ok) throw new Error('HTTP '+r.status); dados=await r.json(); }
   catch(e){ console.warn('Sem '+DADOS+': cidade sem letreiros',e); return 0; }
-  const casas=predios.filter(p=>!p.marco);
+  const casas=predios.filter(p=>!p.marco&&!p.branco);   // prédio público (Prefeitura, Câmara) não ganha letreiro de loja
   const usado=new Map();                 // parede → quantos letreiros já tem
   let n=0, totens=0;
   for(const l of dados.lugares){
