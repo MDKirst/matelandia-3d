@@ -11,6 +11,7 @@ import { scene, $ } from './cena.js';
 
 const TRYSTERO='https://cdn.jsdelivr.net/npm/trystero@0.26.0/+esm';
 const CONFIG={ appId:'matelandia3d-cidade-2026' }, SALA='matelandia';
+const LIMITE=15, SALAS_MAX=20, ESPERA=4000;   // até 15 por sala; cheia → abre a próxima
 const loader=new GLTFLoader(); loader.setMeshoptDecoder(MeshoptDecoder);
 
 // filtro simples de nome (sem HTML, sem palavrão, até 16 letras)
@@ -22,19 +23,30 @@ let arquivos={}, tEnvio=0;
 
 export async function entrarOnline(nome, personagem){
   online.eu={ n:limparNome(nome), p:personagem };
-  if(online.ativo){ return; }
+  if(online.ativo||online.entrando){ return; }
+  online.entrando=true;
   try{
     const { joinRoom } = await import(TRYSTERO);
-    const sala=joinRoom(CONFIG,SALA); online.sala=sala; online.ativo=true;
+    // salas automáticas: entra na 1ª que tiver menos de LIMITE jogadores
+    let sala=null;
+    for(let i=1;i<=SALAS_MAX;i++){
+      $('online').textContent=`🌐 procurando sala ${i}…`;
+      sala=joinRoom(CONFIG,`${SALA}-${i}`);
+      await new Promise(ok=>setTimeout(ok,ESPERA));                   // tempo para os que já estão lá aparecerem
+      if(Object.keys(sala.getPeers()).length<LIMITE||i===SALAS_MAX){ online.num=i; break; }
+      try{ sala.leave(); }catch(e){}
+    }
+    online.sala=sala; online.ativo=true; tEnvio=1;
     const est=sala.makeAction('est'); online.envio=est;
     est.onMessage=(d,{peerId})=>receber(peerId,d);
     sala.onPeerJoin=()=>{ tEnvio=1; hud(); };                         // manda o estado já para quem chegou
     sala.onPeerLeave=id=>{ remover(id); hud(); };
     hud();
   }catch(e){ console.warn('online indisponível',e); $('online').textContent='🌐 online indisponível'; }
+  finally{ online.entrando=false; }
 }
 export function sairOnline(){ if(online.sala){ try{ online.sala.leave(); }catch(e){} } online.ativo=false; online.sala=null; for(const id of [...online.outros.keys()]) remover(id); hud(); }
-function hud(){ const n=online.outros.size; $('online').textContent=online.ativo?`🌐 online · ${n?n+(n>1?' jogadores':' jogador'):'ninguém por perto ainda'}`:''; }
+function hud(){ const n=online.outros.size; $('online').textContent=online.ativo?`🌐 sala ${online.num||1} · ${n?n+(n>1?' jogadores':' jogador'):'ninguém por perto ainda'}`:''; }
 
 // meu estado (chamado todo quadro pelo main): x,z,r (rumo), a (animação), vt (veículo) e vh (rumo do veículo)
 export function enviarEstado(dt, s){
