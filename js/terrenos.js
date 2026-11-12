@@ -1,4 +1,5 @@
-// Terrenos à venda e construção com blocos (tudo salvo no navegador de cada jogador).
+// Terrenos à venda e construção com blocos. Dono e blocos ficam no Firebase (todos veem; ver nuvem.js);
+// sem internet, cai para o modo antigo (só no navegador). O saldo M$ é sempre do navegador.
 //  - Lotes: espaços vazios de verdade atrás das calçadas (sem prédio, sem muro, fora das praças),
 //    12 × 24 m, de frente para a rua; estacas nos cantos e placa VENDE-SE com o preço.
 //  - B compra (se tiver saldo M$); C entra/sai do modo construção dentro do SEU terreno;
@@ -10,6 +11,7 @@ import { ruas, predios } from './cidade.js';
 import { bloqueado, definirBloqueioExtra } from './mundo.js';
 import { substituidoPorMarco } from './marcos.js';
 import { LX0, LZ0, LX1, LZ1 } from './geo.js';
+import { nuvem, conectarNuvem, ouvirLotes, ouvirBlocos, tomarLote, porBloco, tirarBloco, subirBlocos } from './nuvem.js';
 
 const W=12, D=24, ALT=20;                          // largura (frente), fundo, altura máxima em blocos
 const COM_CALCADA=new Set(['primary','secondary','tertiary','residential','unclassified','living_street']);
@@ -129,10 +131,11 @@ function montarLote(c,idx){
   const s=salvo.terrenos[id]; if(s){ for(const [i,j,k,tp] of s.blocos||[]) l.blocos.set(i+','+j+','+k,tp); refazer(l); }
   lotes.push(l);
 }
-const meu=l=>!!salvo.terrenos[l.id];
+const meu=l=>nuvem.ok?l.dono===nuvem.uid:!!salvo.terrenos[l.id];
+const meuNome=()=>{ try{ return (localStorage.getItem('matelandia3d.nome')||'').trim()||'Visitante'; }catch(e){ return 'Visitante'; } };
 function trocarPlaca(l){
   if(l.placa) l.grupo.remove(l.placa);
-  l.placa=null; if(meu(l)) return;                                  // comprado: a placa sai
+  l.placa=null; if(meu(l)||l.dono) return;                         // comprado (por você ou outro): a placa sai
   l.placa=placa('VENDE-SE',fmt(l.preco),'#15803d');
   l.placa.position.set(W/2,0,0.8); l.placa.rotation.y=Math.PI;   // de frente para a rua
   l.grupo.add(l.placa);
@@ -148,7 +151,7 @@ function refazer(l){
     const im=new THREE.InstancedMesh(GEO[forma(tp)],mats[tp],lista.length); im.userData.tipo=tp; im.userData.celulas=lista;
     lista.forEach(([i,j,y,g],n)=>{ M4.compose(V3.set(i+0.5,y+0.5,j+0.5),QY.setFromAxisAngle(EY,g?Math.PI/2:0),UM); im.setMatrixAt(n,M4); });
     im.instanceMatrix.needsUpdate=true; l.grupo.add(im); l.inst.push(im); });
-  if(meu(l)){ salvo.terrenos[l.id].blocos=[...l.blocos].map(([k,tp])=>[...k.split(',').map(Number),tp]); salvar(); }
+  if(meu(l)&&salvo.terrenos[l.id]){ salvo.terrenos[l.id].blocos=[...l.blocos].map(([k,tp])=>[...k.split(',').map(Number),tp]); salvar(); }
 }
 // bloco no chão/primeiro andar bloqueia passagem (pessoa, carro, polícia)
 function bloqueiaBloco(x,z){
@@ -168,10 +171,16 @@ function loteEm(x,z,margem=0){
 }
 let aviso=null;
 function avisar(t){ const a=$('aviso'); a.textContent=t; a.style.opacity=1; clearTimeout(aviso); aviso=setTimeout(()=>a.style.opacity=0,2500); }
-export function comprar(x,z){
+let comprando=false;
+export async function comprar(x,z){
   const l=loteEm(x,z,1); if(!l) return false;
   if(meu(l)){ avisar('Este terreno já é seu'); return true; }
+  if(l.dono){ avisar(`Terreno de ${l.donoNome||'outro jogador'}`); return true; }
   if(salvo.saldo<l.preco){ avisar(`Saldo insuficiente (${fmt(salvo.saldo)})`); return true; }
+  if(comprando) return true;
+  if(nuvem.ok){ comprando=true; avisar('Comprando…'); const ok=await tomarLote(l.id, meuNome()); comprando=false;
+    if(!ok){ avisar('Alguém comprou antes de você!'); return true; }
+    l.dono=nuvem.uid; l.donoNome=meuNome(); }
   salvo.saldo-=l.preco; salvo.terrenos[l.id]={blocos:[]}; salvar(); hudSaldo(); trocarPlaca(l);
   avisar('Terreno comprado! C para construir'); return true;
 }
@@ -186,6 +195,7 @@ function sairObra(){ obra.ativa=false; obra.lote=null; $('barra').style.display=
 export function dicaTerreno(x,z){
   const l=loteEm(x,z,1); if(!l) { if(obra.ativa) sairObra(); return ''; }
   if(obra.ativa) return 'Clique: colocar · Direito: tirar · 1–8 blocos · 9 porta · 0 janela · P piso · C: sair';
+  if(!meu(l)&&l.dono) return `Terreno de ${l.donoNome||'outro jogador'}`;
   return meu(l)?'C construir no seu terreno':`B comprar terreno (${fmt(l.preco)}) · saldo ${fmt(salvo.saldo)}`;
 }
 
@@ -223,7 +233,7 @@ function mirar(cx,cy){
 }
 function agir(tirar){
   const l=obra.lote; if(!l||!alvo) return;
-  if(tirar){ if(alvo.tira){ l.blocos.delete(alvo.tira.join(',')); refazer(l); } }
+  if(tirar){ if(alvo.tira){ const k=alvo.tira.join(','); l.blocos.delete(k); refazer(l); tirarBloco(l.id,k); } }
   else if(alvo.por){
     const [i,j,y]=alvo.por, k=alvo.por.join(','), fm=forma(obra.tipo);
     if(l.blocos.size>=6000) return avisar('Limite de blocos neste terreno');
@@ -232,7 +242,7 @@ function agir(tirar){
     if(fm==='porta'&&(y+1>=ALT||l.blocos.has(i+','+j+','+(y+1)))) return avisar('A porta precisa de 2 de altura livres');
     if(l.blocos.has(k)&&forma(tipoDe(l.blocos.get(k)))!=='piso') return;                          // só o piso pode ser substituído
     const gira=(fm==='porta'||fm==='janela')&&obra.giro?100:0;
-    l.blocos.set(k,obra.tipo+gira); refazer(l); }
+    l.blocos.set(k,obra.tipo+gira); refazer(l); porBloco(l.id,k,obra.tipo+gira); }
 }
 let ini=null;
 cv.addEventListener('pointerdown',e=>{ ini={x:e.clientX,y:e.clientY,b:e.button}; });
@@ -265,6 +275,28 @@ export function iniciarTerrenos(){
   definirBloqueioExtra(bloqueiaBloco);
   lotesVazios().forEach(montarLote);
   montarBarra(); hudSaldo();
+  ligarNuvem().catch(e=>console.warn('mundo compartilhado:',e));
   return lotes.length;
+}
+
+/* ───────── mundo compartilhado ───────── */
+async function ligarNuvem(){
+  // o que estava só neste navegador (antes do Firebase): guarda para subir se o terreno ainda estiver livre
+  const locais=new Map(Object.entries(salvo.terrenos).map(([id,t])=>[id,new Map((t.blocos||[]).map(([i,j,k,tp])=>[i+','+j+','+k,tp]))]));
+  if(!await conectarNuvem()){ console.info('mundo compartilhado indisponível: construções só neste navegador'); return; }
+  const porId=new Map(lotes.map(l=>[l.id,l]));
+  let primeira=true;
+  ouvirLotes(async donos=>{
+    for(const l of lotes){ const d=donos[l.id]; l.dono=d?.dono||null; l.donoNome=d?.nome||''; trocarPlaca(l);
+      if(obra.ativa&&obra.lote===l&&!meu(l)) sairObra(); }
+    if(!primeira) return; primeira=false;
+    // migração: terrenos comprados antes, neste navegador
+    for(const [id,bl] of locais){ const l=porId.get(id); if(!l) continue;
+      if(l.dono===nuvem.uid){ continue; }
+      if(!l.dono&&await tomarLote(id, meuNome())){ l.dono=nuvem.uid; l.donoNome=meuNome(); trocarPlaca(l); subirBlocos(id, bl); continue; }
+      delete salvo.terrenos[id]; ganhar(l.preco); avisar('Um terreno seu já tinha dono: dinheiro devolvido'); }
+    for(const l of lotes){ if(meu(l)&&!salvo.terrenos[l.id]) salvo.terrenos[l.id]={blocos:[]}; } salvar();
+  });
+  for(const l of lotes) ouvirBlocos(l.id, m=>{ l.blocos=m; refazer(l); });
 }
 export const lotesMeus=()=>lotes.filter(meu);

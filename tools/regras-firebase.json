@@ -1,0 +1,25 @@
+{
+  "rules": {
+    ".read": false,
+    ".write": false,
+    "lotes": {
+      ".read": true,
+      "$lote": {
+        ".write": "auth != null && (!data.exists() || data.child('dono').val() === auth.uid)",
+        ".validate": "$lote.matches(/^-?[0-9]{1,5}_-?[0-9]{1,5}$/) && newData.child('dono').val() === auth.uid && newData.child('nome').isString() && newData.child('nome').val().length <= 16",
+        "dono": { ".validate": true },
+        "nome": { ".validate": true },
+        "$outro": { ".validate": false }
+      }
+    },
+    "blocos": {
+      ".read": true,
+      "$lote": {
+        ".write": "auth != null && root.child('lotes').child($lote).child('dono').val() === auth.uid",
+        "$cel": {
+          ".validate": "$cel.matches(/^[0-9]{1,2}_[0-9]{1,2}_[0-9]{1,2}$/) && newData.isNumber() && newData.val() >= 0 && newData.val() < 200"
+        }
+      }
+    }
+  }
+}
