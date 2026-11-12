@@ -7,7 +7,8 @@ const mm=$('mini').getContext('2d'); const MMS=380, ESC=0.75; // px por metro
 // rumo: direção da seta do jogador (0 = +Z, sul). veiculos: [{x,z,h,comp,larg}] estacionados;
 // transito: [[x,z],...]
 // alvo: [x,z] da entrega (fica na borda do mapa se estiver longe)
-export function minimapa(px,pz,rumo,veiculos=[],transito=[],alvo=null){
+// jogadores: [[x,z]] dos outros jogadores online (pontos azuis)
+export function minimapa(px,pz,rumo,veiculos=[],transito=[],alvo=null,jogadores=[]){
   const alc=MMS/2/ESC;
   mm.fillStyle='#22352a'; mm.fillRect(0,0,MMS,MMS);
   mm.save(); mm.translate(MMS/2,MMS/2); mm.scale(ESC,ESC); mm.translate(-px,-pz);
@@ -22,6 +23,8 @@ export function minimapa(px,pz,rumo,veiculos=[],transito=[],alvo=null){
   for(const [x,z] of transito){ mm.beginPath(); mm.arc(x,z,3.2,0,Math.PI*2); mm.fill(); }
   mm.fillStyle='#38bdf8'; mm.strokeStyle='#0c4a6e'; mm.lineWidth=1.5;
   for(const v of veiculos){ mm.save(); mm.translate(v.x,v.z); mm.rotate(-v.h); mm.fillRect(-v.larg/2-1,-v.comp/2-1,v.larg+2,v.comp+2); mm.strokeRect(-v.larg/2-1,-v.comp/2-1,v.larg+2,v.comp+2); mm.restore(); }
+  mm.fillStyle='#22d3ee'; mm.strokeStyle='#083344'; mm.lineWidth=2;
+  for(const [x,z] of jogadores){ mm.beginPath(); mm.arc(x,z,5.5,0,Math.PI*2); mm.fill(); mm.stroke(); }
   mm.restore();
   mm.save(); mm.translate(MMS/2,MMS/2); mm.rotate(-rumo);
   mm.fillStyle='#F97316'; mm.strokeStyle='#111'; mm.lineWidth=3;

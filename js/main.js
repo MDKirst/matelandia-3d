@@ -22,6 +22,8 @@ import { iniciarPolicia, atualizarPolicia, crime, posicoesPolicia } from './poli
 import { somBatida, somExplosao, somPancada, somSirene } from './som.js';
 import { iniciarTerrenos, comprar, alternarObra, dicaTerreno, obra, lotesMeus } from './terrenos.js';
 import { alternarCorrida, atualizarCorrida, alvoCorrida } from './entregas.js';
+import { entrarOnline, sairOnline, enviarEstado, atualizarOnline, posicoesJogadores } from './online.js';
+addEventListener('matelandia:jogar',e=>{ const d=e.detail; if(d.online) entrarOnline(d.nome,d.personagem); else sairOnline(); });
 import { minimapa } from './minimapa.js';
 import { frota, iniciarVeiculos, veiculoPerto, entrar, sair, dirigir, dentroDeVeiculo, frente, esquerda } from './veiculos.js';
 import * as veic from './veiculos.js';
@@ -53,7 +55,7 @@ function bateNoTransito(c,x,z,h){
   return false;
 }
 
-let lugaresCache=[], gesto=0;
+let lugaresCache=[], gesto=0, estadoAPe='parado';
 const relogio=new THREE.Clock(), alvo=new THREE.Vector3(); let rumo=0, tLento=0, passo=0, ruaAtual='', orbita=0.6;
 function aPe(dt){
   let ix=(tecla.KeyD||tecla.ArrowRight?1:0)-(tecla.KeyA||tecla.ArrowLeft?1:0);
@@ -75,6 +77,7 @@ function aPe(dt){
   p.x=Math.max(LX0+3,Math.min(LX1-3,p.x)); p.z=Math.max(LZ0+3,Math.min(LZ1-3,p.z));
   jogador.rotation.y=rumo; suporte.rotation.y=av.giroExtra;
   if(gesto>0){ gesto-=dt; if(estado==='parado') estado='acenar'; }       // acenando para alguém
+  estadoAPe=estado;
   animar(estado); if(av.mixer) av.mixer.update(dt);
   if(av.boneco){ const s=estado==='parado'?0:Math.sin(passo)*(estado==='correr'?0.9:0.55), q=av.boneco.userData.partes;
     q[0].rotation.x=s; q[1].rotation.x=-s; q[2].rotation.x=-s; q[3].rotation.x=s; }
@@ -156,6 +159,9 @@ function quadro(){
   if(!home.aberta) atualizarPolicia(dt,{x:p.x,z:p.z,dirigindo:!!D,v:D?D.v:0},prender);
   efeitosVeiculos(dt); atualizarEfeitos(dt); atualizarBaloes(dt);
   if(!home.aberta) atualizarCorrida(dt, veic.dirigindo);
+  // online: manda meu estado e move os outros jogadores
+  if(!home.aberta){ const D2=veic.dirigindo; enviarEstado(dt,{x:p.x,z:p.z,r:rumo,a:D2?'parado':estadoAPe,vt:D2?D2.tipo.id:null,vh:D2?D2.h:null}); }
+  atualizarOnline(dt);
   { let d=null; for(const [x,z] of posicoesPolicia()){ const k=Math.hypot(x-p.x,z-p.z); if(d===null||k<d) d=k; } somSirene(d); }   // sirene pela viatura mais perto
 
   if(home.aberta){ orbita+=dt*0.04;                                    // sobrevoo lento da cidade atrás da tela inicial
@@ -170,7 +176,7 @@ function quadro(){
 
   tLento+=dt;
   if(tLento>0.12){ tLento=0;
-    minimapa(p.x,p.z,rumo, frota.filter(c=>c!==veic.dirigindo).map(c=>({x:c.obj.position.x,z:c.obj.position.z,h:c.h,comp:c.comp,larg:c.larg})), posicoesTransito(), alvoCorrida());
+    minimapa(p.x,p.z,rumo, frota.filter(c=>c!==veic.dirigindo).map(c=>({x:c.obj.position.x,z:c.obj.position.z,h:c.h,comp:c.comp,larg:c.larg})), posicoesTransito(), alvoCorrida(), posicoesJogadores());
     const r=ruaMaisProxima(p.x,p.z), nome=r?r.nome:'';
     if(nome!==ruaAtual){ ruaAtual=nome;
       const el=$('street'); el.textContent=nome; // nome vem do OSM (editável por qualquer um): nunca como HTML

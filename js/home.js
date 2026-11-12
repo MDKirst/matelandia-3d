@@ -21,6 +21,8 @@ const guardado=()=>{ try{ return localStorage.getItem('matelandia3d.personagem')
 const guardar=id=>{ try{ localStorage.setItem('matelandia3d.personagem',id); }catch(e){} };
 let idx=Math.max(0,PERSONAGENS.findIndex(p=>p.id===guardado()));
 export const home={ aberta:true };
+// nome e online lembrados no navegador
+try{ $('nomeJog').value=localStorage.getItem('matelandia3d.nome')||''; $('onlineJog').checked=localStorage.getItem('matelandia3d.online')!=='0'; }catch(e){}
 
 /* ───────── prévia 3D ───────── */
 const cv=$('prev'), r=new THREE.WebGLRenderer({canvas:cv, antialias:true, alpha:true});
@@ -60,7 +62,7 @@ const relogio=new THREE.Clock();
 const trocar=d=>{ idx=(idx+d+PERSONAGENS.length)%PERSONAGENS.length; mostrar(); };
 $('ant').onclick=()=>trocar(-1); $('prox').onclick=()=>trocar(1);
 addEventListener('keydown',e=>{
-  if(home.aberta){ if(e.code==='ArrowLeft') trocar(-1); if(e.code==='ArrowRight') trocar(1); if(e.code==='Enter'&&!$('jogar').disabled) jogar(); return; }
+  if(home.aberta){ const digita=document.activeElement?.id==='nomeJog'; if(!digita&&e.code==='ArrowLeft') trocar(-1); if(!digita&&e.code==='ArrowRight') trocar(1); if(e.code==='Enter'&&!$('jogar').disabled) jogar(); return; }
   if(e.code==='Escape') abrir();
 });
 $('menu').onclick=e=>{ e.currentTarget.blur(); abrir(); };
@@ -68,6 +70,9 @@ $('jogar').onclick=()=>jogar();
 let escolhido=null;
 function jogar(){
   const p=PERSONAGENS[idx]; guardar(p.id);
+  const nome=$('nomeJog').value.trim(), on=$('onlineJog').checked;
+  try{ localStorage.setItem('matelandia3d.nome',nome); localStorage.setItem('matelandia3d.online',on?'1':'0'); }catch(e){}
+  dispatchEvent(new CustomEvent('matelandia:jogar',{detail:{personagem:p.id, nome:nome||p.nome, online:on}}));
   if(escolhido!==p.id){ escolhido=p.id; baixar(p).then(buf=>usarPersonagem(p.arq,buf.slice(0))).catch(()=>usarPersonagem(p.arq)); }
   home.aberta=false; $('home').classList.add('fora'); document.body.classList.remove('em-home'); $('jogar').blur();
   setTimeout(()=>{ if(!home.aberta) $('home').style.display='none'; },400);   // some de vez depois do esmaecimento
