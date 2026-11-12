@@ -29,9 +29,23 @@ export const BLOCOS=[
   { nome:'Concreto', t:tex(k=>{ k.fillStyle='#9ea2a4'; k.fillRect(0,0,64,64); ruido(k,'40,40,40',600,.12); k.fillStyle='rgba(60,60,60,.35)'; k.fillRect(0,31,64,2); }) },
   { nome:'Pedra',    t:tex(k=>{ k.fillStyle='#7d7a74'; k.fillRect(0,0,64,64); for(let i=0;i<14;i++){ k.fillStyle=`rgb(${110+Math.random()*50|0},${105+Math.random()*45|0},${95+Math.random()*40|0})`; k.beginPath(); k.ellipse(Math.random()*64,Math.random()*64,6+Math.random()*8,5+Math.random()*6,Math.random()*3,0,7); k.fill(); } }) },
   { nome:'Grama',    t:tex(k=>{ k.fillStyle='#5f8f3a'; k.fillRect(0,0,64,64); for(let i=0;i<250;i++){ k.fillStyle=Math.random()<.5?'#4f7d2f':'#78a84b'; k.fillRect(Math.random()*64|0,Math.random()*64|0,1,3); } }) },
+  // peças finas: forma própria; porta e piso deixam passar; porta e janela viram de frente para a câmera
+  { nome:'Porta', forma:'porta', passa:true, tecla:'9', t:tex(k=>{ k.fillStyle='#7a4f2c'; k.fillRect(0,0,64,64); k.strokeStyle='#5a3618'; k.lineWidth=3; k.strokeRect(10,6,44,22); k.strokeRect(10,36,44,22);
+      k.fillStyle='#e2c26a'; k.beginPath(); k.arc(50,34,3.5,0,7); k.fill(); ruido(k,'40,20,5',150,.15); }) },
+  { nome:'Janela', forma:'janela', tecla:'0', vidro:true, t:tex(k=>{ k.clearRect(0,0,64,64); k.fillStyle='rgba(140,190,225,.5)'; k.fillRect(0,0,64,64);
+      k.fillStyle='#f3f1ea'; k.fillRect(0,0,64,6); k.fillRect(0,58,64,6); k.fillRect(0,0,6,64); k.fillRect(58,0,6,64); k.fillRect(30,0,4,64); k.fillRect(0,30,64,4);
+      k.fillStyle='rgba(255,255,255,.55)'; k.fillRect(10,10,5,16); k.fillRect(40,38,5,14); }) },
+  { nome:'Piso', forma:'piso', passa:true, tecla:'p', t:tex(k=>{ k.fillStyle='#d9cdb4'; k.fillRect(0,0,64,64); k.fillStyle='#b8aa8e'; for(let x=0;x<64;x+=32){ k.fillRect(x,0,2,64); k.fillRect(0,x,64,2); } ruido(k,'90,80,60',200,.1); }) },
+  { nome:'Taco', forma:'piso', passa:true, t:tex(k=>{ k.fillStyle='#a8743f'; k.fillRect(0,0,64,64); for(let y=0;y<64;y+=8){ k.fillStyle=(y/8)%2?'rgba(70,45,20,.35)':'rgba(110,45,20,.35)'; k.fillRect(((y/8)%2)*16,y,64,8); k.fillStyle='rgba(50,30,10,.5)'; k.fillRect(0,y,64,1); } }) },
 ];
 const geoBloco=new THREE.BoxGeometry(1,1,1);
-const mats=BLOCOS.map(b=>new THREE.MeshLambertMaterial({map:b.t, transparent:!!b.vidro, opacity:b.vidro?0.85:1}));
+// geometria de cada forma, centrada na célula (o chão da célula é y = -0,5)
+const GEO={ bloco:geoBloco, porta:new THREE.BoxGeometry(0.92,2,0.09).translate(0,0.5,0), janela:new THREE.BoxGeometry(1,1,0.12), piso:new THREE.BoxGeometry(1,0.08,1).translate(0,-0.46,0) };
+const ESCALA_FANTASMA={ bloco:[1,1,1,0], porta:[0.92,2,0.12,0.5], janela:[1,1,0.14,0], piso:[1,0.1,1,-0.45] };
+const forma=tp=>BLOCOS[tp].forma||'bloco';
+const mats=BLOCOS.map(b=>new THREE.MeshLambertMaterial({map:b.t, transparent:!!b.vidro, opacity:b.vidro?0.85:1, side:b.forma?THREE.DoubleSide:THREE.FrontSide}));
+// valor guardado: tipo + 100 se a peça está girada 90°
+const tipoDe=v=>v%100, giroDe=v=>v>=100?1:0;
 
 /* ───────── estado salvo ───────── */
 let salvo={ saldo:SALDO_INICIAL, terrenos:{} };   // terrenos: id → { blocos:[[i,j,k,tipo],...] }
@@ -124,14 +138,14 @@ function trocarPlaca(l){
 }
 
 /* ───────── blocos do lote: uma InstancedMesh por tipo ───────── */
-const M4=new THREE.Matrix4();
+const M4=new THREE.Matrix4(), V3=new THREE.Vector3(), QY=new THREE.Quaternion(), EY=new THREE.Vector3(0,1,0), UM=new THREE.Vector3(1,1,1);
 function refazer(l){
   for(const m of l.inst) l.grupo.remove(m); l.inst=[];
   const porTipo=BLOCOS.map(()=>[]); l.ocupa=new Set();
-  for(const [k,tp] of l.blocos){ const [i,j,y]=k.split(',').map(Number); porTipo[tp].push([i,j,y]); if(y<=1) l.ocupa.add(i+','+j); }
+  for(const [k,v] of l.blocos){ const [i,j,y]=k.split(',').map(Number), tp=tipoDe(v); porTipo[tp].push([i,j,y,giroDe(v)]); if(y<=1&&!BLOCOS[tp].passa) l.ocupa.add(i+','+j); }
   porTipo.forEach((lista,tp)=>{ if(!lista.length) return;
-    const im=new THREE.InstancedMesh(geoBloco,mats[tp],lista.length); im.userData.tipo=tp; im.userData.celulas=lista;
-    lista.forEach(([i,j,y],n)=>{ M4.makeTranslation(i+0.5,y+0.5,j+0.5); im.setMatrixAt(n,M4); });
+    const im=new THREE.InstancedMesh(GEO[forma(tp)],mats[tp],lista.length); im.userData.tipo=tp; im.userData.celulas=lista;
+    lista.forEach(([i,j,y,g],n)=>{ M4.compose(V3.set(i+0.5,y+0.5,j+0.5),QY.setFromAxisAngle(EY,g?Math.PI/2:0),UM); im.setMatrixAt(n,M4); });
     im.instanceMatrix.needsUpdate=true; l.grupo.add(im); l.inst.push(im); });
   if(meu(l)){ salvo.terrenos[l.id].blocos=[...l.blocos].map(([k,tp])=>[...k.split(',').map(Number),tp]); salvar(); }
 }
@@ -145,7 +159,7 @@ function bloqueiaBloco(x,z){
 }
 
 /* ───────── compra, modo construção ───────── */
-export const obra={ ativa:false, lote:null, tipo:0, tirar:false };
+export const obra={ ativa:false, lote:null, tipo:0, tirar:false, giro:0 };
 function loteEm(x,z,margem=0){
   for(const l of lotes){ const dx=x-l.A[0], dz=z-l.A[1], u=dx*l.t[0]+dz*l.t[1], v=dx*l.n[0]+dz*l.n[1];
     if(u>=-margem&&v>=-margem-3&&u<=W+margem&&v<=D+margem) return l; }
@@ -170,7 +184,7 @@ function sairObra(){ obra.ativa=false; obra.lote=null; $('barra').style.display=
 // dica do que dá para fazer aqui
 export function dicaTerreno(x,z){
   const l=loteEm(x,z,1); if(!l) { if(obra.ativa) sairObra(); return ''; }
-  if(obra.ativa) return 'Clique: colocar · Botão direito: tirar · 1–8: bloco · C: sair da obra';
+  if(obra.ativa) return 'Clique: colocar · Direito: tirar · 1–8 blocos · 9 porta · 0 janela · P piso · C: sair';
   return meu(l)?'C construir no seu terreno':`B comprar terreno (${fmt(l.preco)}) · saldo ${fmt(salvo.saldo)}`;
 }
 
@@ -187,21 +201,37 @@ function mirar(cx,cy){
   const hit=ray.intersectObjects([...l.inst,l.chao],false)[0];
   alvo=null; fantasma.visible=false; if(!hit) return;
   let por, tira=null;
-  if(hit.object.isInstancedMesh){ const c=hit.object.userData.celulas[hit.instanceId], n=hit.face.normal; tira=c; por=[c[0]+Math.round(n.x),c[1]+Math.round(n.z),c[2]+Math.round(n.y)]; }
+  if(hit.object.isInstancedMesh){
+    const c=hit.object.userData.celulas[hit.instanceId], f=hit.face.normal, n=c[3]?{x:f.z,y:f.y,z:-f.x}:f;   // peça girada: gira a normal junto
+    tira=c.slice(0,3);
+    if(BLOCOS[hit.object.userData.tipo].forma==='piso'&&n.y>0.5) por=c.slice(0,3);                         // em cima do piso: na mesma célula
+    else por=[c[0]+Math.round(n.x),c[1]+Math.round(n.z),c[2]+Math.round(n.y)];
+  }
   else { const p=l.grupo.worldToLocal(hit.point.clone()); por=[Math.floor(p.x),Math.floor(p.z),0]; }
+  // porta e janela de frente para a câmera: olhando ao longo do fundo do lote, a peça fica de lado a lado
+  const d0=l.grupo.worldToLocal(camera.position.clone()), d1=l.grupo.worldToLocal(hit.point.clone());
+  obra.giro=Math.abs(d1.z-d0.z)>=Math.abs(d1.x-d0.x)?0:1;
   const dentro=c=>c[0]>=0&&c[1]>=0&&c[0]<W&&c[1]<D&&c[2]>=0&&c[2]<ALT;
   if(!dentro(por)) por=null;
   alvo={por,tira};
   const mostra=obra.tirar?tira:por; if(!mostra) return;
   if(fantasma.parent!==l.grupo) l.grupo.add(fantasma);
-  fantasma.position.set(mostra[0]+0.5,mostra[2]+0.5,mostra[1]+0.5); fantasma.scale.setScalar(obra.tirar?1.04:1);
+  const fm=obra.tirar?'bloco':forma(obra.tipo), [sx,sy,sz,oy]=ESCALA_FANTASMA[fm], gira=fm==='porta'||fm==='janela'?obra.giro:0;
+  fantasma.position.set(mostra[0]+0.5,mostra[2]+0.5+oy,mostra[1]+0.5); fantasma.scale.set(sx,sy,sz).multiplyScalar(obra.tirar?1.04:1); fantasma.rotation.y=gira?Math.PI/2:0;
   fantasma.material.color.setHex(obra.tirar?0xff4444:0xffffff); fantasma.visible=true;
 }
 function agir(tirar){
   const l=obra.lote; if(!l||!alvo) return;
   if(tirar){ if(alvo.tira){ l.blocos.delete(alvo.tira.join(',')); refazer(l); } }
-  else if(alvo.por){ const k=alvo.por.join(','); if(l.blocos.size>=6000) return avisar('Limite de blocos neste terreno');
-    l.blocos.set(k,obra.tipo); refazer(l); }
+  else if(alvo.por){
+    const [i,j,y]=alvo.por, k=alvo.por.join(','), fm=forma(obra.tipo);
+    if(l.blocos.size>=6000) return avisar('Limite de blocos neste terreno');
+    const abaixo=l.blocos.get(i+','+j+','+(y-1));
+    if(abaixo!==undefined&&forma(tipoDe(abaixo))==='porta') return avisar('Aí é a parte de cima da porta');
+    if(fm==='porta'&&(y+1>=ALT||l.blocos.has(i+','+j+','+(y+1)))) return avisar('A porta precisa de 2 de altura livres');
+    if(l.blocos.has(k)&&forma(tipoDe(l.blocos.get(k)))!=='piso') return;                          // só o piso pode ser substituído
+    const gira=(fm==='porta'||fm==='janela')&&obra.giro?100:0;
+    l.blocos.set(k,obra.tipo+gira); refazer(l); }
 }
 let ini=null;
 cv.addEventListener('pointerdown',e=>{ ini={x:e.clientX,y:e.clientY,b:e.button}; });
@@ -214,7 +244,8 @@ cv.addEventListener('pointerup',e=>{
 cv.addEventListener('contextmenu',e=>{ if(obra.ativa) e.preventDefault(); });
 addEventListener('keydown',e=>{
   if(!obra.ativa) return;
-  const n=parseInt(e.key); if(n>=1&&n<=BLOCOS.length){ obra.tipo=n-1; marcarBarra(); }
+  const n=parseInt(e.key); if(n>=1&&n<=8){ obra.tipo=n-1; obra.tirar=false; marcarBarra(); }
+  const ex=BLOCOS.findIndex(b=>b.tecla&&b.tecla===e.key.toLowerCase()); if(ex>=0){ obra.tipo=ex; obra.tirar=false; marcarBarra(); }
   if(e.code==='Escape'){ sairObra(); e.stopImmediatePropagation(); }
 },true);
 
@@ -223,7 +254,7 @@ function montarBarra(){
   const b=$('barra'); b.replaceChildren();
   BLOCOS.forEach((bl,i)=>{ const d=document.createElement('button'); d.className='bloco'; d.title=bl.nome;
     const img=document.createElement('canvas'); img.width=img.height=40; img.getContext('2d').drawImage(bl.t.image,0,0,40,40);
-    const n=document.createElement('span'); n.textContent=i+1; d.append(img,n);
+    const n=document.createElement('span'); n.textContent=i<8?i+1:(bl.tecla||'').toUpperCase(); d.append(img,n);
     d.onclick=ev=>{ obra.tipo=i; obra.tirar=false; marcarBarra(); ev.currentTarget.blur(); }; b.append(d); });
   const t=document.createElement('button'); t.id='tirar'; t.textContent='Tirar'; t.onclick=ev=>{ obra.tirar=!obra.tirar; marcarBarra(); ev.currentTarget.blur(); }; b.append(t);
 }
