@@ -19,6 +19,7 @@ import { danificar, efeitosVeiculos } from './veiculos.js';
 import { baterNoCarro } from './transito.js';
 import { quandoAtropelar, interagir, pedestrePerto, atualizarBaloes, quantosSeguem } from './pedestres.js';
 import { iniciarPolicia, atualizarPolicia, crime, posicoesPolicia } from './policia.js';
+import { somBatida, somExplosao, somPancada, somSirene } from './som.js';
 import { minimapa } from './minimapa.js';
 import { frota, iniciarVeiculos, veiculoPerto, entrar, sair, dirigir, dentroDeVeiculo, frente, esquerda } from './veiculos.js';
 import * as veic from './veiculos.js';
@@ -85,7 +86,7 @@ function aoVolante(dt){
   if(toque.joy){ acel=-toque.joy.y; giro=-toque.joy.x; }
   const v0=Math.abs(c.v);
   if(dirigir(dt, acel, giro, tecla.Space, bateNoTransito) && v0>4){            // bateu: estraga o veículo
-    danificar(c,v0);
+    const inteiro=!c.quebrado; danificar(c,v0); somBatida(v0); if(inteiro&&c.quebrado) somExplosao();
     const [fx,fz]=frente(c.h), q=c.obj.position, alvoT=baterNoCarro(q.x+fx*c.comp*0.6,q.z+fz*c.comp*0.6,v0);
     if(alvoT&&v0>9) crime(1,'Batida');
   }
@@ -105,7 +106,7 @@ function prender(posto){
   if(veic.dirigindo){ sair(); jogador.visible=true; cam.dist=distAPe; $('velo').style.display='none'; }
   const [x,z]=pontoLivre(posto[0]+6,posto[1]+6); jogador.position.set(x,0,z);
 }
-quandoAtropelar(()=>crime(1,'Atropelamento'));
+quandoAtropelar(()=>{ somPancada(); crime(1,'Atropelamento'); });
 
 function trocarVeiculo(){
   if(veic.dirigindo){
@@ -147,6 +148,7 @@ function quadro(){
     [...frota.filter(c=>c!==D).map(c=>[c.obj.position.x,c.obj.position.z,c.h,c.comp/2,c.larg/2]), ...posicoesTransito(), ...posicoesPolicia()]);   // pedestre não atravessa veículo
   if(!home.aberta) atualizarPolicia(dt,{x:p.x,z:p.z,dirigindo:!!D,v:D?D.v:0},prender);
   efeitosVeiculos(dt); atualizarEfeitos(dt); atualizarBaloes(dt);
+  { let d=null; for(const [x,z] of posicoesPolicia()){ const k=Math.hypot(x-p.x,z-p.z); if(d===null||k<d) d=k; } somSirene(d); }   // sirene pela viatura mais perto
 
   if(home.aberta){ orbita+=dt*0.04;                                    // sobrevoo lento da cidade atrás da tela inicial
     alvo.set(p.x,0,p.z); camera.position.set(p.x+Math.sin(orbita)*170, 85, p.z+Math.cos(orbita)*170); camera.lookAt(alvo); }

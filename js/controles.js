@@ -4,6 +4,7 @@ import { toXZ } from './geo.js';
 import { av, jogador } from './avatar.js';
 import { satelite } from './satelite.js';
 import { status } from './cidade.js';
+import { alternarSom } from './som.js';
 
 export const tecla={};
 export const cam={ yaw:0.6, pitch:0.42, dist:9 };  // câmera orbital atrás do avatar
@@ -19,6 +20,7 @@ addEventListener('keydown',e=>{
   const ACOES={KeyT:'conversar',KeyG:'cumprimentar',KeyH:'seguir',KeyX:'assustar'};
   if(ACOES[e.code]&&!e.repeat) pedido.acao=ACOES[e.code];
   if(e.code==='KeyR') av.giroExtra+=Math.PI/2;
+  if(e.code==='KeyM'&&!e.repeat){ $('status').textContent=alternarSom()?'🔊 Som ligado (M)':'🔇 Som desligado (M)'; setTimeout(status,2500); }
   if(e.code==='BracketRight'||e.code==='BracketLeft'){
     const z=satelite.mudarZoom(e.code==='BracketRight'?1:-1);
     $('status').textContent='Detalhe do satélite: zoom '+z; setTimeout(status,2500);
