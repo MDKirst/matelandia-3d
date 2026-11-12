@@ -39,13 +39,17 @@ export function ouvirBlocos(id, cb){
   if(!nuvem.ok) return;
   F.onValue(ref('blocos/'+id),s=>{ const m=new Map(); const v=s.val()||{}; for(const k in v) if(typeof v[k]==='number') m.set(celula(k),v[k]); cb(m); },e=>console.warn('blocos',e));
 }
-// tenta ficar com o terreno (transação: se dois compram junto, só um leva). true = é seu
+// tenta ficar com o terreno: grava o lote e ocupa uma das 2 vagas do jogador numa gravação só
+// (as regras recusam se o lote já tem dono ou se não há vaga). Devolve 'ok', 'limite' ou 'ocupado'
+export const LIMITE_TERRENOS=2;
 export async function tomarLote(id, nome){
-  if(!nuvem.ok) return false;
+  if(!nuvem.ok) return 'ocupado';
   try{
-    const r=await F.runTransaction(ref('lotes/'+id),cur=>{ if(cur&&cur.dono!==nuvem.uid) return; return { dono:nuvem.uid, nome:(nome||'Visitante').slice(0,16) }; });
-    return r.committed&&r.snapshot.val()?.dono===nuvem.uid;
-  }catch(e){ console.warn('tomarLote',e); return false; }
+    const vagas=(await F.get(ref('donos/'+nuvem.uid))).val()||{};
+    const vaga=['s1','s2'].find(v=>!vagas[v]); if(!vaga) return 'limite';
+    await F.update(ref(''),{ ['lotes/'+id]:{ dono:nuvem.uid, nome:(nome||'Visitante').slice(0,16) }, [`donos/${nuvem.uid}/${vaga}`]:id });
+    return 'ok';
+  }catch(e){ console.warn('tomarLote',e); return 'ocupado'; }
 }
 export function porBloco(id, k, v){ if(nuvem.ok) F.set(ref(`blocos/${id}/${chave(k)}`),v).catch(e=>console.warn('porBloco',e)); }
 export function tirarBloco(id, k){ if(nuvem.ok) F.remove(ref(`blocos/${id}/${chave(k)}`)).catch(e=>console.warn('tirarBloco',e)); }
