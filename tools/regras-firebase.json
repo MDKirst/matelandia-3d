@@ -27,6 +27,15 @@
         }
       }
     },
+    "visitas": {
+      ".read": true,
+      "$dia": {
+        "$uid": {
+          ".write": "auth != null && auth.uid === $uid && !data.exists()",
+          ".validate": "$dia.matches(/^20[0-9]{2}-[0-9]{2}-[0-9]{2}$/) && newData.val() === true"
+        }
+      }
+    },
     "donos": {
       "$uid": {
         ".read": "auth != null && auth.uid === $uid",

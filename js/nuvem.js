@@ -25,10 +25,18 @@ export async function conectarNuvem(){
     const cred=au.currentUser||await new Promise(ok=>{ const sai=auth.onAuthStateChanged(au,u=>{ if(u){ sai(); ok(u); } }); auth.signInAnonymously(au).catch(e=>{ console.warn('login anônimo',e); ok(null); }); });
     if(!cred) return false;
     db=base.getDatabase(a); F=base; nuvem.uid=cred.uid; nuvem.ok=true; console.info('nuvem: conectado');
+    contarVisita();
     return true;
   }catch(e){ console.warn('nuvem indisponível',e); return false; }
 }
 const ref=c=>F.ref(db,c);
+// contador de visitas: uma marca por navegador por dia (visitas/AAAA-MM-DD/uid, dia no horário de Brasília).
+// Não guarda nome nem nada da pessoa; a regra só deixa gravar a própria marca, uma vez. Falha em silêncio.
+function contarVisita(){
+  if(/^(localhost|127\.|\[::1\])/.test(location.hostname)) return;      // teste no PC não conta
+  const dia=new Date(Date.now()-3*3600e3).toISOString().slice(0,10);
+  F.set(ref(`visitas/${dia}/${nuvem.uid}`),true).catch(()=>{});          // recusada = já contou hoje
+}
 const chave=k=>k.split(',').join('_');            // '3,4,0' → '3_4_0' (vírgula vira _ no banco)
 const celula=c=>c.split('_').join(',');
 
