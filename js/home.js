@@ -8,7 +8,7 @@ import { usarPersonagem } from './avatar.js';
 
 // Maicon + os 18 da Quaternius (assets/pessoas)
 export const PERSONAGENS = [
-  { id:'maicon', nome:'Maicon', papel:'o criador', arq:'assets/maicon-animado.glb' },
+  { id:'maicon', nome:'Maicon', papel:'o criador', arq:'assets/maicon-animado.glb', admin:true },
   ...[['male-casual','Lucas','casual'],['female-casual','Ana','casual'],['male-shirt','Pedro','camisa'],['female-dress','Clara','vestido'],
      ['male-long-sleeve','João','manga longa'],['female-tank-top','Júlia','regata'],['male-suit','Dr. Paulo','terno'],['female-alternative','Bia','alternativa'],
      ['male-casual-2-24','Rafa','casual'],['female-casual-2-24','Luana','casual'],['male-worker-24','Seu Antônio','trabalhador'],['female-worker-24','Dona Cida','trabalhadora'],
@@ -19,7 +19,23 @@ export const PERSONAGENS = [
 
 const guardado=()=>{ try{ return localStorage.getItem('matelandia3d.personagem'); }catch(e){ return null; } };
 const guardar=id=>{ try{ localStorage.setItem('matelandia3d.personagem',id); }catch(e){} };
-let idx=Math.max(0,PERSONAGENS.findIndex(p=>p.id===guardado()));
+// O Maicon é só do admin: fica fora da lista até o navegador provar o código (link ?admin=código, uma vez;
+// depois fica lembrado). No código do jogo vai só o hash, não o código.
+const ADMIN_HASH='1199dc852d953fb37c6da26901d59eceeafd6a96adf67a6261c6037cfa176191';
+let lista=PERSONAGENS.filter(p=>!p.admin);
+let idx=Math.max(0,lista.findIndex(p=>p.id===guardado()));
+async function liberarAdmin(){
+  try{
+    const url=new URL(location.href), daUrl=url.searchParams.get('admin'), cod=daUrl||localStorage.getItem('matelandia3d.admin');
+    if(!cod) return;
+    if(daUrl){ url.searchParams.delete('admin'); history.replaceState(null,'',url); }      // o código não fica na barra de endereço
+    const h=await crypto.subtle.digest('SHA-256',new TextEncoder().encode('matelandia3d:'+cod));
+    if([...new Uint8Array(h)].map(b=>b.toString(16).padStart(2,'0')).join('')!==ADMIN_HASH){ localStorage.removeItem('matelandia3d.admin'); return; }
+    localStorage.setItem('matelandia3d.admin',cod);
+    const era=lista[idx].id, salvo=guardado();
+    lista=PERSONAGENS; idx=Math.max(0,lista.findIndex(p=>p.id===(daUrl||!salvo||salvo==='maicon'?'maicon':era))); mostrar();
+  }catch(e){}
+}
 export const home={ aberta:true };
 // nome e online lembrados no navegador
 try{ $('nomeJog').value=localStorage.getItem('matelandia3d.nome')||''; $('onlineJog').checked=localStorage.getItem('matelandia3d.online')!=='0'; }catch(e){}
@@ -34,7 +50,7 @@ cam.position.set(0,1.05,4.6); cam.lookAt(0,0.9,0);
 const loader=new GLTFLoader(); loader.setMeshoptDecoder(MeshoptDecoder);
 const cache={}, arquivos={}; let atual=null, mixer=null, giro=0, pedido=0;
 function mostrar(){
-  const p=PERSONAGENS[idx], meu=++pedido;
+  const p=lista[idx], meu=++pedido;
   $('nomePers').replaceChildren(p.nome, Object.assign(document.createElement('small'),{textContent:p.papel}));
   const usar=g=>{
     if(meu!==pedido) return;
@@ -59,7 +75,7 @@ const relogio=new THREE.Clock();
 (function quadro(){ requestAnimationFrame(quadro); if(!home.aberta) return; const dt=Math.min(relogio.getDelta(),0.05); giro+=dt*0.6; if(atual) atual.rotation.y=giro; if(mixer) mixer.update(dt); r.render(cena,cam); })();
 
 /* ───────── botões ───────── */
-const trocar=d=>{ idx=(idx+d+PERSONAGENS.length)%PERSONAGENS.length; mostrar(); };
+const trocar=d=>{ idx=(idx+d+lista.length)%lista.length; mostrar(); };
 $('ant').onclick=()=>trocar(-1); $('prox').onclick=()=>trocar(1);
 addEventListener('keydown',e=>{
   if(home.aberta){ const digita=document.activeElement?.id==='nomeJog'; if(!digita&&e.code==='ArrowLeft') trocar(-1); if(!digita&&e.code==='ArrowRight') trocar(1); if(e.code==='Enter'&&!$('jogar').disabled) jogar(); return; }
@@ -69,7 +85,7 @@ $('menu').onclick=e=>{ e.currentTarget.blur(); abrir(); };
 $('jogar').onclick=()=>jogar();
 let escolhido=null;
 function jogar(){
-  const p=PERSONAGENS[idx]; guardar(p.id);
+  const p=lista[idx]; guardar(p.id);
   const nome=$('nomeJog').value.trim(), on=$('onlineJog').checked;
   try{ localStorage.setItem('matelandia3d.nome',nome); localStorage.setItem('matelandia3d.online',on?'1':'0'); }catch(e){}
   dispatchEvent(new CustomEvent('matelandia:jogar',{detail:{personagem:p.id, nome:nome||p.nome, online:on}}));
@@ -82,3 +98,4 @@ function abrir(){ home.aberta=true; $('home').style.display=''; requestAnimation
 export function pronto(){ const b=$('jogar'); b.disabled=false; b.textContent='JOGAR'; $('carrega').textContent=''; }
 export function progresso(txt){ $('carrega').textContent=txt; }
 mostrar();
+liberarAdmin();
