@@ -19,7 +19,7 @@ import { danificar, efeitosVeiculos } from './veiculos.js';
 import { baterNoCarro } from './transito.js';
 import { quandoAtropelar, interagir, pedestrePerto, atualizarBaloes, quantosSeguem } from './pedestres.js';
 import { iniciarPolicia, atualizarPolicia, crime, posicoesPolicia } from './policia.js';
-import { somBatida, somExplosao, somPancada, somSirene } from './som.js';
+import { somBatida, somExplosao, somPancada, somSirene, somMundo } from './som.js';
 import { iniciarTerrenos, comprar, alternarObra, dicaTerreno, obra, lotesMeus } from './terrenos.js';
 import { alternarCorrida, atualizarCorrida, alvoCorrida } from './entregas.js';
 import { entrarOnline, sairOnline, enviarEstado, atualizarOnline, posicoesJogadores, golpearJogador, quandoApanhar } from './online.js';
@@ -29,7 +29,7 @@ addEventListener('matelandia:jogar',e=>{ const d=e.detail; if(d.online) entrarOn
 import { minimapa } from './minimapa.js';
 import { frota, iniciarVeiculos, veiculoPerto, entrar, sair, dirigir, dentroDeVeiculo, frente, esquerda } from './veiculos.js';
 import * as veic from './veiculos.js';
-import { iniciarTransito, atualizarTransito, posicoesTransito } from './transito.js';
+import { iniciarTransito, atualizarTransito, posicoesTransito, carros } from './transito.js';
 
 // borda visível do mundo
 { const m=new THREE.MeshBasicMaterial({color:0xF97316,transparent:true,opacity:.18,side:THREE.DoubleSide,depthWrite:false}), H=45;
@@ -181,6 +181,11 @@ function quadro(){
   if(!home.aberta){ const D2=veic.dirigindo; enviarEstado(dt,{x:p.x,z:p.z,r:rumo,a:D2?'parado':estadoAPe,vt:D2?D2.tipo.id:null,vh:D2?D2.h:null,e:vida.e,c:vida.caido>0,g:[golpe.seq,golpe.tipo||'']}); }
   atualizarOnline(dt);
   { let d=null; for(const [x,z] of posicoesPolicia()){ const k=Math.hypot(x-p.x,z-p.z); if(d===null||k<d) d=k; } somSirene(d); }   // sirene pela viatura mais perto
+  { const D3=veic.dirigindo, d2=(x,z)=>Math.hypot(x-p.x,z-p.z);                   // motor, trânsito, gente, cidade, passos
+    somMundo(dt,{ home:home.aberta, ape:estadoAPe,
+      motor:D3&&!home.aberta?{v:D3.v,vmax:D3.tipo.vmax,quebrado:D3.quebrado}:null,
+      carros:[...carros.filter(c=>c.r&&c.obj.visible).map(c=>[d2(c.obj.position.x,c.obj.position.z),c.v||0]), ...frota.filter(c=>c!==D3&&Math.abs(c.v||0)>0.5).map(c=>[d2(c.obj.position.x,c.obj.position.z),c.v])],
+      pessoas:posicoesPedestres().map(([x,z])=>d2(x,z)) }); }
 
   if(home.aberta){ orbita+=dt*0.04;                                    // sobrevoo lento da cidade atrás da tela inicial
     alvo.set(p.x,0,p.z); camera.position.set(p.x+Math.sin(orbita)*170, 85, p.z+Math.cos(orbita)*170); camera.lookAt(alvo); }

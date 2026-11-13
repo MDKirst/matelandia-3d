@@ -73,6 +73,74 @@ export function somSirene(dist){
   sirene.f.frequency.setTargetAtTime(900+2400*Math.max(0,1-dist/200),ctx.currentTime,0.2);       // longe soa abafada
 }
 
+/* ───────── sons do mundo (contínuos), atualizados a cada quadro por somMundo() ─────────
+   - motor do veículo que eu dirijo: dente de serra + quadrada grave, rotação sobe e "troca marcha"
+   - trânsito: ronco + chiado de pneu, volume pela soma dos carros perto, tom pelo mais perto
+   - gente: murmúrio (ruído na faixa da voz com sílabas aleatórias), volume pelo nº de pedestres perto
+   - cidade: chiado grave de fundo + passarinho e buzina ao longe de vez em quando
+   - passos do jogador a pé */
+let mundo=null;
+function voz(tipo, freq){ const o=ctx.createOscillator(); o.type=tipo; o.frequency.value=freq; o.start(); return o; }
+function fonteRuido(){ const s=ctx.createBufferSource(); s.buffer=ruido; s.loop=true; s.playbackRate.value=0.9+Math.random()*0.2; s.start(0,Math.random()*1.5); return s; }
+function filtro(tipo,freq,q=0.7){ const f=ctx.createBiquadFilter(); f.type=tipo; f.frequency.value=freq; f.Q.value=q; return f; }
+function ganho(v=0){ const g=ctx.createGain(); g.gain.value=v; return g; }
+function montarMundo(){
+  const m={};
+  // motor do jogador
+  m.mA=voz('sawtooth',40); m.mB=voz('square',20); m.mF=filtro('lowpass',400,2); m.mG=ganho();
+  const gb=ganho(0.5); m.mA.connect(m.mF); m.mB.connect(gb).connect(m.mF); m.mF.connect(m.mG).connect(mestre);
+  // trânsito em volta
+  m.tA=voz('sawtooth',55); m.tF=filtro('lowpass',260,1.5); m.tG=ganho(); m.tA.connect(m.tF).connect(m.tG).connect(mestre);
+  m.pS=fonteRuido(); m.pF=filtro('bandpass',700,0.6); m.pG=ganho(); m.pS.connect(m.pF).connect(m.pG).connect(mestre);
+  // murmúrio de gente: 2 faixas de voz, cada uma com "sílabas" (ganho que pula) próprias
+  m.gente=[[480,1.2],[1100,1.4]].map(([f,q])=>{ const s=fonteRuido(), bp=filtro('bandpass',f,q), sil=ganho(), g=ganho(); s.connect(bp).connect(sil).connect(g).connect(mestre); return {bp,sil,g,f,prox:0}; });
+  // fundo da cidade
+  m.cS=fonteRuido(); m.cF=filtro('lowpass',320,0.5); m.cG=ganho(); m.cS.connect(m.cF).connect(m.cG).connect(mestre);
+  m.proxEvento=ctx.currentTime+4; m.passo=0;
+  return m;
+}
+const alvo=(p,v,tau=0.12)=>p.setTargetAtTime(v,ctx.currentTime,tau);
+function passarinho(t0,vol){ const n=2+((Math.random()*4)|0), f0=2600+Math.random()*1800;
+  for(let i=0;i<n;i++){ const t=t0+i*(0.09+Math.random()*0.06), o=ctx.createOscillator(); o.type='sine';
+    o.frequency.setValueAtTime(f0,t); o.frequency.exponentialRampToValueAtTime(f0*(1.3+Math.random()*0.4),t+0.06);
+    const g=ctx.createGain(); g.gain.setValueAtTime(0.0001,t); g.gain.exponentialRampToValueAtTime(vol,t+0.01); g.gain.exponentialRampToValueAtTime(0.0001,t+0.08);
+    o.connect(g).connect(mestre); o.start(t); o.stop(t+0.1); } }
+function buzinaLonge(t0,vol){ const d=0.18+Math.random()*0.35, f=filtro('lowpass',1200);
+  const g=ctx.createGain(); g.gain.setValueAtTime(0.0001,t0); g.gain.exponentialRampToValueAtTime(vol,t0+0.03); g.gain.setValueAtTime(vol,t0+d); g.gain.exponentialRampToValueAtTime(0.0001,t0+d+0.08);
+  f.connect(g).connect(mestre);
+  for(const fr of [392,494]){ const o=ctx.createOscillator(); o.type='square'; o.frequency.value=fr; o.connect(f); o.start(t0); o.stop(t0+d+0.1); } }
+function pisada(t,vol){ const s=ctx.createBufferSource(); s.buffer=ruido; const f=filtro('lowpass',650), g=ctx.createGain();
+  g.gain.setValueAtTime(vol,t); g.gain.exponentialRampToValueAtTime(0.001,t+0.07); s.connect(f).connect(g).connect(mestre); s.start(t,Math.random()*1.5); s.stop(t+0.09); }
+
+// e: { home, motor:{v,vmax,quebrado}|null, ape:'parado'|'andar'|'correr', carros:[[dist,v]], pessoas:[dist] }
+export function somMundo(dt, e){
+  if(!ctx||ctx.state!=='running') return;
+  mundo ??= montarMundo(); const m=mundo, t=ctx.currentTime;
+  // motor
+  if(e.motor&&!e.motor.quebrado){ const f=Math.min(1,Math.abs(e.motor.v)/e.motor.vmax), marcha=Math.min(4,(f*5)|0), giro=f*5-marcha;
+    const rpm=e.motor.v<0?0.35:(marcha===0?giro*0.9:0.35+giro*0.65);               // 0..1 dentro da marcha
+    const hz=34+rpm*70+marcha*6;
+    alvo(m.mA.frequency,hz,0.06); alvo(m.mB.frequency,hz/2,0.06); alvo(m.mF.frequency,300+rpm*900,0.08); alvo(m.mG.gain,0.09+rpm*0.07,0.1); }
+  else alvo(m.mG.gain,0,0.25);
+  // trânsito: soma de 1/d (até 60 m), tom e chiado pelo mais perto
+  let soma=0, maisPerto=null; for(const [d,v] of e.carros){ if(d>60) continue; soma+=Math.max(0,1-d/60)**2*Math.min(1,0.25+Math.abs(v)/12); if(!maisPerto||d<maisPerto[0]) maisPerto=[d,v]; }
+  soma=Math.min(1.2,soma); const vp=maisPerto?Math.abs(maisPerto[1]):0;
+  alvo(m.tA.frequency,45+vp*3.5,0.2); alvo(m.tG.gain,0.11*soma,0.2); alvo(m.pG.gain,0.07*soma*Math.min(1,vp/8),0.2); alvo(m.pF.frequency,500+vp*40,0.2);
+  // gente: até 12 pessoas a menos de 25 m
+  let povo=0; for(const d of e.pessoas) if(d<25) povo+=1-d/25; povo=Math.min(1,povo/5);
+  for(const g of m.gente){ alvo(g.g.gain,0.09*povo*(e.home?0:1),0.3);
+    if(t>=g.prox){ g.prox=t+0.08+Math.random()*0.22; g.sil.gain.setTargetAtTime(Math.random()<0.3?0.05:0.4+Math.random()*0.6,t,0.03); g.bp.frequency.setTargetAtTime(g.f*(0.8+Math.random()*0.5),t,0.05); } }
+  // fundo da cidade + eventos ao longe
+  alvo(m.cG.gain,e.home?0.05:0.035,0.5);
+  if(t>=m.proxEvento){ m.proxEvento=t+3+Math.random()*7; if(Math.random()<0.7) passarinho(t+0.05,0.03+Math.random()*0.03); else buzinaLonge(t+0.05,0.025+Math.random()*0.02); }
+  // passos a pé
+  if(!e.home&&!e.motor&&(e.ape==='andar'||e.ape==='correr')){ const ritmo=e.ape==='correr'?0.29:0.48; m.passo-=dt; if(m.passo<=0){ m.passo=ritmo; pisada(t,e.ape==='correr'?0.22:0.14); } }
+  else m.passo=0;
+}
+
+// volumes atuais dos sons do mundo (para conferir pelo console)
+export const niveisSom=()=>mundo&&{ estado:ctx.state, motor:+mundo.mG.gain.value.toFixed(3), motorHz:+mundo.mA.frequency.value.toFixed(1), transito:+mundo.tG.gain.value.toFixed(3), gente:+mundo.gente[0].g.gain.value.toFixed(3), cidade:+mundo.cG.gain.value.toFixed(3) };
+
 // Grava um som num WAV (sem tocar): renderiza num OfflineAudioContext. Usado para conferir os sons.
 // nome: 'batida' | 'explosao' | 'pancada' | 'sirene'
 export async function gravarSom(nome, seg=2){

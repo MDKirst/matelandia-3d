@@ -103,6 +103,15 @@ function texGrade(){
   const t=new THREE.CanvasTexture(cv); t.wrapS=t.wrapT=THREE.RepeatWrapping; t.colorSpace=THREE.SRGBColorSpace; return t;
 }
 const grades=[];
+// o "lote" atrás do muro na verdade é outra pista? (canteiro central de avenida de pista dupla, ou faixa
+// espremida entre duas ruas): ponto a menos de meia pista + calçada + folga de outra rua que não 'eu'
+function outraRuaPerto(x,z,eu){
+  for(const r of ruas){ if(r===eu||r.pe) continue; const b=r.bb, f=r.w/2+CALCADA+2; if(x<b[0]-f||x>b[2]+f||z<b[1]-f||z>b[3]+f) continue;
+    for(let i=0;i<r.pts.length-1;i++){ const a=r.pts[i], c=r.pts[i+1], vx=c[0]-a[0], vz=c[1]-a[1];
+      let t=((x-a[0])*vx+(z-a[1])*vz)/(vx*vx+vz*vz||1); t=Math.max(0,Math.min(1,t));
+      if(Math.hypot(x-a[0]-vx*t,z-a[1]-vz*t)<f) return true; } }
+  return false;
+}
 function muros(lojas){
   const PASSO=1.0;
   for(const r of ruas){ if(r.pe||!COM_CALCADA.has(r.tipo)) continue;
@@ -122,6 +131,7 @@ function muros(lojas){
         const livre = lote<3                                                // vão do portão no começo de cada lote
           || pertoCruz(x,z,r.w/2+CALCADA+5)
           || substituidoPorMarco(x,z,'muro',0)
+          || outraRuaPerto(x+nx*3,z+nz*3,r)                                // canteiro central / entre duas ruas
           || ocupado(x,z)||ocupado(x+nx*0.6,z+nz*0.6)                      // prédio colado na calçada
           || lojas.some(l=>Math.abs(l[0]-x)<14&&Math.abs(l[1]-z)<14)       // frente de comércio fica aberta
           || !perto(x+nx*10,z+nz*10,14).some(p=>Math.hypot((p.bb[0]+p.bb[2])/2-x-nx*10,(p.bb[1]+p.bb[3])/2-z-nz*10)<14); // terreno vazio: sem muro
