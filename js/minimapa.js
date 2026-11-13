@@ -8,10 +8,15 @@ const mm=$('mini').getContext('2d'); const MMS=380, ESC=0.75; // px por metro
 // transito: [[x,z],...]
 // alvo: [x,z] da entrega (fica na borda do mapa se estiver longe)
 // jogadores: [[x,z]] dos outros jogadores online (pontos azuis)
-export function minimapa(px,pz,rumo,veiculos=[],transito=[],alvo=null,jogadores=[]){
+// terrenos: { meus:[{cantos,centro}], outros:[...] } — os seus em laranja (com 🏠 na borda se longe), dos outros em cinza
+export function minimapa(px,pz,rumo,veiculos=[],transito=[],alvo=null,jogadores=[],terrenos=null){
   const alc=MMS/2/ESC;
   mm.fillStyle='#22352a'; mm.fillRect(0,0,MMS,MMS);
   mm.save(); mm.translate(MMS/2,MMS/2); mm.scale(ESC,ESC); mm.translate(-px,-pz);
+  if(terrenos){ const lote=(l,fill,stroke)=>{ const [x,z]=l.centro; if(Math.abs(x-px)>alc+20||Math.abs(z-pz)>alc+20) return;
+      mm.beginPath(); l.cantos.forEach((q,i)=>i?mm.lineTo(q[0],q[1]):mm.moveTo(q[0],q[1])); mm.closePath(); mm.fillStyle=fill; mm.fill(); mm.strokeStyle=stroke; mm.lineWidth=2.5; mm.stroke(); };
+    for(const l of terrenos.outros) lote(l,'rgba(148,163,184,.45)','#cbd5e1');
+    for(const l of terrenos.meus) lote(l,'rgba(249,115,22,.75)','#fff7ed'); }
   mm.fillStyle='#8d8676';
   for(const p of predios){ const b=p.bb; if(b[2]<px-alc||b[0]>px+alc||b[3]<pz-alc||b[1]>pz+alc) continue;
     mm.beginPath(); p.pts.forEach((q,i)=>i?mm.lineTo(q[0],q[1]):mm.moveTo(q[0],q[1])); mm.fill(); }
@@ -26,6 +31,10 @@ export function minimapa(px,pz,rumo,veiculos=[],transito=[],alvo=null,jogadores=
   mm.fillStyle='#22d3ee'; mm.strokeStyle='#083344'; mm.lineWidth=2;
   for(const [x,z] of jogadores){ mm.beginPath(); mm.arc(x,z,5.5,0,Math.PI*2); mm.fill(); mm.stroke(); }
   mm.restore();
+  // 🏠 em cada terreno seu (na borda do mapa quando longe)
+  for(const l of terrenos?.meus||[]){ let dx=(l.centro[0]-px)*ESC, dz=(l.centro[1]-pz)*ESC; const d=Math.hypot(dx,dz), lim=MMS/2-18; if(d>lim){ dx*=lim/d; dz*=lim/d; }
+    mm.fillStyle='#F97316'; mm.strokeStyle='#111'; mm.lineWidth=3; mm.beginPath(); mm.arc(MMS/2+dx,MMS/2+dz,13,0,Math.PI*2); mm.fill(); mm.stroke();
+    mm.font='16px system-ui'; mm.textAlign='center'; mm.fillText('🏠',MMS/2+dx,MMS/2+dz+6); }
   mm.save(); mm.translate(MMS/2,MMS/2); mm.rotate(-rumo);
   mm.fillStyle='#F97316'; mm.strokeStyle='#111'; mm.lineWidth=3;
   mm.beginPath(); mm.moveTo(0,18); mm.lineTo(11,-12); mm.lineTo(0,-5); mm.lineTo(-11,-12); mm.closePath(); mm.fill(); mm.stroke(); mm.restore();

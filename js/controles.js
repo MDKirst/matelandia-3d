@@ -24,6 +24,7 @@ addEventListener('keydown',e=>{
   if(e.code==='KeyB'&&!e.repeat) pedido.comprar=true;
   if(e.code==='KeyC'&&!e.repeat) pedido.obra=true;
   if(e.code==='KeyN'&&!e.repeat) pedido.entrega=true;
+  if(e.code==='KeyL'&&!e.repeat) pedido.casa=true;
   if(e.code==='KeyR') av.giroExtra+=Math.PI/2;
   if(e.code==='KeyM'&&!e.repeat){ $('status').textContent=alternarSom()?'🔊 Som ligado (M)':'🔇 Som desligado (M)'; setTimeout(status,2500); }
   if(e.code==='BracketRight'||e.code==='BracketLeft'){
@@ -58,5 +59,6 @@ $('tp').addEventListener('keydown',e=>{
   if(m){ const [x,z]=toXZ(parseFloat(m[1].replace(',','.')),parseFloat(m[2].replace(',','.'))); jogador.position.set(x,0,z); e.target.value=''; e.target.blur(); }
 });
 $('usar').addEventListener('click',e=>{ pedido.usar=true; e.currentTarget.blur(); });
+$('casaBtn').addEventListener('click',e=>{ pedido.casa=true; e.currentTarget.blur(); });
 for(const b of document.querySelectorAll('#acoes button')) b.addEventListener('click',e=>{ pedido.acao=b.dataset.acao; e.currentTarget.blur(); });
 for(const b of document.querySelectorAll('#luta button')) b.addEventListener('click',e=>{ pedido.golpe=b.dataset.golpe; e.currentTarget.blur(); });

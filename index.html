@@ -43,6 +43,10 @@
   #missao{position:fixed;top:58px;left:50%;transform:translateX(-50%);display:none;text-align:center;background:rgba(12,14,18,.72);border:1px solid rgba(250,204,21,.5);border-radius:12px;padding:8px 16px;pointer-events:none}
   #missaoTxt{font-weight:800;font-size:15px}
   #missaoDist{color:#fcd34d;font-size:13px;margin-top:2px}
+  #guia{position:fixed;top:58px;left:50%;transform:translateX(-50%);display:none;text-align:center;background:rgba(12,14,18,.72);border:1px solid rgba(249,115,22,.6);border-radius:12px;padding:8px 16px;pointer-events:none}
+  #guiaTxt{font-weight:800;font-size:15px} #guiaDist{color:#fdba74;font-size:13px;margin-top:2px}
+  #guiaSeta{display:inline-block;font-size:26px;line-height:1;color:#F97316;margin-top:2px;transition:transform .1s}
+  body.em-home #guia{display:none!important}
   #missaoSeta{display:inline-block;font-size:26px;line-height:1;color:#facc15;margin-top:2px;transition:transform .1s}
   #acoes{position:fixed;right:12px;bottom:280px;display:none;flex-direction:column;gap:6px}
   #acoes button{font-size:13px;padding:9px 12px;border-radius:10px;box-shadow:0 3px 10px rgba(0,0,0,.45)}
@@ -88,7 +92,7 @@
   #nomePers small{display:block;color:#94a3b8;font-weight:500;font-size:11px}
   @media (max-width:760px){#home{flex-direction:column-reverse;gap:10px;justify-content:flex-end;overflow:auto;background:rgba(8,10,14,.86)}
     #prev{width:200px;height:240px} #home .ctrl{display:none} #home .sub{margin:8px 0 14px}}
-  @media (max-width:900px){#missao{top:auto;bottom:250px}}
+  @media (max-width:900px){#missao,#guia{top:auto;bottom:250px}}
   @media (max-width:700px){#help{display:none}#mini{width:130px;height:130px}#top{max-width:210px}}
   /* tela de toque: a ajuda é só de teclado */
   @media (pointer:coarse){#help{display:none}}
@@ -103,7 +107,7 @@
     #luta{bottom:130px;flex-direction:row}
     #acoes{top:12px;bottom:auto;flex-direction:row;flex-wrap:wrap;justify-content:flex-end;max-width:270px}
     #acoes button{padding:7px 10px}
-    #missao{top:8px;bottom:auto;padding:5px 12px}
+    #missao,#guia{top:8px;bottom:auto;padding:5px 12px}
     #dica{bottom:96px}
     #home{padding:10px 16px 22px;gap:18px;overflow:auto}
     #home h1{font-size:34px} #home h1 span{display:inline}
@@ -128,6 +132,7 @@
   <div id="btns">
     <button id="menu" class="sec">☰ Menu (Esc)</button>
     <button id="chatBtn" class="sec">💬 Chat (Enter)</button>
+    <button id="casaBtn" class="sec">🏠 Meu terreno (L)</button>
   </div>
   <input id="tp" placeholder="Ir para: lat, lon  (Enter)">
   <div id="coord" style="margin-top:6px;font-size:11px;color:#94a3b8"></div>
@@ -155,6 +160,7 @@
 <div id="procurado"></div>
 <div id="barra"></div>
 <div id="missao"><div id="missaoTxt"></div><div id="missaoSeta">⬆</div><div id="missaoDist"></div></div>
+<div id="guia"><div id="guiaTxt">🏠 Seu terreno</div><div id="guiaSeta">⬆</div><div id="guiaDist"></div></div>
 <div id="aviso"></div>
 <div id="chat"><div id="chatLog"></div><input id="chatIn" maxlength="120" placeholder="Mensagem para a sala (Enter envia, Esc fecha)" autocomplete="off"></div>
 <button id="usar">Entrar</button>

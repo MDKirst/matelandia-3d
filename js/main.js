@@ -20,7 +20,7 @@ import { baterNoCarro } from './transito.js';
 import { quandoAtropelar, interagir, pedestrePerto, atualizarBaloes, quantosSeguem } from './pedestres.js';
 import { iniciarPolicia, atualizarPolicia, crime, posicoesPolicia } from './policia.js';
 import { somBatida, somExplosao, somPancada, somSirene, somMundo } from './som.js';
-import { iniciarTerrenos, comprar, alternarObra, dicaTerreno, obra, lotesMeus } from './terrenos.js';
+import { iniciarTerrenos, comprar, alternarObra, dicaTerreno, obra, lotesMeus, terrenosNoMapa, avisarTerreno } from './terrenos.js';
 import { alternarCorrida, atualizarCorrida, alvoCorrida } from './entregas.js';
 import { entrarOnline, sairOnline, enviarEstado, atualizarOnline, posicoesJogadores, golpearJogador, quandoApanhar } from './online.js';
 import { vida, golpe, golpear, atualizarLuta, levarPancada, poseGolpe, DUR, DANO } from './luta.js';
@@ -139,6 +139,27 @@ function trocarVeiculo(){
   }
 }
 
+// 🏠 Meu terreno (L / botão): a pé vai direto para a calçada da frente; dirigindo, liga a seta até lá.
+// Com 2 terrenos, cada aperto vai para o outro.
+let idxCasa=-1, guiaCasa=null;
+function irAoTerreno(){
+  const meus=terrenosNoMapa().meus;
+  if(!meus.length){ avisarTerreno('Você ainda não tem terreno: ache uma placa VENDE-SE e aperte B'); return; }
+  idxCasa=(idxCasa+1)%meus.length; const l=meus[idxCasa], qual=meus.length>1?` (${idxCasa+1} de ${meus.length})`:'';
+  if(veic.dirigindo){ guiaCasa=l.id; avisarTerreno('Siga a seta até o seu terreno'+qual); return; }
+  jogador.position.set(l.frente[0],0,l.frente[1]); rumo=Math.atan2(l.centro[0]-l.frente[0],l.centro[1]-l.frente[1]);
+  cam.yaw=rumo+Math.PI; guiaCasa=null; avisarTerreno('🏠 Seu terreno'+qual+' · C para construir');
+}
+function atualizarGuia(px,pz){
+  const g=$('guia'), l=guiaCasa&&terrenosNoMapa().meus.find(t=>t.id===guiaCasa);
+  if(!l||home.aberta||alvoCorrida()){ g.style.display='none'; if(!l) guiaCasa=null; return; }
+  const d=Math.hypot(l.centro[0]-px,l.centro[1]-pz);
+  if(d<14){ guiaCasa=null; g.style.display='none'; avisarTerreno('🏠 Chegou no seu terreno'); return; }
+  g.style.display='block'; $('guiaDist').textContent=`${Math.round(d)} m`;
+  const fx=px-camera.position.x, fz=pz-camera.position.z, ang=Math.atan2(l.centro[0]-px,l.centro[1]-pz)-Math.atan2(fx,fz);
+  $('guiaSeta').style.transform=`rotate(${-ang}rad)`;
+}
+
 function quadro(){
   requestAnimationFrame(quadro);
   const dt=Math.min(relogio.getDelta(),0.05);
@@ -147,6 +168,7 @@ function quadro(){
     if(pedido.entrega){ pedido.entrega=false; alternarCorrida(veic.dirigindo); }
     if(pedido.comprar){ pedido.comprar=false; if(!veic.dirigindo) comprar(jogador.position.x,jogador.position.z); }
     if(pedido.obra){ pedido.obra=false; if(!veic.dirigindo) alternarObra(jogador.position.x,jogador.position.z); }
+    if(pedido.casa){ pedido.casa=false; irAoTerreno(); }
     if(pedido.acao){ const a=pedido.acao; pedido.acao=null;                     // T/G/H/X com um pedestre perto
       if(!veic.dirigindo){ const p=jogador.position, alvo=pedestrePerto(p.x,p.z);
         if(alvo){ rumo=Math.atan2(alvo.x-p.x,alvo.z-p.z); if(a==='cumprimentar') gesto=2.2; interagir(a,p.x,p.z); } } }
@@ -199,7 +221,8 @@ function quadro(){
 
   tLento+=dt;
   if(tLento>0.12){ tLento=0;
-    minimapa(p.x,p.z,rumo, frota.filter(c=>c!==veic.dirigindo).map(c=>({x:c.obj.position.x,z:c.obj.position.z,h:c.h,comp:c.comp,larg:c.larg})), posicoesTransito(), alvoCorrida(), posicoesJogadores());
+    minimapa(p.x,p.z,rumo, frota.filter(c=>c!==veic.dirigindo).map(c=>({x:c.obj.position.x,z:c.obj.position.z,h:c.h,comp:c.comp,larg:c.larg})), posicoesTransito(), alvoCorrida(), posicoesJogadores(), terrenosNoMapa());
+    atualizarGuia(p.x,p.z);
     const r=ruaMaisProxima(p.x,p.z), nome=r?r.nome:'';
     if(nome!==ruaAtual){ ruaAtual=nome;
       const el=$('street'); el.textContent=nome; // nome vem do OSM (editável por qualquer um): nunca como HTML
