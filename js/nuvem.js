@@ -13,21 +13,56 @@ const CONFIG={
   appId:'1:322076732588:web:aee542cb9bd3d5ed1c8309',
 };
 
-export const nuvem={ ok:false, uid:null };
-let db=null, F=null;
+// conta: null = anônimo; {nome, foto} = entrou com o Google (o e-mail não é guardado no banco nem mostrado)
+export const nuvem={ ok:false, uid:null, conta:null };
+let db=null, F=null, A=null, au=null, ligando=null;
+const ouvintesConta=new Set();
+export function aoTrocarConta(cb){ ouvintesConta.add(cb); }
+function marcarConta(u){
+  const g=u&&!u.isAnonymous&&u.providerData.find(p=>p.providerId==='google.com');
+  const antes=nuvem.uid; nuvem.uid=u?u.uid:null; nuvem.conta=g?{ nome:g.displayName||u.displayName||'', foto:g.photoURL||'' }:null;
+  for(const cb of ouvintesConta) try{ cb(nuvem, antes!==nuvem.uid); }catch(e){ console.warn(e); }
+}
 
-// conecta e faz o login anônimo; devolve true se deu certo (sem internet: o jogo segue só no navegador)
-export async function conectarNuvem(){
+// conecta e faz o login (anônimo, ou o Google de quem já entrou antes); devolve true se deu certo
+// (sem internet: o jogo segue só no navegador). Pode ser chamada várias vezes: conecta uma só.
+export function conectarNuvem(){ return ligando ??= ligar(); }
+async function ligar(){
   console.info('nuvem: conectando…');
   try{
     const [app,auth,base]=await Promise.all([import(`${CDN}/firebase-app.js`),import(`${CDN}/firebase-auth.js`),import(`${CDN}/firebase-database.js`)]);
-    const a=app.initializeApp(CONFIG), au=auth.getAuth(a);
-    const cred=au.currentUser||await new Promise(ok=>{ const sai=auth.onAuthStateChanged(au,u=>{ if(u){ sai(); ok(u); } }); auth.signInAnonymously(au).catch(e=>{ console.warn('login anônimo',e); ok(null); }); });
+    const a=app.initializeApp(CONFIG); au=auth.getAuth(a); A=auth;
+    const cred=await new Promise(ok=>{ const sai=auth.onAuthStateChanged(au,u=>{ if(u){ sai(); ok(u); } else auth.signInAnonymously(au).catch(e=>{ console.warn('login anônimo',e); sai(); ok(null); }); }); });
     if(!cred) return false;
-    db=base.getDatabase(a); F=base; nuvem.uid=cred.uid; nuvem.ok=true; console.info('nuvem: conectado');
+    db=base.getDatabase(a); F=base; nuvem.ok=true; marcarConta(cred); console.info('nuvem: conectado');
+    auth.onAuthStateChanged(au,u=>{ if(u&&u.uid!==nuvem.uid) marcarConta(u); });
     contarVisita();
     return true;
   }catch(e){ console.warn('nuvem indisponível',e); return false; }
+}
+
+// Entrar com o Google. Liga a conta Google à identidade anônima deste navegador: os terrenos continuam seus.
+// Se essa conta Google já foi usada em outro aparelho, entra nela (os terrenos de lá vêm junto).
+// Devolve 'ok' | 'trocou' (entrou numa conta que já existia) | 'cancelado' | 'bloqueado' | 'erro'
+export async function entrarGoogle(confirmarTroca){
+  if(!await conectarNuvem()) return 'erro';
+  const prov=new A.GoogleAuthProvider(); prov.setCustomParameters({prompt:'select_account'});
+  try{ const r=await A.linkWithPopup(au.currentUser,prov); await r.user.reload(); marcarConta(au.currentUser); return 'ok'; }
+  catch(e){
+    if(e.code==='auth/credential-already-in-use'){
+      const c=A.GoogleAuthProvider.credentialFromError(e); if(!c) return 'erro';
+      const vagas=Object.keys((await F.get(ref('donos/'+nuvem.uid)).catch(()=>null))?.val()||{}).length;   // terrenos do visitante atual
+      if(vagas&&confirmarTroca&&!await confirmarTroca(vagas)) return 'cancelado';
+      await A.signInWithCredential(au,c); marcarConta(au.currentUser); return 'trocou';
+    }
+    if(e.code==='auth/popup-closed-by-user'||e.code==='auth/cancelled-popup-request') return 'cancelado';
+    if(e.code==='auth/popup-blocked') return 'bloqueado';
+    console.warn('entrar com Google',e); return 'erro';
+  }
+}
+// Sair da conta Google: este navegador volta a ser um visitante anônimo novo (os terrenos ficam na conta Google)
+export async function sairGoogle(){
+  if(!A||!au) return; await A.signOut(au); const r=await A.signInAnonymously(au); marcarConta(r.user);
 }
 const ref=c=>F.ref(db,c);
 // contador de visitas: uma marca por navegador por dia (visitas/AAAA-MM-DD/uid, dia no horário de Brasília).

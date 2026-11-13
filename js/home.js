@@ -5,6 +5,7 @@ import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { MeshoptDecoder } from 'three/addons/libs/meshopt_decoder.module.js';
 import { $ } from './cena.js';
 import { usarPersonagem } from './avatar.js';
+import { nuvem, conectarNuvem, aoTrocarConta, entrarGoogle, sairGoogle } from './nuvem.js';
 
 // Maicon + os 18 da Quaternius (assets/pessoas)
 export const PERSONAGENS = [
@@ -95,6 +96,35 @@ function jogar(){
 }
 function abrir(){ home.aberta=true; $('home').style.display=''; requestAnimationFrame(()=>$('home').classList.remove('fora')); document.body.classList.add('em-home'); relogio.getDelta(); }
 // a cidade avisa quando dá para jogar
+/* ───────── conta Google (opcional) ───────── */
+function mostrarConta(){
+  const c=$('conta'), g=nuvem.conta;
+  if(!nuvem.ok){ c.style.display='none'; return; } c.style.display='';
+  if(g){ const b=document.createElement('b'); b.textContent=g.nome||'conta Google';
+    const s=Object.assign(document.createElement('button'),{className:'sair',textContent:'sair'}); s.onclick=sair;
+    c.replaceChildren('✔ Entrou como ',b,' · ',s);
+    if(!$('nomeJog').value.trim()&&g.nome) $('nomeJog').value=g.nome.split(' ')[0].slice(0,16);
+  } else {
+    const b=Object.assign(document.createElement('button'),{id:'google',className:'sec',textContent:'Entrar com Google'}); b.onclick=entrar;
+    c.replaceChildren(b,Object.assign(document.createElement('span'),{textContent:'guarda seus terrenos em qualquer aparelho'}));
+  }
+}
+async function entrar(){
+  const b=$('google'); if(b){ b.disabled=true; b.textContent='Abrindo o Google…'; }
+  const r=await entrarGoogle(async n=>confirm(`Essa conta Google já foi usada em outro aparelho e vai trazer os terrenos de lá.\n\n`+
+    `${n===1?'O terreno':'Os '+n+' terrenos'} que você tem neste navegador como visitante ${n===1?'continua':'continuam'} no mapa, mas você não vai mais poder construir ${n===1?'nele':'neles'}.\n\nEntrar mesmo assim?`));
+  if(r==='bloqueado') alert('O navegador bloqueou a janela do Google. Libere janelas pop-up para este site e tente de novo.');
+  else if(r==='erro') alert('Não deu para entrar com o Google agora. Tente de novo mais tarde.');
+  mostrarConta();
+}
+async function sair(){
+  if(!confirm('Sair da conta Google?\n\nSeus terrenos continuam na sua conta e voltam quando você entrar de novo. Neste navegador você vira visitante.')) return;
+  await sairGoogle(); mostrarConta();
+}
+$('conta').style.display='none';
+aoTrocarConta(mostrarConta);
+conectarNuvem().then(mostrarConta);
+
 export function pronto(){ const b=$('jogar'); b.disabled=false; b.textContent='JOGAR'; $('carrega').textContent=''; }
 export function progresso(txt){ $('carrega').textContent=txt; }
 mostrar();

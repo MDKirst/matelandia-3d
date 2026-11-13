@@ -64,6 +64,10 @@
   #home .jogador input[type=text],#nomeJog{background:#0b0d11;border:1px solid #334155;color:#e2e8f0;border-radius:9px;padding:10px 12px;font-size:15px}
   #home .jogador label{font-size:13px;color:#cbd5e1;display:flex;gap:8px;align-items:center}
   #online{margin-top:4px;font-size:12px;color:#7dd3fc}
+  #conta{display:flex;align-items:center;gap:10px;flex-wrap:wrap;font-size:12.5px;color:#cbd5e1}
+  #conta button{padding:8px 12px;font-size:13px}
+  #conta b{color:#fff}
+  #conta .sair{background:none;color:#7dd3fc;padding:0;font-weight:600;text-decoration:underline;font-size:12.5px}
   #chat{position:fixed;left:12px;bottom:270px;width:min(360px,calc(100vw - 24px));display:none;flex-direction:column;gap:4px;pointer-events:none}
   #chatLog{display:flex;flex-direction:column;gap:3px}
   #chatLog div{background:rgba(12,14,18,.72);border-radius:8px;padding:5px 9px;font-size:13.5px;line-height:1.35;color:#e2e8f0;transition:opacity .6s;overflow-wrap:anywhere}
@@ -161,7 +165,8 @@
     <h1>Matelândia <span>3D</span></h1>
     <div class="sub">Ande, dirija e explore Matelândia&nbsp;-&nbsp;PR com as ruas, os prédios e o satélite de verdade.</div>
     <div class="jogador"><input id="nomeJog" maxlength="16" placeholder="Seu nome no jogo" autocomplete="off">
-      <label><input id="onlineJog" type="checkbox" checked> Jogar online (ver outros jogadores)</label></div>
+      <label><input id="onlineJog" type="checkbox" checked> Jogar online (ver outros jogadores)</label>
+      <div id="conta"></div></div>
     <button id="jogar" class="jogar" disabled>Carregando…</button>
     <div class="carrega" id="carrega"></div>
     <div class="ctrl">

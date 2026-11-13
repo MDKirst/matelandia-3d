@@ -11,7 +11,7 @@ import { ruas, predios } from './cidade.js';
 import { bloqueado, definirBloqueioExtra } from './mundo.js';
 import { substituidoPorMarco } from './marcos.js';
 import { LX0, LZ0, LX1, LZ1 } from './geo.js';
-import { nuvem, conectarNuvem, ouvirLotes, ouvirBlocos, tomarLote, LIMITE_TERRENOS, porBloco, tirarBloco, subirBlocos } from './nuvem.js';
+import { nuvem, conectarNuvem, aoTrocarConta, ouvirLotes, ouvirBlocos, tomarLote, LIMITE_TERRENOS, porBloco, tirarBloco, subirBlocos } from './nuvem.js';
 
 const W=12, D=24, ALT=20;                          // largura (frente), fundo, altura máxima em blocos
 const COM_CALCADA=new Set(['primary','secondary','tertiary','residential','unclassified','living_street']);
@@ -301,6 +301,10 @@ async function ligarNuvem(){
   // só aceita o que o jogo sabe desenhar: dado estragado no banco não pode travar o jogo de ninguém
   const valido=(k,v)=>{ if(!Number.isInteger(v)||v<0||tipoDe(v)>=BLOCOS.length||v>=100+BLOCOS.length) return false;
     const c=k.split(',').map(Number); return c.length===3&&c.every(Number.isInteger)&&c[0]>=0&&c[0]<W&&c[1]>=0&&c[1]<D&&c[2]>=0&&c[2]<ALT; };
+  // entrou/saiu da conta Google: o dono muda de identidade → refaz placas e quem pode construir
+  aoTrocarConta((n,mudou)=>{ if(!mudou) return;
+    for(const l of lotes){ trocarPlaca(l); if(meu(l)&&!salvo.terrenos[l.id]) salvo.terrenos[l.id]={blocos:[]}; }
+    if(obra.ativa&&!meu(obra.lote)) sairObra(); salvar(); });
   for(const l of lotes) ouvirBlocos(l.id, m=>{ for(const [k,v] of m) if(!valido(k,v)) m.delete(k); if(m.size>6000) return; l.blocos=m; refazer(l); });
 }
 export const lotesMeus=()=>lotes.filter(meu);
