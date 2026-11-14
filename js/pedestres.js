@@ -11,6 +11,7 @@ import { toXZ } from './geo.js';
 import { ruas } from './cidade.js';
 import { bloqueado } from './mundo.js';
 import { horaJogo, fatorPessoas } from './ceu.js';
+import { grupoDe, movimento, peso, nomeGrupo, perfil, PRACA, saudacao, FALA_LUGAR } from './rotina.js';
 
 export const PESSOAS = ['male-casual','female-casual','male-shirt','female-dress','male-long-sleeve','female-tank-top','male-suit','female-alternative',
   'male-casual-2-24','female-casual-2-24','male-worker-24','female-worker-24','male-farmer-24','female-formal-24','male-casual-hoodie-24','female-suit-24','male-beach-24','male-suit-24','male-punk-24','female-jeans'];
@@ -22,7 +23,7 @@ const PRACAS = [ {c:[-55,-34], r:22}, {c:[-585,158], r:28} ];
 const loader = new GLTFLoader(); loader.setMeshoptDecoder(MeshoptDecoder);
 const moldes = [];            // {cena, anims:{nome:clip}, altura}
 const gente = [];             // pessoas vivas
-let lojas = [], vias = [], nos = null;
+let lojas = [], vias = [], nos = null, pontos = [];   // pontos: lugares reais com a calçada da frente (rotina)
 const chave = p=>Math.round(p[0]*10)+'_'+Math.round(p[1]*10);
 const sorte = ()=>Math.random();
 
@@ -64,15 +65,51 @@ function animar(p, nome, vel=1){
   a.reset().fadeIn(0.3).play(); p.atual=a;
 }
 
+// lugar para nascer: sorteio pelo movimento da hora (ao quadrado: o horário de pico pesa bem mais),
+// dentro do anel de nascimento e sem lotar a porta
+function escolherLugar(px,pz,h){
+  let soma=0; const cand=[];
+  for(const l of pontos){ const d=Math.hypot(l.sx-px,l.sz-pz); if(d<RAIO_NASCE[0]||d>RAIO_NASCE[1]) continue;
+    const w=movimento(l,h)**2*peso(l); if(w<0.01) continue;
+    if(gente.filter(o=>o.lugar===l&&o.obj).length>=2+peso(l)*2) continue;
+    cand.push([l,w]); soma+=w; }
+  if(soma<0.05) return null;
+  let r=sorte()*soma; for(const [l,w] of cand){ r-=w; if(r<=0) return l; } return null;
+}
+// liga cada lugar ao trecho de rua mais perto (calçada da frente, lado e direção da rua)
+function prenderLugares(lugares){
+  pontos=[]; let id=0;
+  for(const l of lugares){ const [x,z]=toXZ(l.lat,l.lon); let melhor=null, md=30;
+    for(const r of vias){ if(r.mao) continue;
+      for(let i=0;i<r.pts.length-1;i++){ const a=r.pts[i], b=r.pts[i+1], dx=b[0]-a[0], dz=b[1]-a[1], L2=dx*dx+dz*dz||1e-6;
+        if(Math.min(a[0],b[0])-md>x||Math.max(a[0],b[0])+md<x||Math.min(a[1],b[1])-md>z||Math.max(a[1],b[1])+md<z) continue;
+        const t=Math.max(0,Math.min(1,((x-a[0])*dx+(z-a[1])*dz)/L2)), qx=a[0]+dx*t, qz=a[1]+dz*t, d=Math.hypot(x-qx,z-qz);
+        if(d<md){ md=d; melhor={r,i,t0:t,qx,qz,dx,dz}; } } }
+    if(!melhor) continue;
+    const {r,i,t0,qx,qz,dx,dz}=melhor, L=Math.hypot(dx,dz)||1, ux=dx/L, uz=dz/L, lado=Math.sign(-uz*(x-qx)+ux*(z-qz))||1;
+    const nx=-uz*lado, nz=ux*lado, off=r.w/2+0.3+1.3;
+    pontos.push({id:id++, n:l.n, g:grupoDe(l), r, i, t0, lado, ux, uz, nx, nz, sx:qx+nx*off, sz:qz+nz*off});
+  }
+}
+
 // nasce numa calçada perto do jogador (mais gente onde há comércio) ou numa praça
 function nascer(p, px, pz){
   if(p.obj){ scene.remove(p.obj); p.mixer.stopAllAction(); p.obj=null; }
   const m=moldes[(Math.random()*moldes.length)|0]; if(!m) return false;
-  // praça perto? 1 em 4 vira grupinho
+  p.lugar=null; const h=horaJogo();
+  // lugar movimentado nesta hora (escola na saída, padaria cedo, bar à noite…): rodinha na porta ou saindo de dentro
+  if(sorte()<0.5){ const l=escolherLugar(px,pz,h);
+    if(l){ vestir(p,m); p.lugar=l;
+      if(sorte()<0.55){ const a=(sorte()-0.5)*7, f=0.4+sorte()*0.9;
+        p.modo='conversa'; p.x=l.sx+l.ux*a+l.nx*f; p.z=l.sz+l.uz*a+l.nz*f; p.rumo=sorte()*Math.PI*2; p.t=10+sorte()*25; p.r=null; return true; }
+      const Lseg=Math.hypot(l.r.pts[l.i+1][0]-l.r.pts[l.i][0],l.r.pts[l.i+1][1]-l.r.pts[l.i][1]), dir=sorte()<0.5?1:-1;
+      Object.assign(p,{modo:'voltar', r:l.r, dir, i:dir===1?l.i:l.i+1, s:(dir===1?l.t0:1-l.t0)*Lseg, lado:l.lado, vel:1.1+sorte()*0.5, t:0, espera:0, visto:new Set(['L'+l.id])});
+      p.x=l.sx+l.nx*2.4; p.z=l.sz+l.nz*2.4; p.rumo=Math.atan2(-l.nx,-l.nz); return true; } }
+  // praça perto: grupinho (mais gente no fim da tarde)
   const pr=PRACAS.find(q=>Math.hypot(q.c[0]-px,q.c[1]-pz)<RAIO_NASCE[1]);
-  if(pr&&sorte()<0.25){
+  if(pr&&sorte()<0.1+0.4*perfil(h,PRACA)&&gente.filter(o=>o.obj&&o.lugar?.praca).length<8){
     const a=sorte()*Math.PI*2, d=sorte()*pr.r, cx=pr.c[0]+Math.cos(a)*d, cz=pr.c[1]+Math.sin(a)*d;
-    vestir(p,m); p.modo='conversa'; p.x=cx; p.z=cz; p.rumo=sorte()*Math.PI*2; p.t=8+sorte()*25; p.r=null; return true;
+    vestir(p,m); p.modo='conversa'; p.x=cx; p.z=cz; p.rumo=sorte()*Math.PI*2; p.t=8+sorte()*25; p.r=null; p.lugar={praca:true}; return true;
   }
   for(let t=0;t<120;t++){
     const r=vias[(Math.random()*vias.length)|0], i=(Math.random()*(r.pts.length-1))|0, a=r.pts[i], b=r.pts[i+1], t0=Math.random();
@@ -111,6 +148,7 @@ function esquina(p){
 export async function iniciarPedestres(lugares, px, pz){
   montarCaminhos();
   lojas = lugares.filter(l=>l.f==='osm'||(l.conf??0)>=0.5).map(l=>toXZ(l.lat,l.lon));
+  prenderLugares(lugares.filter(l=>l.f==='osm'||(l.conf??0)>=0.5));
   // carrega aos poucos: os 6 primeiros já povoam, o resto entra conforme chega
   const fila=[...PESSOAS].sort(()=>Math.random()-0.5);
   const primeiros=await Promise.all(fila.slice(0,6).map(carregarModelo)); moldes.push(...primeiros.filter(Boolean));
@@ -125,7 +163,7 @@ export function quandoAtropelar(f){ aoAtropelar=f; }
 // jogador: {x,z, dirigindo, v (m/s), h, veic:{x,z,h,meio,larg,v}}; veiculos: [[x,z,ry,meio,larg]] (do jogador, estacionados e trânsito)
 export function atualizarPedestres(dt, jog, veiculos=[]){
   const {x:px, z:pz}=jog;
-  const limite=Math.round(QTD*fatorPessoas(horaJogo()));       // de madrugada a rua esvazia
+  const hora=horaJogo(), limite=Math.round(QTD*fatorPessoas(hora));       // de madrugada a rua esvazia
   for(const [k,p] of gente.entries()){
     if(!p.obj||Math.hypot(p.x-px,p.z-pz)>RAIO_SOME){
       if(k>=limite){ if(p.obj){ scene.remove(p.obj); p.mixer.stopAllAction(); p.obj=null; } continue; }   // sobra: não renasce
@@ -181,7 +219,15 @@ export function atualizarPedestres(dt, jog, veiculos=[]){
         // loja do lado da calçada: às vezes para olhando a vitrine
         for(const l of lojas){ if(Math.abs(l[0]-p.x)>7||Math.abs(l[1]-p.z)>7) continue; const k=l[0]+'_'+l[1]; if(p.visto.has(k)) continue; p.visto.add(k);
           if(sorte()<0.35){ p.modo='vitrine'; p.t=3+sorte()*7; p.rumo=Math.atan2(l[0]-p.x,l[1]-p.z); } break; }
+        // lugar movimentado nesta hora: às vezes entra (some lá dentro e renasce longe)
+        if(p.modo==='andar') for(const l of pontos){ if(Math.abs(l.sx-p.x)>3.5||Math.abs(l.sz-p.z)>3.5) continue; const k='L'+l.id; if(p.visto.has(k)) continue; p.visto.add(k);
+          if(sorte()<movimento(l,hora)*0.5){ p.modo='entrar'; p.lugar=l; p.t=5; } break; }
       }
+    } else if(p.modo==='entrar'){
+      const l=p.lugar, tx=l.sx+l.nx*3.5, tz=l.sz+l.nz*3.5, ax=tx-p.x, az=tz-p.z, d=Math.hypot(ax,az), nx=p.x+ax/(d||1)*1.2*dt, nz=p.z+az/(d||1)*1.2*dt;
+      p.t-=dt;
+      if(d<0.4||p.t<=0||bloqueado(nx,nz)){ nascer(p,px,pz); if(!p.obj) continue; }   // chegou na porta: entrou
+      else { p.x=nx; p.z=nz; p.rumo=Math.atan2(ax,az); animar(p,'andar'); }
     } else if(p.modo==='vitrine'){
       animar(p, p.acoes.mexer&&p.t%4<1.5?'mexer':'parado'); p.t-=dt; if(p.t<=0) p.modo='andar';
     } else if(p.modo==='papo'){                          // falando com o jogador: vira para ele e gesticula
@@ -210,7 +256,7 @@ export function atualizarPedestres(dt, jog, veiculos=[]){
 
 /* ───────── interação com o jogador ───────── */
 const FALAS={
-  oi:['Oi!','E aí, tudo certo?','Bom dia!','Opa, beleza?','Olá, vizinho!','Fala, meu chapa!'],
+  oi:['Oi!','E aí, tudo certo?','Opa, beleza?','Olá, vizinho!','Fala, meu chapa!'],
   conversa:['Dizem que vai chover hoje.','Já passou na praça hoje?','O trânsito na Duque de Caxias tá puxado.','Tô indo no mercado.',
     'Que calor, hein!','Viu o jogo ontem?','Matelândia tá crescendo!','Cuidado com a polícia por aí…','Tô atrasado pro serviço!',
     'A festa da igreja é domingo.','Sabe onde fica a rodoviária?','Esse asfalto novo ficou bom.'],
@@ -248,9 +294,10 @@ export function pedestrePerto(x,z,r=3.6){
 // acao: 'conversar' | 'cumprimentar' | 'seguir' | 'assustar'; devolve true se alguém respondeu
 export function interagir(acao, jx, jz){
   const p=pedestrePerto(jx,jz); if(!p) return false;
-  const parar=(t,gesto)=>{ if(p.modo!=='papo'&&p.modo!=='seguir') p.antes=p.modo==='vitrine'||p.modo==='fugir'||p.modo==='voltar'?'andar':p.modo; p.modo='papo'; p.t=p.tMax=t; p.gesto=gesto; };
-  if(acao==='conversar'){ const seguia=p.modo==='seguir'; parar(5,false); falar(p,sorteia(FALAS.conversa),4.5); if(seguia) p.antes='seguir'; }
-  else if(acao==='cumprimentar'){ const seguia=p.modo==='seguir'; parar(3,true); falar(p,sorteia(FALAS.oi),2.5); if(seguia) p.antes='seguir'; }
+  const parar=(t,gesto)=>{ if(p.modo!=='papo'&&p.modo!=='seguir') p.antes=p.modo==='vitrine'||p.modo==='fugir'||p.modo==='voltar'||p.modo==='entrar'?'andar':p.modo; p.modo='papo'; p.t=p.tMax=t; p.gesto=gesto; };
+  const h=horaJogo(), doLugar=p.lugar?FALA_LUGAR[p.lugar.praca?'praca':nomeGrupo(p.lugar)]:(h<5||h>=23?FALA_LUGAR.madrugada:null);
+  if(acao==='conversar'){ const seguia=p.modo==='seguir'; parar(5,false); falar(p,sorteia(doLugar&&sorte()<0.65?doLugar:FALAS.conversa),4.5); if(seguia) p.antes='seguir'; }
+  else if(acao==='cumprimentar'){ const seguia=p.modo==='seguir'; parar(3,true); falar(p,sorteia(sorte()<0.6?saudacao(h):FALAS.oi),2.5); if(seguia) p.antes='seguir'; }
   else if(acao==='seguir'){
     if(p.modo==='seguir'||(p.modo==='papo'&&p.antes==='seguir')){ p.modo=p.r?'voltar':'conversa'; p.t=8; falar(p,sorteia(FALAS.tchau)); }
     else if(gente.filter(o=>o.modo==='seguir'||(o.modo==='papo'&&o.antes==='seguir')).length>=3) falar(p,FALAS.cheio[0]);
@@ -282,3 +329,5 @@ export const quantosSeguem=()=>gente.filter(o=>o.modo==='seguir'||(o.modo==='pap
 
 // para o trânsito e para o minimapa
 export function posicoesPedestres(){ return gente.filter(p=>p.obj).map(p=>[p.x,p.z]); }
+// para conferir no console: quantos em cada modo e em que tipo de lugar
+export function estadoRotina(){ const c={}; for(const p of gente){ if(!p.obj) continue; const k=p.modo+(p.lugar?':'+(p.lugar.praca?'praca':nomeGrupo(p.lugar)):''); c[k]=(c[k]||0)+1; } return { lugares:pontos.length, ...c }; }
