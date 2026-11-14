@@ -85,7 +85,7 @@ export function abrirTrabalhos(emEntrega){
     const tx=document.createElement('div'); const nm=document.createElement('b'); nm.textContent=T.nome; const s=document.createElement('span');
     s.textContent=`${T.desc} · ${fmt(T.paga)} cada + bônus ${fmt(T.bonus)} · ${String(Math.round(T.tempo/60*10)/10).replace('.',',')} min`; tx.append(nm,s); b.append(i,tx);
     b.disabled=emEntrega; b.onclick=()=>{ $('trabalhos').classList.remove('on'); dispatchEvent(new CustomEvent('matelandia:comecar',{detail:id})); }; g.append(b); }
-  const e=document.createElement('div'); e.className='neg info'; e.textContent='🚚 Entregador: entre num veículo e aperte N (paga mais com caminhão e sem batida).'; g.append(e);
+  const e=document.createElement('div'); e.className='neg info'; e.textContent='🚚 Entregador: entre num veículo e '+(matchMedia('(pointer:coarse)').matches?'toque em 🚚 Entrega':'aperte N')+' (paga mais com caminhão e sem batida).'; g.append(e);
   $('trabInfo').textContent=emEntrega?'Termine a entrega antes de pegar outro trabalho.':trabalho.tipo?`Você está no trabalho de ${TRABALHOS[trabalho.tipo].nome}. Escolher outro cancela este.`:'Junte dinheiro para comprar um terreno e abrir o seu negócio.';
   const a=$('trabAcoes'); a.replaceChildren();
   if(trabalho.tipo){ const c=document.createElement('button'); c.className='sec'; c.textContent='Cancelar trabalho atual'; c.onclick=()=>{ cancelar(); $('trabalhos').classList.remove('on'); }; a.append(c); }

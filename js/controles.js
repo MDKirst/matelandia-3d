@@ -13,6 +13,12 @@ export const pedido={ usar:false, acao:null };      // usar: entrar/sair do veí
 const dedos={};
 const digitando=()=>document.activeElement&&document.activeElement.tagName==='INPUT';
 
+// janela aberta (negócio, trabalhos, jornal, conquistas, foto): Esc fecha só ela; as outras teclas esperam
+const JANELAS='#negocio.on,#trabalhos.on,#jornal.on,#conquistas.on,#foto.on';
+export const janelaAberta=()=>document.querySelector(JANELAS);
+addEventListener('keydown',e=>{ const j=janelaAberta(); if(!j) return;
+  e.stopImmediatePropagation(); if(e.code==='Escape') j.classList.remove('on');
+  for(const k in tecla) tecla[k]=false; },true);
 addEventListener('keydown',e=>{
   if(digitando()) return;
   tecla[e.code]=true;
@@ -65,6 +71,9 @@ $('usar').addEventListener('click',e=>{ pedido.usar=true; e.currentTarget.blur()
 $('casaBtn').addEventListener('click',e=>{ pedido.casa=true; e.currentTarget.blur(); });
 $('fotoBtn').addEventListener('click',e=>{ pedido.foto=true; e.currentTarget.blur(); });
 $('trabBtn').addEventListener('click',e=>{ pedido.trabalho=true; e.currentTarget.blur(); });
+$('entBtn').addEventListener('click',e=>{ pedido.entrega=true; e.currentTarget.blur(); });
+$('ajudaBtn').addEventListener('click',e=>{ const fora=document.body.classList.toggle('sem-ajuda'); try{ localStorage.setItem('matelandia3d.ajuda',fora?'0':'1'); }catch(_){} e.currentTarget.blur(); });
+try{ if(localStorage.getItem('matelandia3d.ajuda')==='0') document.body.classList.add('sem-ajuda'); }catch(_){}
 $('terrBtn').addEventListener('click',e=>{ pedido[e.currentTarget.dataset.acao||'comprar']=true; e.currentTarget.blur(); });
 $('negBtn').addEventListener('click',e=>{ pedido.negocio=true; e.currentTarget.blur(); });
 for(const b of document.querySelectorAll('#acoes button')) b.addEventListener('click',e=>{ pedido.acao=b.dataset.acao; e.currentTarget.blur(); });

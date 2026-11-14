@@ -159,10 +159,13 @@
   @media (max-width:900px){#missao,#guia{top:auto;bottom:250px}}
   @media (max-width:700px){#help{display:none}#mini{width:130px;height:130px}#top{max-width:210px}}
   /* tela de toque: a ajuda é só de teclado */
-  @media (pointer:coarse){#help,#tp,#coord,#status{display:none} #top{padding:8px 10px} #btns{margin-top:6px;gap:5px} #btns button{padding:6px 9px}}
+  body.sem-ajuda #help{display:none}
+  @media (max-width:700px){#trofeu{top:236px;left:12px;right:12px;min-width:0;max-width:none} #aviso{font-size:21px;width:calc(100vw - 40px)}}
+  @media (pointer:coarse){#ajudaBtn,#help,#tp,#coord,#status{display:none} #top{padding:8px 10px} #btns{margin-top:6px;gap:5px} #btns button{padding:6px 9px}}
   /* celular deitado (tela baixa): painel enxuto e botões reposicionados para nada ficar um em cima do outro */
   @media (max-height:480px){
     #help,#status,#tp,#coord{display:none}
+    #aviso{font-size:20px;top:40%;width:60vw}
     #top{max-width:230px;padding:8px 10px}
     #mini{width:110px;height:110px;bottom:22px}
     #chat{left:134px;bottom:24px;width:min(340px,42vw)}
@@ -201,6 +204,7 @@
     <button id="trofeuBtn" class="sec">🏆</button>
     <button id="trabBtn" class="sec">💼 Trabalho (O)</button>
     <button id="jornalBtn" class="sec" aria-label="Jornal da cidade">📰 Jornal</button>
+    <button id="ajudaBtn" class="sec" title="Mostrar ou esconder a lista de teclas">⌨ Teclas</button>
   </div>
   <input id="tp" placeholder="Ir para: lat, lon  (Enter)">
   <div id="coord" style="margin-top:6px;font-size:11px;color:#94a3b8"></div>
@@ -239,7 +243,7 @@
 <div id="negocio"><div class="caixa"><div class="cab"><b id="negTit">🏪 Negócio</b><button id="negFechar" class="sec" aria-label="Fechar">✕</button></div><div id="negInfo"></div><div id="negLista"></div><div id="negAcoes"></div></div></div>
 <div id="trabalhos"><div class="caixa"><div class="cab"><b>💼 Trabalhos</b><button id="trabFechar" class="sec" aria-label="Fechar">✕</button></div><div id="trabInfo"></div><div id="trabLista"></div><div id="trabAcoes"></div></div></div>
 <div id="jornal"><div class="caixa"><div class="cab"><b>📰 Jornal de Matelândia</b><button id="jornalFechar" class="sec" aria-label="Fechar">✕</button></div><div id="jornalLista"></div></div></div>
-<div id="ctxBtns"><button id="terrBtn">💰 Comprar terreno</button><button id="negBtn">🏪 Negócio</button></div>
+<div id="ctxBtns"><button id="entBtn">🚚 Entrega</button><button id="terrBtn">💰 Comprar terreno</button><button id="negBtn">🏪 Negócio</button></div>
 <div id="conquistas"><div class="caixa"><div class="cab"><b id="conqTit">🏆 Conquistas</b><button id="conqFechar" class="sec" aria-label="Fechar">✕</button></div><div id="conqLista"></div></div></div>
 <div id="chat"><div id="chatLog"></div><input id="chatIn" maxlength="120" placeholder="Mensagem para a sala (Enter envia, Esc fecha)" autocomplete="off"></div>
 <button id="usar">Entrar</button>
@@ -257,7 +261,8 @@
     <div class="ctrl">
       <b>WASD</b> andar · <b>Shift</b> correr · <b>E</b> entrar no veículo<br>
       <b>T</b> conversar · <b>G</b> cumprimentar · <b>H</b> chamar para seguir · <b>X</b> assustar<br>
-      <b>N</b> entregas para ganhar M$ · <b>B</b> comprar terreno · <b>C</b> construir<br>
+      <b>N</b> entregas · <b>O</b> trabalhos · <b>B</b> comprar terreno · <b>C</b> construir · <b>V</b> abrir negócio<br>
+      <b>L</b> ir ao meu terreno · <b>P</b> foto · <b>J</b> soco · <b>K</b> chute<br>
       <b>Mouse</b> girar a câmera · <b>Scroll</b> zoom · <b>M</b> som · <b>Esc</b> volta a esta tela<br>
       Celular: lado esquerdo anda, lado direito gira
     </div>

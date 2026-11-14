@@ -10,7 +10,7 @@ import { nomeDoNegocio } from './negocios.js';
 import { ruas } from './cidade.js';
 import { somEntrega } from './som.js';
 
-const PAGA_VEICULO={ suv:1.0, picape:1.2, cavalo:1.6 };
+const PAGA_VEICULO={ suv:1.0, picape:1.2, cavalo:1.6, chopper:0.85 };   // moto leva menos carga
 export const corrida={ etapa:null };   // etapa: null | 'buscar' | 'levar'
 
 // coluna de luz no alvo

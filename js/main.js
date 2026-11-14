@@ -231,6 +231,8 @@ function quadro(){
   { const toqueTela=matchMedia('(pointer:coarse)').matches&&!home.aberta&&!veic.dirigindo, tb=$('terrBtn');
     const d=toqueTela?dicaTerreno(p.x,p.z):'', acao=obra.ativa?'obra':d.startsWith('B comprar')?'comprar':d.startsWith('C construir')?'obra':null;
     $('negBtn').style.display=toqueTela&&!obra.ativa&&pertoDeNegocioMeu(p.x,p.z)?'block':'none';
+    { const eb=$('entBtn'), dirige=TOQUE&&!home.aberta&&!!veic.dirigindo&&!trabalho.tipo, k=dirige?(alvoCorrida()?'c':'e'):'';   // entrega: só existia na tecla N
+      eb.style.display=dirige?'block':'none'; if(k&&eb.dataset.k!==k){ eb.dataset.k=k; eb.textContent=k==='c'?'✖ Cancelar entrega':'🚚 Entrega'; } }
     tb.style.display=acao?'block':'none';
     if(acao&&tb.dataset.k!==acao+obra.ativa){ tb.dataset.k=acao+obra.ativa; tb.dataset.acao=acao; tb.textContent=obra.ativa?'✅ Sair da obra':acao==='comprar'?'💰 Comprar terreno':'🧱 Construir'; } }
   if(!home.aberta) atualizarCorrida(dt, veic.dirigindo);
