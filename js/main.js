@@ -25,12 +25,16 @@ import { alternarCorrida, atualizarCorrida, alvoCorrida } from './entregas.js';
 import { entrarOnline, sairOnline, enviarEstado, atualizarOnline, posicoesJogadores, golpearJogador, quandoApanhar } from './online.js';
 import { vida, golpe, golpear, atualizarLuta, levarPancada, poseGolpe, DUR, DANO } from './luta.js';
 import { golpearPedestre } from './pedestres.js';
+addEventListener('matelandia:comecar',e=>{ if(!alvoCorrida()) comecar(e.detail, jogador.position.x, jogador.position.z); });
 addEventListener('matelandia:jogar',e=>{ const d=e.detail; if(d.online) entrarOnline(d.nome,d.personagem); else sairOnline(); setTimeout(()=>conquista('boas_vindas'),1500); });
 import { minimapa } from './minimapa.js';
 import { iniciarCeu, desenhar, horaJogo, relogioTxt, quantoNoite } from './ceu.js';
 import { ganhar as conquista, contar, colecionar } from './conquistas.js';
 import { pedirFoto, talvezFotografar } from './foto.js';
 import { policia } from './policia.js';
+import { trabalho, comecar, atualizarTrabalho, abrirTrabalhos } from './trabalhos.js';
+import { iniciarJornal, noticiar } from './jornal.js';
+import { revolta, quandoTurmaBater } from './pedestres.js';
 import { iniciarNegocios, atualizarNegocios, acaoNegocio, pertoDeNegocioMeu } from './negocios.js';
 import { frota, iniciarVeiculos, veiculoPerto, entrar, sair, dirigir, dentroDeVeiculo, frente, esquerda } from './veiculos.js';
 import * as veic from './veiculos.js';
@@ -123,7 +127,11 @@ function prender(posto){
   if(veic.dirigindo){ sair(); jogador.visible=true; cam.dist=distAPe; $('velo').style.display='none'; }
   const [x,z]=pontoLivre(posto[0]+6,posto[1]+6); jogador.position.set(x,0,z);
 }
-quandoAtropelar(()=>{ somPancada(); crime(1,'Atropelamento'); });
+quandoAtropelar(()=>{ somPancada(); crime(1,'Atropelamento'); revolta(jogador.position.x,jogador.position.z); });
+// avacalhar: nocaute ou 2 pancadas em 20 s → a turma junta e bate (até desmaiar)
+let pancadas=[];
+quandoTurmaBater((dano,fx,fz)=>{ if(veic.dirigindo) return false; if(levarPancada(dano,fx,fz)) somPancada(); return vida.caido>0; },
+  ()=>{ noticiar('surra'); dispatchEvent(new Event('matelandia:surra')); });
 
 // soco/chute no meio do golpe: acerta pedestre ou outro jogador logo à frente
 function acertar(tipo){
@@ -131,6 +139,8 @@ function acertar(tipo){
   const ped=golpearPedestre(p.x,p.z,fx,fz,tipo), jog=golpearJogador(p.x,p.z,fx,fz,tipo,DANO[tipo]);
   if(ped||jog) somPancada();
   if(ped==='nocaute') crime(1,'Agressão');
+  if(ped){ const t=performance.now(); pancadas=pancadas.filter(x=>t-x<20000); pancadas.push(t);
+    if(ped==='nocaute'||pancadas.length>=2){ pancadas=[]; revolta(p.x,p.z); } }
 }
 quandoApanhar((dano,fx,fz)=>{ if(veic.dirigindo) return; if(levarPancada(dano,fx,fz)) somPancada(); }, ()=>[jogador.position.x,jogador.position.z]);
 
@@ -147,7 +157,7 @@ function trocarVeiculo(){
 
 // 🏠 Meu terreno (L / botão): a pé vai direto para a calçada da frente; dirigindo, liga a seta até lá.
 // Com 2 terrenos, cada aperto vai para o outro.
-let idxCasa=-1, guiaCasa=null;
+let idxCasa=-1, guiaCasa=null, alvoTrab=null;
 function irAoTerreno(){
   const meus=terrenosNoMapa().meus;
   if(!meus.length){ avisarTerreno('Você ainda não tem terreno: ache uma placa VENDE-SE e aperte B'); return; }
@@ -171,7 +181,8 @@ function quadro(){
   const dt=Math.min(relogio.getDelta(),0.05);
   if(home.aberta){ pedido.usar=false; jogador.visible=false; }          // tela inicial: ninguém se mexe
   else { if(pedido.usar){ pedido.usar=false; if(!(vida.caido>0)) trocarVeiculo(); }
-    if(pedido.entrega){ pedido.entrega=false; alternarCorrida(veic.dirigindo); }
+    if(pedido.entrega){ pedido.entrega=false; if(trabalho.tipo) avisarTerreno('Termine o trabalho atual antes da entrega (O cancela)'); else alternarCorrida(veic.dirigindo); }
+    if(pedido.trabalho){ pedido.trabalho=false; abrirTrabalhos(!!alvoCorrida()); }
     if(pedido.comprar){ pedido.comprar=false; if(!veic.dirigindo) comprar(jogador.position.x,jogador.position.z); }
     if(pedido.obra){ pedido.obra=false; if(!veic.dirigindo) alternarObra(jogador.position.x,jogador.position.z); }
     if(pedido.casa){ pedido.casa=false; irAoTerreno(); }
@@ -208,6 +219,7 @@ function quadro(){
   efeitosVeiculos(dt); atualizarEfeitos(dt); atualizarBaloes(dt); atualizarNegocios(dt,p.x,p.z);
   $('negBtn').style.display=!home.aberta&&!veic.dirigindo&&matchMedia('(pointer:coarse)').matches&&pertoDeNegocioMeu(p.x,p.z)?'block':'none';
   if(!home.aberta) atualizarCorrida(dt, veic.dirigindo);
+  alvoTrab=!home.aberta?atualizarTrabalho(dt,p.x,p.z,!veic.dirigindo):null;
   // online: manda meu estado e move os outros jogadores
   if(!home.aberta){ const D2=veic.dirigindo; enviarEstado(dt,{x:p.x,z:p.z,r:rumo,a:D2?'parado':estadoAPe,vt:D2?D2.tipo.id:null,vh:D2?D2.h:null,e:vida.e,c:vida.caido>0,g:[golpe.seq,golpe.tipo||'']}); }
   atualizarOnline(dt);
@@ -230,7 +242,7 @@ function quadro(){
 
   tLento+=dt;
   if(tLento>0.12){ tLento=0;
-    minimapa(p.x,p.z,rumo, frota.filter(c=>c!==veic.dirigindo).map(c=>({x:c.obj.position.x,z:c.obj.position.z,h:c.h,comp:c.comp,larg:c.larg})), posicoesTransito(), alvoCorrida(), posicoesJogadores(), terrenosNoMapa());
+    minimapa(p.x,p.z,rumo, frota.filter(c=>c!==veic.dirigindo).map(c=>({x:c.obj.position.x,z:c.obj.position.z,h:c.h,comp:c.comp,larg:c.larg})), posicoesTransito(), alvoCorrida()||alvoTrab, posicoesJogadores(), terrenosNoMapa());
     atualizarGuia(p.x,p.z);
     const r=ruaMaisProxima(p.x,p.z), nome=r?r.nome:'';
     if(!home.aberta){ const h=horaJogo();                                      // conquistas que dependem do estado
@@ -266,6 +278,7 @@ carregarCidade().then(async()=>{
   progresso('Demarcando terrenos…');
   console.info('terrenos', iniciarTerrenos());
   iniciarNegocios().catch(e=>console.warn('negócios',e));
+  iniciarJornal().catch(e=>console.warn('jornal',e));
   console.info('postes', iniciarCeu());
   progresso('Ligando os motores…');
   await iniciarVeiculos(); await iniciarTransito(jogador.position.x,jogador.position.z);

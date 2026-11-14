@@ -106,3 +106,8 @@ export function subirBlocos(id, blocos){
 export function ouvirNegocios(cb){ if(!nuvem.ok) return; F.onValue(ref('negocios'),s=>cb(s.val()||{}),e=>console.warn('negocios',e)); }
 export async function abrirNegocioNuvem(id, tipo){ if(!nuvem.ok) return true; try{ await F.set(ref('negocios/'+id),{ t:tipo, desde:Date.now() }); return true; }catch(e){ console.warn('abrirNegocio',e); return false; } }
 export async function fecharNegocioNuvem(id){ if(!nuvem.ok) return true; try{ await F.remove(ref('negocios/'+id)); return true; }catch(e){ console.warn('fecharNegocio',e); return false; } }
+
+// jornal da cidade: jornal/{id} = { tipo, nome, rua?, neg?, uid, t }. Só tipos fixos (o texto é montado no jogo).
+export function ouvirJornal(cb){ if(!nuvem.ok) return;
+  F.onValue(F.query(ref('jornal'),F.orderByChild('t'),F.limitToLast(25)),s=>{ const l=[]; s.forEach(c=>{ l.push(c.val()); }); cb(l); },e=>console.warn('jornal',e)); }
+export function postarJornal(ev){ if(!nuvem.ok) return; F.push(ref('jornal'),{ ...ev, uid:nuvem.uid, t:Date.now() }).catch(e=>console.warn('jornal',e)); }

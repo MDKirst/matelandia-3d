@@ -11,6 +11,7 @@ import { toXZ } from './geo.js';
 import { ruas } from './cidade.js';
 import { bloqueado } from './mundo.js';
 import { horaJogo, fatorPessoas } from './ceu.js';
+import { sortearPersona } from './personas.js';
 import { grupoDe, movimento, peso, nomeGrupo, perfil, PRACA, saudacao, FALA_LUGAR } from './rotina.js';
 
 export const PESSOAS = ['male-casual','female-casual','male-shirt','female-dress','male-long-sleeve','female-tank-top','male-suit','female-alternative',
@@ -52,6 +53,7 @@ function naCalcada(p){
 function vestir(p, m){
   const obj=clonarEsqueleto(m.cena), alt=1.58+Math.random()*0.3, e=alt/m.altura;
   obj.scale.multiplyScalar(e); p.pe=-m.base*e;   // pés no chão
+  p.persona=sortearPersona(); p.panfleto=false;   // jeito do bot (personas.js)
   obj.rotation.order='YXZ'; p.y=0; p.queda=0;      // YXZ: deita para trás no próprio eixo obj.traverse(o=>{ if(o.isMesh){ o.frustumCulled=false; } });
   scene.add(obj);
   p.obj=obj; p.mixer=new THREE.AnimationMixer(obj); p.acoes={}; p.atual=null; p.modelo=m;
@@ -103,7 +105,7 @@ function nascer(p, px, pz){
       if(sorte()<0.55){ const a=(sorte()-0.5)*7, f=0.4+sorte()*0.9;
         p.modo='conversa'; p.x=l.sx+l.ux*a+l.nx*f; p.z=l.sz+l.uz*a+l.nz*f; p.rumo=sorte()*Math.PI*2; p.t=10+sorte()*25; p.r=null; return true; }
       const Lseg=Math.hypot(l.r.pts[l.i+1][0]-l.r.pts[l.i][0],l.r.pts[l.i+1][1]-l.r.pts[l.i][1]), dir=sorte()<0.5?1:-1;
-      Object.assign(p,{modo:'voltar', r:l.r, dir, i:dir===1?l.i:l.i+1, s:(dir===1?l.t0:1-l.t0)*Lseg, lado:l.lado, vel:1.1+sorte()*0.5, t:0, espera:0, visto:new Set(['L'+l.id])});
+      Object.assign(p,{modo:'voltar', r:l.r, dir, i:dir===1?l.i:l.i+1, s:(dir===1?l.t0:1-l.t0)*Lseg, lado:l.lado, vel:(1.1+sorte()*0.5)*p.persona.vel, t:0, espera:0, visto:new Set(['L'+l.id])});
       p.x=l.sx+l.nx*2.4; p.z=l.sz+l.nz*2.4; p.rumo=Math.atan2(-l.nx,-l.nz); return true; } }
   // praça perto: grupinho (mais gente no fim da tarde)
   const pr=PRACAS.find(q=>Math.hypot(q.c[0]-px,q.c[1]-pz)<RAIO_NASCE[1]);
@@ -120,7 +122,7 @@ function nascer(p, px, pz){
     if(!comercio&&sorte()<0.55) continue;
     const dir=sorte()<0.5?1:-1;
     const Lseg=Math.hypot(b[0]-a[0],b[1]-a[1]);
-    vestir(p,m); Object.assign(p,{modo:'andar', r, dir, i:dir===1?i:i+1, s:(dir===1?t0:1-t0)*Lseg, lado:sorte()<0.5?1:-1, vel:1.1+sorte()*0.5, t:0, espera:0, visto:new Set()}); ladoCerto(p);
+    vestir(p,m); Object.assign(p,{modo:'andar', r, dir, i:dir===1?i:i+1, s:(dir===1?t0:1-t0)*Lseg, lado:sorte()<0.5?1:-1, vel:(1.1+sorte()*0.5)*p.persona.vel, t:0, espera:0, visto:new Set()}); ladoCerto(p);
     const c=naCalcada(p); p.x=c.x; p.z=c.z; p.rumo=Math.atan2(c.ux,c.uz); return true;
   }
   return false;
@@ -218,10 +220,10 @@ export function atualizarPedestres(dt, jog, veiculos=[]){
         if(!p.espera) animar(p,'andar',p.vel/1.3);
         // loja do lado da calçada: às vezes para olhando a vitrine
         for(const l of lojas){ if(Math.abs(l[0]-p.x)>7||Math.abs(l[1]-p.z)>7) continue; const k=l[0]+'_'+l[1]; if(p.visto.has(k)) continue; p.visto.add(k);
-          if(sorte()<0.35){ p.modo='vitrine'; p.t=3+sorte()*7; p.rumo=Math.atan2(l[0]-p.x,l[1]-p.z); } break; }
+          if(sorte()<p.persona.vitrine){ p.modo='vitrine'; p.t=3+sorte()*7; p.rumo=Math.atan2(l[0]-p.x,l[1]-p.z); } break; }
         // lugar movimentado nesta hora: às vezes entra (some lá dentro e renasce longe)
         if(p.modo==='andar') for(const l of pontos){ if(Math.abs(l.sx-p.x)>3.5||Math.abs(l.sz-p.z)>3.5) continue; const k='L'+l.id; if(p.visto.has(k)) continue; p.visto.add(k);
-          if(sorte()<movimento(l,hora)*0.5){ p.modo='entrar'; p.lugar=l; p.t=5; } break; }
+          if(sorte()<movimento(l,hora)*0.5*p.persona.entrar){ p.modo='entrar'; p.lugar=l; p.t=5; } break; }
       }
     } else if(p.modo==='entrar'){
       const l=p.lugar, tx=l.sx+l.nx*3.5, tz=l.sz+l.nz*3.5, ax=tx-p.x, az=tz-p.z, d=Math.hypot(ax,az), nx=p.x+ax/(d||1)*1.2*dt, nz=p.z+az/(d||1)*1.2*dt;
@@ -230,6 +232,15 @@ export function atualizarPedestres(dt, jog, veiculos=[]){
       else { p.x=nx; p.z=nz; p.rumo=Math.atan2(ax,az); animar(p,'andar'); }
     } else if(p.modo==='vitrine'){
       animar(p, p.acoes.mexer&&p.t%4<1.5?'mexer':'parado'); p.t-=dt; if(p.t<=0) p.modo='andar';
+    } else if(p.modo==='turma'){                         // avacalhou: a turma vai atrás e bate
+      const ax=px-p.x, az=pz-p.z, d=Math.hypot(ax,az)||1; p.t-=dt; p.cd-=dt;
+      if(p.t<=0||d>70){ p.modo=p.r?'voltar':'conversa'; p.t=6; }
+      else if(jog.dirigindo){ p.rumo=Math.atan2(ax,az); if(d>4){ const nx=p.x+ax/d*3.6*dt, nz=p.z+az/d*3.6*dt; if(!bloqueado(nx,nz)&&!emVeiculo(nx,nz,veiculos,0.3)){ p.x=nx; p.z=nz; } animar(p,'correr'); } else animar(p,'acenar'); }
+      else if(d>1.15){ const nx=p.x+ax/d*4.4*dt, nz=p.z+az/d*4.4*dt;
+        if(!bloqueado(nx,nz)&&!emVeiculo(nx,nz,veiculos,0.2)){ p.x=nx; p.z=nz; } else if(!bloqueado(nx,p.z)) p.x=nx; else if(!bloqueado(p.x,nz)) p.z=nz;
+        p.rumo=Math.atan2(ax,az); animar(p,'correr'); }
+      else { p.rumo=Math.atan2(ax,az); animar(p, p.acoes.mexer&&p.cd<0.5?'mexer':'parado');
+        if(p.cd<=0){ p.cd=1.3+sorte()*0.9; if(aoBater(5+sorte()*4, ax/d, az/d)) acabouSurra(); } }
     } else if(p.modo==='papo'){                          // falando com o jogador: vira para ele e gesticula
       p.rumo=Math.atan2(px-p.x,pz-p.z); p.t-=dt;
       animar(p, p.gesto&&p.acoes.acenar&&p.t>p.tMax-2.2?'acenar':(p.acoes.mexer&&Math.floor(p.t)%3===0?'mexer':'parado'));
@@ -296,11 +307,12 @@ export function interagir(acao, jx, jz){
   const p=pedestrePerto(jx,jz); if(!p) return false;
   const parar=(t,gesto)=>{ if(p.modo!=='papo'&&p.modo!=='seguir') p.antes=p.modo==='vitrine'||p.modo==='fugir'||p.modo==='voltar'||p.modo==='entrar'?'andar':p.modo; p.modo='papo'; p.t=p.tMax=t; p.gesto=gesto; };
   const h=horaJogo(), doLugar=p.lugar?FALA_LUGAR[p.lugar.praca?'praca':nomeGrupo(p.lugar)]:(h<5||h>=23?FALA_LUGAR.madrugada:null);
-  if(acao==='conversar'){ const seguia=p.modo==='seguir'; parar(5,false); falar(p,sorteia(doLugar&&sorte()<0.65?doLugar:FALAS.conversa),4.5); if(seguia) p.antes='seguir'; }
+  if(acao==='conversar'){ const seguia=p.modo==='seguir'; parar(5,false); falar(p,sorteia(doLugar&&sorte()<0.6?doLugar:sorte()<0.45?p.persona.falas:FALAS.conversa),4.5); if(seguia) p.antes='seguir'; }
   else if(acao==='cumprimentar'){ const seguia=p.modo==='seguir'; parar(3,true); falar(p,sorteia(sorte()<0.6?saudacao(h):FALAS.oi),2.5); if(seguia) p.antes='seguir'; }
   else if(acao==='seguir'){
     if(p.modo==='seguir'||(p.modo==='papo'&&p.antes==='seguir')){ p.modo=p.r?'voltar':'conversa'; p.t=8; falar(p,sorteia(FALAS.tchau)); }
     else if(gente.filter(o=>o.modo==='seguir'||(o.modo==='papo'&&o.antes==='seguir')).length>=3) falar(p,FALAS.cheio[0]);
+    else if(sorte()>p.persona.segue) falar(p,sorteia(['Hoje não dá, tô ocupado.','Não, valeu.','Agora não posso.']));
     else { p.modo='seguir'; falar(p,sorteia(FALAS.seguir)); }
   }
   else if(acao==='assustar'){ const ax=p.x-jx, az=p.z-jz, l=Math.hypot(ax,az)||1; p.modo='fugir'; p.fx=ax/l; p.fz=az/l; p.t=3; falar(p,sorteia(FALAS.susto),2); }
@@ -308,6 +320,37 @@ export function interagir(acao, jx, jz){
 }
 // soco/chute do jogador: acerta o pedestre logo à frente (até 1,8 m, num cone de ~70°)
 // devolve null, 'acertou' ou 'nocaute' (caiu: a polícia fica sabendo)
+// turma: quem avacalha (atropela, nocauteia, bate de novo) apanha. Junta até 4 que têm o jeito
+// de brigar (persona.briga); os outros fogem. Acaba quando o jogador desmaia ou some.
+let aoBater=()=>false, aoSurra=()=>{};
+export function quandoTurmaBater(bater, surra){ aoBater=bater; aoSurra=surra; }
+export function revolta(x,z){
+  const perto=gente.filter(p=>p.obj&&p.modo!=='caido'&&p.modo!=='levantar'&&p.modo!=='turma'&&Math.hypot(p.x-x,p.z-z)<32)
+    .sort((a,b)=>Math.hypot(a.x-x,a.z-z)-Math.hypot(b.x-x,b.z-z));
+  let n=gente.filter(p=>p.modo==='turma').length;
+  for(const p of perto){
+    if(n<4&&sorte()<p.persona.briga){ p.modo='turma'; p.t=22; p.cd=0.6+sorte()*0.6; p.antes=null; n++;
+      falar(p,sorteia(n===1?['Pega ele!','Ei! Volta aqui!']:['Covarde!','Vai apanhar!','Aqui ninguém mexe com a gente!','Chama a turma!']),2.5); }
+    else if(Math.hypot(p.x-x,p.z-z)<16&&p.modo!=='seguir'){ const ax=p.x-x, az=p.z-z, l=Math.hypot(ax,az)||1; p.modo='fugir'; p.fx=ax/l; p.fz=az/l; p.t=3; }
+  }
+  return n;
+}
+function acabouSurra(){
+  let primeiro=true;
+  for(const p of gente) if(p.modo==='turma'){ p.modo=p.r?'voltar':'conversa'; p.t=8; if(primeiro){ falar(p,sorteia(['Aprendeu!','Isso é pra aprender!','Agora se comporta!']),3); primeiro=false; } }
+  aoSurra();
+}
+export const turmaAtras=()=>gente.some(p=>p.modo==='turma');
+
+// panfletagem (trabalho): entrega para o pedestre perto que ainda não recebeu. Devolve 'ok', 'recusou' ou null
+export function entregarPanfleto(x,z){
+  let m=null, md=2.2; for(const p of gente){ if(!p.obj||p.panfleto||p.modo==='caido'||p.modo==='levantar'||p.modo==='turma') continue; const d=Math.hypot(p.x-x,p.z-z); if(d<md){ md=d; m=p; } }
+  if(!m) return null; m.panfleto=true;
+  if(sorte()<m.persona.recusa){ falar(m,sorteia(['Não, obrigado.','Tô com pressa!','Não quero papel!']),2); return 'recusou'; }
+  falar(m,sorteia(['Obrigado!','Vou dar uma olhada!','Opa, valeu!','Interessante!']),2); return 'ok';
+}
+export function semPanfleto(x,z){ let m=null, md=1e9; for(const p of gente){ if(!p.obj||p.panfleto||p.modo==='caido'||p.modo==='turma') continue; const d=Math.hypot(p.x-x,p.z-z); if(d<md){ md=d; m=p; } } return m?[m.x,m.z]:null; }
+
 const FALAS_DOR=['Ai!','Ui!','Tá maluco?!','Para com isso!','Socorro, polícia!','Aiii!'];
 export function golpearPedestre(jx,jz,fx,fz,tipo){
   let alvo=null, md=1.8;

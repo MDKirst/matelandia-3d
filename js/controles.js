@@ -27,6 +27,7 @@ addEventListener('keydown',e=>{
   if(e.code==='KeyL'&&!e.repeat) pedido.casa=true;
   if(e.code==='KeyP'&&!e.repeat) pedido.foto=true;
   if(e.code==='KeyV'&&!e.repeat) pedido.negocio=true;
+  if(e.code==='KeyO'&&!e.repeat) pedido.trabalho=true;
   if(e.code==='KeyR') av.giroExtra+=Math.PI/2;
   if(e.code==='KeyM'&&!e.repeat){ $('status').textContent=alternarSom()?'🔊 Som ligado (M)':'🔇 Som desligado (M)'; setTimeout(status,2500); }
   if(e.code==='BracketRight'||e.code==='BracketLeft'){
@@ -63,6 +64,7 @@ $('tp').addEventListener('keydown',e=>{
 $('usar').addEventListener('click',e=>{ pedido.usar=true; e.currentTarget.blur(); });
 $('casaBtn').addEventListener('click',e=>{ pedido.casa=true; e.currentTarget.blur(); });
 $('fotoBtn').addEventListener('click',e=>{ pedido.foto=true; e.currentTarget.blur(); });
+$('trabBtn').addEventListener('click',e=>{ pedido.trabalho=true; e.currentTarget.blur(); });
 $('negBtn').addEventListener('click',e=>{ pedido.negocio=true; e.currentTarget.blur(); });
 for(const b of document.querySelectorAll('#acoes button')) b.addEventListener('click',e=>{ pedido.acao=b.dataset.acao; e.currentTarget.blur(); });
 for(const b of document.querySelectorAll('#luta button')) b.addEventListener('click',e=>{ pedido.golpe=b.dataset.golpe; e.currentTarget.blur(); });

@@ -60,6 +60,37 @@
           ".validate": false
         }
       }
+    },
+    "jornal": {
+      ".read": true,
+      ".indexOn": [
+        "t"
+      ],
+      "$id": {
+        ".write": "auth != null && !data.exists()",
+        ".validate": "newData.child('uid').val() === auth.uid && newData.child('t').isNumber() && newData.child('t').val() <= now + 60000 && newData.child('t').val() >= now - 60000 && newData.child('tipo').isString() && newData.child('tipo').val().matches(/^(abriu|fechou|preso|surra|fugiu|terreno)$/) && newData.child('nome').isString() && newData.child('nome').val().length <= 16",
+        "tipo": {
+          ".validate": true
+        },
+        "nome": {
+          ".validate": true
+        },
+        "uid": {
+          ".validate": true
+        },
+        "t": {
+          ".validate": true
+        },
+        "rua": {
+          ".validate": "newData.isString() && newData.val().length <= 48"
+        },
+        "neg": {
+          ".validate": "newData.isString() && newData.val().matches(/^(padaria|lanchonete|mercado|roupas|farmacia|oficina)$/)"
+        },
+        "$outro": {
+          ".validate": false
+        }
+      }
     }
   }
 }

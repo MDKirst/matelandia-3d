@@ -12,6 +12,7 @@ import { nuvem, conectarNuvem, ouvirNegocios, abrirNegocioNuvem, fecharNegocioNu
 import { carregarModelo, PESSOAS } from './pedestres.js';
 import { horaJogo } from './ceu.js';
 import { perfil } from './rotina.js';
+import { sortearPersona } from './personas.js';
 
 // curvas de movimento por hora (as mesmas ideias do rotina.js)
 const C_PADARIA=[[0,0],[5.5,0.05],[6.3,1],[9,0.5],[11,0.3],[15,0.5],[16.5,0.9],[18.5,0.6],[20,0.1],[24,0]];
@@ -125,20 +126,20 @@ function novoCliente(n){
   const b=boneco(); if(!b) return; const lado=Math.random()<0.5?-1:1;
   const fila=n.clientes.length, bx=4+((fila*1.7+Math.random())%4);
   b.rota=[[W/2+lado*7,-1.6],[W/2+lado*1.5,-1.4],[6,Z0-0.4],[6,Z0+1.2],[bx,n.l.balcao-0.7],'comprar',[6,Z0+1.2],[6,Z0-0.4],[W/2-lado*1.5,-1.4],[W/2-lado*8,-1.6]];
-  b.passo=0; b.t=0; b.vel=1.15+Math.random()*0.4; const [x,z]=b.rota[0]; b.obj.position.set(x,b.pe,z); n.g.add(b.obj); n.clientes.push(b);
+  b.persona=sortearPersona(); b.passo=0; b.t=0; b.vel=(1.15+Math.random()*0.4)*b.persona.vel; const [x,z]=b.rota[0]; b.obj.position.set(x,b.pe,z); n.g.add(b.obj); n.clientes.push(b);
 }
 function andarCliente(n,b,dt,perto){
   const alvo=b.rota[b.passo];
   if(alvo==='comprar'){ animar(b, b.t%3<1.4&&b.acoes.mexer?'mexer':'parado'); b.obj.rotation.y=0; b.t+=dt;
     if(n.atendente) animar(n.atendente,'mexer');
-    if(b.t>3.2+Math.random()*0.05){ b.passo++; b.t=0; vender(n,perto); if(n.atendente) animar(n.atendente,'parado'); } return; }
+    if(b.t>3.2*b.persona.balcao){ b.passo++; b.t=0; vender(n,perto,b.persona); if(n.atendente) animar(n.atendente,'parado'); } return; }
   if(!alvo){ n.g.remove(b.obj); n.clientes.splice(n.clientes.indexOf(b),1); return; }
   const p=b.obj.position, dx=alvo[0]-p.x, dz=alvo[1]-p.z, d=Math.hypot(dx,dz);
   if(d<0.15){ b.passo++; return; }
   const s=Math.min(d,b.vel*dt); p.x+=dx/d*s; p.z+=dz/d*s; b.obj.rotation.y=Math.atan2(dx,dz); animar(b,'andar',b.vel/1.3);
 }
-function vender(n,perto){
-  const T=TIPOS[n.l.negocio], v=Math.round(T.venda[0]+Math.random()*(T.venda[1]-T.venda[0]));
+function vender(n,perto,pe){
+  const T=TIPOS[n.l.negocio], k=pe?pe.compra[0]+Math.random()*(pe.compra[1]-pe.compra[0]):1, v=Math.max(1,Math.round((T.venda[0]+Math.random()*(T.venda[1]-T.venda[0]))*k));
   if(meu(n.l)&&perto){ ganhar(v); flutuar(n,`+${fmt(v)}`); const r=reg(n.l); r.vendas=(r.vendas||0)+1; salvar(); }
 }
 // "+M$ 20" subindo sobre o balcão
@@ -190,7 +191,7 @@ function abrirPainel(l){
   const fec=document.createElement('button'); fec.className='sec'; fec.textContent='Fechar o negócio';
   fec.onclick=async()=>{ if(!confirm(`Fechar ${nomeNeg(l)}? O prédio some e o dinheiro gasto não volta.`)) return;
     const v=caixa(l); if(!await fecharNegocioNuvem(l.id)){ avisar('Não deu para fechar agora'); return; }
-    ganhar(v); delete salvo.negocios[l.id]; salvar(); l.negocio=null; fecharNaTela(l); fecharUI(); avisar('Negócio fechado'+(v?` (caixa +${fmt(v)})`:'')); };
+    ganhar(v); delete salvo.negocios[l.id]; salvar(); dispatchEvent(new CustomEvent('matelandia:fechou',{detail:{tipo:l.negocio}})); l.negocio=null; fecharNaTela(l); fecharUI(); avisar('Negócio fechado'+(v?` (caixa +${fmt(v)})`:'')); };
   a.append(rec,fec); $('negocio').classList.add('on');
 }
 function fecharUI(){ $('negocio').classList.remove('on'); loteUI=null; }

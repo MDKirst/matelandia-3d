@@ -20,6 +20,8 @@ export const LISTA = [
   ['procurado',   '⭐', 'Procurado',               'Chegou a 3 estrelas'],
   ['fugitivo',    '🏃', 'Fugitivo',                'Despistou a polícia'],
   ['xadrez',      '🚔', 'Sol nascendo quadrado',   'Foi preso'],
+  ['trabalhador', '💼', 'Trabalhador',             'Terminou um trabalho de gari ou panfletagem'],
+  ['surra',       '🥊', 'Aprendeu a lição',        'Apanhou da turma por avacalhar'],
   ['fotografo',   '📷', 'Fotógrafo',               'Tirou uma foto'],
   ['encontro',    '🤝', 'Encontro marcado',        'Ficou perto de outro jogador online'],
 ];
@@ -71,4 +73,6 @@ new MutationObserver(()=>{ const t=$('aviso').textContent;
   else if(t.startsWith('PRESO')) ganhar('xadrez');
 }).observe($('aviso'),{childList:true,characterData:true,subtree:true});
 addEventListener('matelandia:negocio',()=>ganhar('empresario'));
+addEventListener('matelandia:trabalho',()=>ganhar('trabalhador'));
+addEventListener('matelandia:surra',()=>ganhar('surra'));
 addEventListener('matelandia:bloco',()=>{ ganhar('construtor'); contar('mestre_obras',100,'blocos'); });
