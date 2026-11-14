@@ -87,7 +87,7 @@ export function ouvirBlocos(id, cb){
 export const LIMITE_TERRENOS=2;
 // admin (conta Google do criador do jogo): sem limite de terrenos. A regra do banco tem o mesmo id,
 // então isto aqui só evita a pergunta das vagas; ninguém mais passa do limite.
-const ADMINS=['MyJ32756ZkMyoQiaboetnmrVPgr2'];
+export const ADMINS=['MyJ32756ZkMyoQiaboetnmrVPgr2'];
 export const souAdmin=()=>nuvem.ok&&ADMINS.includes(nuvem.uid);
 export async function tomarLote(id, nome){
   if(!nuvem.ok) return 'ocupado';

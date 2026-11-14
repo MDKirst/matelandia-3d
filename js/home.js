@@ -5,7 +5,7 @@ import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { MeshoptDecoder } from 'three/addons/libs/meshopt_decoder.module.js';
 import { $ } from './cena.js';
 import { usarPersonagem } from './avatar.js';
-import { nuvem, conectarNuvem, aoTrocarConta, entrarGoogle, sairGoogle } from './nuvem.js';
+import { nuvem, conectarNuvem, aoTrocarConta, entrarGoogle, sairGoogle, souAdmin } from './nuvem.js';
 
 // Maicon + os 18 da Quaternius (assets/pessoas)
 export const PERSONAGENS = [
@@ -36,6 +36,12 @@ async function liberarAdmin(){
     const era=lista[idx].id, salvo=guardado();
     lista=PERSONAGENS; idx=Math.max(0,lista.findIndex(p=>p.id===(daUrl||!salvo||salvo==='maicon'?'maicon':era))); mostrar();
   }catch(e){}
+}
+// conta Google do criador: o Maicon aparece e já vem escolhido (sem precisar do link com código)
+let maiconPosto=false;
+function contaAdmin(){
+  if(!souAdmin()||maiconPosto) return; maiconPosto=true;
+  lista=PERSONAGENS; idx=Math.max(0,lista.findIndex(p=>p.id==='maicon')); guardar('maicon'); mostrar();
 }
 export const home={ aberta:true };
 // nome e online lembrados no navegador
@@ -122,8 +128,8 @@ async function sair(){
   await sairGoogle(); mostrarConta();
 }
 $('conta').style.display='none';
-aoTrocarConta(mostrarConta);
-conectarNuvem().then(mostrarConta);
+aoTrocarConta(n=>{ mostrarConta(n); contaAdmin(); });
+conectarNuvem().then(n=>{ mostrarConta(n); contaAdmin(); });
 
 export function pronto(){ const b=$('jogar'); b.disabled=false; b.textContent='JOGAR'; $('carrega').textContent=''; }
 export function progresso(txt){ $('carrega').textContent=txt; }

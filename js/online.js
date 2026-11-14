@@ -9,6 +9,7 @@ import { MeshoptDecoder } from 'three/addons/libs/meshopt_decoder.module.js';
 import { clone as clonarEsqueleto } from 'three/addons/utils/SkeletonUtils.js';
 import { scene, $ } from './cena.js';
 import { DUR, poseGolpe, barraSprite, pintarBarra } from './luta.js';
+import { nuvem, ADMINS } from './nuvem.js';
 
 const TRYSTERO='https://cdn.jsdelivr.net/npm/trystero@0.26.0/+esm';
 // ?sala=nome no link = sala particular (grupo de amigos ou teste), separada da sala pública
@@ -26,7 +27,7 @@ export const online={ ativo:false, sala:null, envio:null, outros:new Map(), eu:n
 let arquivos={}, tEnvio=0;
 
 export async function entrarOnline(nome, personagem){
-  online.eu={ n:limparNome(nome), p:personagem };
+  online.eu={ n:limparNome(nome), p:personagem, u:personagem==='maicon'?nuvem.uid:null };   // u: só o Maicon manda o id (os outros conferem)
   if(online.ativo||online.entrando){ return; }
   online.entrando=true; const tentativa=++online.tentativa;
   let sala=null;
@@ -64,7 +65,7 @@ export function enviarEstado(dt, s){
   if(!online.ativo||!online.envio) return;
   tEnvio+=dt; if(tEnvio<0.1) return; tEnvio=0;
   const r=v=>Math.round(v*100)/100;
-  try{ online.envio.send({ n:online.eu.n, p:online.eu.p, x:r(s.x), z:r(s.z), r:r(s.r), a:s.a, vt:s.vt||null, vh:s.vh!=null?r(s.vh):null, e:Math.round(s.e??100), c:s.c?1:0, g:s.g||null }); }catch(e){}
+  try{ online.envio.send({ n:online.eu.n, p:online.eu.p, u:online.eu.u||undefined, x:r(s.x), z:r(s.z), r:r(s.r), a:s.a, vt:s.vt||null, vh:s.vh!=null?r(s.vh):null, e:Math.round(s.e??100), c:s.c?1:0, g:s.g||null }); }catch(e){}
 }
 
 /* ───────── jogadores remotos ───────── */
@@ -87,7 +88,8 @@ async function receber(id,d){
   if(!o.barra){ o.barra=barraSprite(); o.grupo.add(o.barra); }
   pintarBarra(o.barra, typeof d.e==='number'?d.e:100);
   if(Array.isArray(d.g)&&d.g[0]!==o.gSeq){ if(o.gSeq!==undefined&&DUR[d.g[1]]) o.golpe={tipo:d.g[1],t:0}; o.gSeq=d.g[0]; }
-  if(d.p&&d.p!==o.pid){ o.pid=d.p; vestir(o,d.p); }
+  const pid=d.p==='maicon'&&!ADMINS.includes(d.u)?'male-casual':d.p;      // o Maicon é exclusivo da conta do criador
+  if(pid&&pid!==o.pid){ o.pid=pid; vestir(o,pid); }
   if((d.vt||null)!==o.vt){ o.vt=d.vt||null; trocarVeiculo(o); }
 }
 async function vestir(o,pid){
