@@ -151,7 +151,8 @@ quandoApanhar((dano,fx,fz)=>{ if(veic.dirigindo) return; if(levarPancada(dano,fx
 function trocarVeiculo(){
   if(veic.dirigindo){
     const era=veic.dirigindo, [x,z,h]=sair(); jogador.position.set(x,0,z); jogador.visible=true; rumo=h-Math.PI/2;
-    if(era.tipo.moto){ descer(jogador); era.obj.rotation.z=0.12; } // olhando para fora do veículo cam.dist=distAPe;
+    if(era.tipo.moto){ descer(jogador); era.obj.rotation.z=0.12; }
+    cam.dist=distAPe;                                                              // câmera volta para perto (a pé)
     $('velo').style.display='none';
   } else {
     const c=veiculoPerto(jogador.position.x,jogador.position.z); if(!c) return;

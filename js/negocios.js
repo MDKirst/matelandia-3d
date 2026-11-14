@@ -15,6 +15,7 @@ import { carregarModelo, PESSOAS } from './pedestres.js';
 import { horaJogo } from './ceu.js';
 import { perfil } from './rotina.js';
 import { sortearPersona } from './personas.js';
+import { estacionarMoto } from './veiculos.js';
 import { musicaLoja } from './som.js';
 
 // curvas de movimento por hora (as mesmas ideias do rotina.js)
@@ -167,6 +168,8 @@ function abrirNaTela(l){
   carregarMoldes().then(()=>{ if(abertos.get(l.id)!==n||n.atendente) return; const b=boneco(); if(!b) return;
     b.obj.position.set(6,b.pe,l.balcao+1.5); b.obj.rotation.y=Math.PI; g.add(b.obj); animar(b,'parado'); n.atendente=b; });
   if(l.negocio==='oficina') carroNoConserto(n);
+  if(l.negocio==='oficina'&&meu(l)){ const x=l.A[0]+l.t[0]*2.8+l.n[0]*1.0, z=l.A[1]+l.t[1]*2.8+l.n[1]*1.0;   // na frente da porta, de lado para a rua
+    estacionarMoto(x,z,Math.atan2(-l.t[0],-l.t[1])); }
 }
 // oficina: carro (modelo de IA do jogo) parado de frente para a rua, capô aberto e um mecânico mexendo no motor
 let carroCache=null;

@@ -20,6 +20,12 @@ const TIPOS = [
 ];
 const loader = new GLTFLoader(); loader.setMeshoptDecoder(MeshoptDecoder);
 
+// a moto do jogador fica na frente da oficina dele (negocios.js chama ao achar a oficina)
+let vagaMoto=null;
+export function estacionarMoto(x,z,h){
+  vagaMoto={x,z,h}; const c=frota.find(c=>c.tipo.moto); if(!c||c===dirigindo) return;
+  c.obj.position.set(x,0,z); c.h=h; c.obj.rotation.y=h; c.obj.rotation.z=0.12; c.v=0; c.dano=0; for(const [m,cor] of c.mats) m.color.copy(cor);
+}
 export const frota = [];   // {tipo, obj, h, v, comp, larg}
 export let dirigindo = null;
 
@@ -68,7 +74,8 @@ export async function iniciarVeiculos(){
     const L=lugares[k]; obj.rotation.order='YXZ'; obj.position.set(L.x,0,L.z); obj.rotation.y=L.h; scene.add(obj);   // YXZ: arfagem e rolagem no eixo do próprio veículo
     const mats=[]; obj.traverse(o=>{ if(o.isMesh){ o.material=o.material.clone(); mats.push([o.material,o.material.color.clone()]); } });
     const c={tipo, obj, h:L.h, v:0, comp:tam.z, larg:tam.x, alt:tam.y, dano:0, quebrado:false, acum:0, queima:0, mats};
-    if(tipo.moto){ obj.userData={...obj.userData,...g.scene.userData}; Object.assign(c,prepararRodas(obj)); obj.rotation.z=0.12; c.larg=Math.min(c.larg,0.9); }   // moto: no descanso, meio deitada
+    if(tipo.moto){ obj.userData={...obj.userData,...g.scene.userData}; Object.assign(c,prepararRodas(obj)); obj.rotation.z=0.12; c.larg=Math.min(c.larg,0.9);
+      if(vagaMoto){ obj.position.set(vagaMoto.x,0,vagaMoto.z); c.h=vagaMoto.h; obj.rotation.y=vagaMoto.h; } }   // moto: no descanso, meio deitada
     frota.push(c); ok();
   }, undefined, e=>{ console.warn('veículo',tipo.arq,e); ok(); }))));
 }
@@ -94,7 +101,7 @@ export function sair(){
 // um passo de física do veículo dirigido. acel: -1..1 (W/S), giro: -1..1 (A/D), freio de mão
 export function dirigir(dt, acel, giro, freio, obstaculo){
   const c=dirigindo, T=c.tipo;
-  if(c.quebrado) acel=Math.min(0,acel)*0;                                       // motor morto: só rola e freia
+  if(c.quebrado) acel=Math.min(0,acel)*0.35;                                    // motor morto: só uma ré devagar, para sair de onde travou
   if(acel>0) c.v += (c.v<0 ? T.acel*2.2 : T.acel)*acel*dt;                       // frente (freia se estava de ré)
   else if(acel<0) c.v += (c.v>0 ? -T.acel*2.2 : -T.acel*0.6)*(-acel)*dt;         // freio, depois ré
   else c.v -= Math.sign(c.v)*Math.min(Math.abs(c.v), 1.6*dt);                   // rolagem
@@ -130,6 +137,7 @@ export { frente, esquerda };
 /* ───────── dano: fumaça cinza > fumaça preta > fogo > quebra ───────── */
 export function danificar(c, impacto){
   if(c.quebrado) return;
+  if(c.tipo.moto){ c.dano=Math.min(80, c.dano+(impacto-3.5)*3); return; }      // moto: soltar fumaça sim, quebrar não (senão trava no lugar)
   c.dano=Math.min(100, c.dano+(impacto-3.5)*7);
   // a lataria escurece conforme apanha
   const k=1-0.55*c.dano/100; for(const [m,cor] of c.mats) m.color.copy(cor).multiplyScalar(k);
