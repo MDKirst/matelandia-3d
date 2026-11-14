@@ -14,6 +14,7 @@ Jogo de navegador em 3D da cidade de Matelândia-PR: ande, dirija, faça entrega
 ## Como funciona
 - **Terrenos e construções** ficam num banco compartilhado (Firebase): todos veem o que os outros construíram, e só o dono mexe no próprio terreno. Cada jogador pode ter até 2 terrenos.
 - **Dia e noite:** um dia do jogo dura 48 minutos e é igual para todos os jogadores. Os pedestres seguem a rotina dos lugares de verdade: porta da escola cheia na entrada e na saída das aulas, padaria cedo, restaurante no almoço e na janta, igreja no culto, bar e praça à noite. À noite os postes, as janelas e os faróis acendem, aparecem estrelas e grilos, e a rua esvazia de madrugada. Para testar uma hora: `?hora=21` no endereço.
+- **Negócio próprio (V no seu terreno vazio):** escolha no cardápio (padaria, lanchonete, mercado, loja de roupas, farmácia ou oficina) e o comércio aparece pronto, com atendente; os clientes da cidade entram e compram. Todos veem o seu negócio. Fora do jogo o caixa junta até 8 h de renda; V recolhe.
 - **Foto (P ou 📷):** tira um print do jogo sem os painéis, com a marca "Matelândia 3D", para salvar ou compartilhar.
 - **Conquistas (🏆):** 18 desafios (primeira entrega, explorar 25 ruas, despistar a polícia, andar de madrugada…).
 - **Dinheiro (M$)**, nome, personagem e conquistas ficam guardados só no navegador de cada um.

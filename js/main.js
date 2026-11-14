@@ -31,6 +31,7 @@ import { iniciarCeu, desenhar, horaJogo, relogioTxt, quantoNoite } from './ceu.j
 import { ganhar as conquista, contar, colecionar } from './conquistas.js';
 import { pedirFoto, talvezFotografar } from './foto.js';
 import { policia } from './policia.js';
+import { iniciarNegocios, atualizarNegocios, acaoNegocio, pertoDeNegocioMeu } from './negocios.js';
 import { frota, iniciarVeiculos, veiculoPerto, entrar, sair, dirigir, dentroDeVeiculo, frente, esquerda } from './veiculos.js';
 import * as veic from './veiculos.js';
 import { iniciarTransito, atualizarTransito, posicoesTransito, carros } from './transito.js';
@@ -174,6 +175,7 @@ function quadro(){
     if(pedido.comprar){ pedido.comprar=false; if(!veic.dirigindo) comprar(jogador.position.x,jogador.position.z); }
     if(pedido.obra){ pedido.obra=false; if(!veic.dirigindo) alternarObra(jogador.position.x,jogador.position.z); }
     if(pedido.casa){ pedido.casa=false; irAoTerreno(); }
+    if(pedido.negocio){ pedido.negocio=false; if(!veic.dirigindo&&!obra.ativa) acaoNegocio(jogador.position.x,jogador.position.z); }
     if(pedido.foto){ pedido.foto=false; if(!obra.ativa){ pedirFoto((ruaAtual?ruaAtual+' · ':'')+relogioTxt(horaJogo())); } }
     if(pedido.acao){ const a=pedido.acao; pedido.acao=null;                     // T/G/H/X com um pedestre perto
       if(!veic.dirigindo){ const p=jogador.position, alvo=pedestrePerto(p.x,p.z);
@@ -203,7 +205,8 @@ function quadro(){
   atualizarPedestres(dt,{x:p.x,z:p.z,dirigindo:!!D,v:D?D.v:0, veic:D?{x:D.obj.position.x,z:D.obj.position.z,h:D.h,meio:D.comp/2,larg:D.larg/2,v:D.v}:null},
     [...frota.filter(c=>c!==D).map(c=>[c.obj.position.x,c.obj.position.z,c.h,c.comp/2,c.larg/2]), ...posicoesTransito(), ...posicoesPolicia()]);   // pedestre não atravessa veículo
   if(!home.aberta) atualizarPolicia(dt,{x:p.x,z:p.z,dirigindo:!!D,v:D?D.v:0},prender);
-  efeitosVeiculos(dt); atualizarEfeitos(dt); atualizarBaloes(dt);
+  efeitosVeiculos(dt); atualizarEfeitos(dt); atualizarBaloes(dt); atualizarNegocios(dt,p.x,p.z);
+  $('negBtn').style.display=!home.aberta&&!veic.dirigindo&&matchMedia('(pointer:coarse)').matches&&pertoDeNegocioMeu(p.x,p.z)?'block':'none';
   if(!home.aberta) atualizarCorrida(dt, veic.dirigindo);
   // online: manda meu estado e move os outros jogadores
   if(!home.aberta){ const D2=veic.dirigindo; enviarEstado(dt,{x:p.x,z:p.z,r:rumo,a:D2?'parado':estadoAPe,vt:D2?D2.tipo.id:null,vh:D2?D2.h:null,e:vida.e,c:vida.caido>0,g:[golpe.seq,golpe.tipo||'']}); }
@@ -262,6 +265,7 @@ carregarCidade().then(async()=>{
   const p=jogador.position, [x,z]=pontoLivre(p.x,p.z); p.set(x,0,z);   // não nascer dentro de uma casa
   progresso('Demarcando terrenos…');
   console.info('terrenos', iniciarTerrenos());
+  iniciarNegocios().catch(e=>console.warn('negócios',e));
   console.info('postes', iniciarCeu());
   progresso('Ligando os motores…');
   await iniciarVeiculos(); await iniciarTransito(jogador.position.x,jogador.position.z);

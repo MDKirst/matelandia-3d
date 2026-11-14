@@ -75,6 +75,21 @@
   #conqLista .ic{font-size:24px;width:30px;text-align:center}
   #conqLista b{display:block;font-size:13px} #conqLista span{display:block;font-size:11.5px;color:#94a3b8}
   body.em-home #trofeu{top:auto;bottom:14px}
+  #negocio{position:fixed;inset:0;z-index:11;display:none;align-items:center;justify-content:center;background:rgba(8,10,14,.6);padding:16px;box-sizing:border-box}
+  #negocio.on{display:flex}
+  #negocio .caixa{background:#11151b;border:1px solid #334155;border-radius:14px;padding:14px;width:min(600px,100%);max-height:100%;overflow:auto;display:flex;flex-direction:column;gap:10px;box-sizing:border-box}
+  #negocio .cab{display:flex;justify-content:space-between;align-items:center;font-size:16px;gap:10px}
+  #negocio .cab button{padding:6px 11px}
+  #negInfo{font-size:13px;color:#cbd5e1;line-height:1.5}
+  #negLista{display:grid;grid-template-columns:repeat(auto-fill,minmax(170px,1fr));gap:8px}
+  #negLista .neg{display:flex;gap:10px;align-items:center;text-align:left;background:#1a2029;color:#e2e8f0;border:1px solid #2b3442;border-radius:10px;padding:10px;font-weight:600}
+  #negLista .neg:hover:not(:disabled){border-color:#F97316}
+  #negLista .neg:disabled{opacity:.45;cursor:not-allowed}
+  #negLista .ic{font-size:28px} #negLista b{display:block;font-size:14px} #negLista span{display:block;font-size:11.5px;color:#94a3b8;font-weight:500}
+  #negAcoes{display:flex;gap:8px;justify-content:flex-end;flex-wrap:wrap} #negAcoes button{padding:9px 14px;font-size:13px}
+  #negBtn{position:fixed;right:18px;bottom:272px;display:none;padding:10px 12px;border-radius:12px;box-shadow:0 4px 14px rgba(0,0,0,.5)}
+  @media (max-height:480px){#negBtn{bottom:206px;padding:8px 10px}}
+  body.em-home #negBtn{display:none!important}
   /* tela inicial */
   #home{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;gap:28px;padding:24px;box-sizing:border-box;
     background:linear-gradient(90deg,rgba(8,10,14,.92) 0%,rgba(8,10,14,.72) 45%,rgba(8,10,14,.25) 100%);z-index:10;transition:opacity .35s}
@@ -174,7 +189,7 @@
   <b>E</b> entrar/sair do veículo · <b>Espaço</b> freio de mão<br>
   <b>T</b> conversar · <b>G</b> cumprimentar · <b>H</b> seguir · <b>X</b> assustar<br>
   <b>J</b> soco · <b>K</b> chute<br>
-  <b>N</b> entrega (no veículo) · <b>B</b> comprar terreno · <b>C</b> construir<br>
+  <b>N</b> entrega (no veículo) · <b>B</b> comprar terreno · <b>C</b> construir · <b>V</b> negócio<br>
   <b>M</b> som · <b>[ ]</b> detalhe do satélite · <b>P</b> foto · <b>L</b> meu terreno · <b>Esc</b> menu<br>
   <b>Enter</b> chat com os jogadores (online)<br>
   Celular: esquerda anda, direita gira
@@ -192,6 +207,8 @@
 <div id="trofeu"></div>
 <div id="flash"></div>
 <div id="foto"><div class="caixa"><img id="fotoImg" alt="Foto do jogo"><div class="acoes"><button id="fotoSalvar">💾 Salvar</button><button id="fotoShare" class="sec">📤 Compartilhar</button><button id="fotoFechar" class="sec">Fechar</button></div></div></div>
+<div id="negocio"><div class="caixa"><div class="cab"><b id="negTit">🏪 Negócio</b><button id="negFechar" class="sec" aria-label="Fechar">✕</button></div><div id="negInfo"></div><div id="negLista"></div><div id="negAcoes"></div></div></div>
+<button id="negBtn">🏪 Negócio</button>
 <div id="conquistas"><div class="caixa"><div class="cab"><b id="conqTit">🏆 Conquistas</b><button id="conqFechar" class="sec" aria-label="Fechar">✕</button></div><div id="conqLista"></div></div></div>
 <div id="chat"><div id="chatLog"></div><input id="chatIn" maxlength="120" placeholder="Mensagem para a sala (Enter envia, Esc fecha)" autocomplete="off"></div>
 <button id="usar">Entrar</button>

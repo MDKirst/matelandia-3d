@@ -44,6 +44,22 @@
           ".validate": "($vaga === 's1' || $vaga === 's2') && newData.isString() && newData.parent().parent().parent().child('lotes').child(newData.val()).child('dono').val() === auth.uid"
         }
       }
+    },
+    "negocios": {
+      ".read": true,
+      "$lote": {
+        ".write": "auth != null && root.child('lotes').child($lote).child('dono').val() === auth.uid",
+        ".validate": "newData.child('t').isString() && newData.child('t').val().matches(/^(padaria|lanchonete|mercado|roupas|farmacia|oficina)$/) && newData.child('desde').isNumber()",
+        "t": {
+          ".validate": true
+        },
+        "desde": {
+          ".validate": true
+        },
+        "$outro": {
+          ".validate": false
+        }
+      }
     }
   }
 }

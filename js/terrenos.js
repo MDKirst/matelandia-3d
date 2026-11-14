@@ -155,10 +155,10 @@ function refazer(l){
 }
 // bloco no chão/primeiro andar bloqueia passagem (pessoa, carro, polícia)
 function bloqueiaBloco(x,z){
-  for(const l of lotes){ if(!l.ocupa.size) continue;
+  for(const l of lotes){ if(!l.ocupa.size&&!l.ocupaNeg) continue;
     const dx=x-l.A[0], dz=z-l.A[1], u=dx*l.t[0]+dz*l.t[1], v=dx*l.n[0]+dz*l.n[1];
     if(u<0||v<0||u>=W||v>=D) continue;
-    if(l.ocupa.has(Math.floor(u)+','+Math.floor(v))) return true; }
+    const cel=Math.floor(u)+','+Math.floor(v); if(l.ocupa.has(cel)||l.ocupaNeg?.has(cel)) return true; }
   return false;
 }
 
@@ -188,6 +188,7 @@ export async function comprar(x,z){
 export function alternarObra(x,z){
   if(obra.ativa){ sairObra(); return; }
   const l=loteEm(x,z,0); if(!l||!meu(l)){ avisar(l?'Compre o terreno primeiro (B)':'Entre no seu terreno para construir'); return; }
+  if(l.negocio){ avisar('Aqui funciona o seu negócio: V para cuidar dele'); return; }
   obra.ativa=true; obra.lote=l; $('barra').style.display='flex'; fantasma.visible=true; marcarBarra();
 }
 function sairObra(){ obra.ativa=false; obra.lote=null; $('barra').style.display='none'; fantasma.visible=false; }
@@ -196,8 +197,9 @@ function sairObra(){ obra.ativa=false; obra.lote=null; $('barra').style.display=
 export function dicaTerreno(x,z){
   const l=loteEm(x,z,1); if(!l) { if(obra.ativa) sairObra(); return ''; }
   if(obra.ativa) return 'Clique: colocar · Direito: tirar · 1–8 blocos · 9 porta · 0 janela · P piso · C: sair';
+  const neg=ganchos.dica?.(l); if(neg) return neg;
   if(!meu(l)&&l.dono) return `Terreno de ${l.donoNome||'outro jogador'}`;
-  return meu(l)?'C construir no seu terreno':`B comprar terreno (${fmt(l.preco)}) · saldo ${fmt(salvo.saldo)}`;
+  return meu(l)?'C construir · V abrir um negócio':`B comprar terreno (${fmt(l.preco)}) · saldo ${fmt(salvo.saldo)}`;
 }
 
 /* ───────── mira: raio do mouse até o lote ───────── */
@@ -313,3 +315,6 @@ const desenhoLote=l=>{ const c=(u,v)=>[l.A[0]+l.t[0]*u+l.n[0]*v, l.A[1]+l.t[1]*u
   return { id:l.id, cantos:[c(0,0),c(W,0),c(W,D),c(0,D)], centro:c(W/2,D/2), frente:c(W/2,-1.5) }; };
 export const terrenosNoMapa=()=>({ meus:lotes.filter(meu).map(desenhoLote), outros:lotes.filter(l=>l.dono&&!meu(l)).map(desenhoLote) });
 export { avisar as avisarTerreno };
+// para o negocios.js (sem import circular: ele registra a dica aqui)
+export const ganchos={ dica:null };
+export { meu, salvo, salvar, loteEm, W as LARG_LOTE, D as FUNDO_LOTE, meuNome };
