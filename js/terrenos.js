@@ -184,7 +184,11 @@ function loteEm(x,z,margem=0){
   return null;
 }
 let aviso=null;
-function avisar(t){ const a=$('aviso'); a.textContent=t; a.style.opacity=1; clearTimeout(aviso); aviso=setTimeout(()=>a.style.opacity=0,2500); }
+// celular não tem teclado: o aviso fala do botão em vez da tecla
+const TOQUE=matchMedia('(pointer:coarse)').matches;
+const semTecla=t=>!TOQUE?t:t.replace(/ ?C para construir/,' Toque em 🧱 Construir').replace(/V para cuidar dele/,'toque em 🏪 Negócio')
+  .replace(/\(B\)/,'(💰 Comprar terreno)').replace(/aperte B/,'toque em 💰 Comprar terreno').replace(/\(L leva até ele\)/,'(🏠 Meu terreno leva até ele)');
+function avisar(t){ t=semTecla(t); const a=$('aviso'); a.textContent=t; a.style.opacity=1; clearTimeout(aviso); aviso=setTimeout(()=>a.style.opacity=0,2500); }
 let comprando=false;
 export async function comprar(x,z){
   const l=loteEm(x,z,1); if(!l) return false;

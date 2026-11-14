@@ -68,6 +68,9 @@ function bateNoTransito(c,x,z,h){
 }
 
 let lugaresCache=[], gesto=0, estadoAPe='parado';
+const TOQUE=matchMedia('(pointer:coarse)').matches;
+// celular: os botões do painel sem as teclas do teclado ("Foto (P)" → "Foto")
+if(TOQUE) for(const b of document.querySelectorAll('#btns button')) b.textContent=b.textContent.replace(/\s*\([^)]*\)\s*$/,'');
 const relogio=new THREE.Clock(), alvo=new THREE.Vector3(); let rumo=0, tLento=0, passo=0, ruaAtual='', orbita=0.6;
 function aPe(dt){
   let ix=(tecla.KeyD||tecla.ArrowRight?1:0)-(tecla.KeyA||tecla.ArrowLeft?1:0);
@@ -211,7 +214,7 @@ function quadro(){
   $('usar').textContent=veic.dirigindo?'Sair':'Entrar';
   // pedestre perto (a pé): mostra as ações
   const terr=!home.aberta&&!veic.dirigindo&&!perto?dicaTerreno(p.x,p.z):'';
-  if(terr){ $('dica').style.display='block'; $('dica').textContent=terr; }
+  if(terr){ $('dica').style.display='block'; $('dica').textContent=TOQUE?terr.replace(/\b[BCV] (?=comprar|construir|abrir|caixa)/g,'').replace(/^./,c=>c.toUpperCase()):terr; }   // celular: sem as teclas
   const gente=!home.aberta&&!veic.dirigindo&&!perto&&!terr&&pedestrePerto(p.x,p.z);
   if(gente){ $('dica').style.display='block'; $('dica').textContent='T conversar · G cumprimentar · H '+(gente.modo==='seguir'?'dispensar':'chamar')+' · X assustar'+(quantosSeguem()?` · ${quantosSeguem()} seguindo`:''); }
   $('acoes').style.display=gente&&matchMedia('(pointer:coarse)').matches?'flex':'none';
