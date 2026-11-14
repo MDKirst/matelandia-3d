@@ -18,7 +18,7 @@ const W=12, D=24, ALT=20;                          // largura (frente), fundo, a
 const COM_CALCADA=new Set(['primary','secondary','tertiary','residential','unclassified','living_street']);
 const CALCADA=2.6, GUIA=0.3;
 const CHAVE='matelandia3d.mundo';
-const SALDO_INICIAL=20000;
+const SALDO_INICIAL=5000;      // só para quem começa agora (quem já joga mantém o saldo): terreno + negócio pedem trabalho
 
 /* ───────── blocos ───────── */
 function tex(pinta){ const cv=document.createElement('canvas'); cv.width=cv.height=64; const k=cv.getContext('2d'); pinta(k); const t=new THREE.CanvasTexture(cv); t.colorSpace=THREE.SRGBColorSpace; t.magFilter=THREE.NearestFilter; t.minFilter=THREE.NearestMipmapLinearFilter; return t; }
