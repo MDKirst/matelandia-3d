@@ -10,7 +10,8 @@ import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { MeshoptDecoder } from 'three/addons/libs/meshopt_decoder.module.js';
 import { $ } from './cena.js';
 import { lotes, ganchos, meu, salvo, salvar, loteEm, limparBlocos, LARG_LOTE as W, ganhar, fmt, avisarTerreno as avisar } from './terrenos.js';
-import { nuvem, conectarNuvem, ouvirNegocios, abrirNegocioNuvem, fecharNegocioNuvem } from './nuvem.js';
+import { nuvem, conectarNuvem, ouvirNegocios, abrirNegocioNuvem, fecharNegocioNuvem, renomearNegocioNuvem } from './nuvem.js';
+import { limparFala } from './online.js';
 import { carregarModelo, PESSOAS } from './pedestres.js';
 import { horaJogo, luzExtra, porLuz, TEX_QUENTE } from './ceu.js';
 import { perfil } from './rotina.js';
@@ -62,7 +63,9 @@ function texQuadro(itens,titulo){
     k.textAlign='right'; k.fillStyle='#fde047'; k.fillText('M$ '+preco,964,y); k.fillStyle='#fef3c7'; });
   const t=new THREE.CanvasTexture(cv); t.colorSpace=THREE.SRGBColorSpace; t.anisotropy=4; return t;
 }
-const nomeNeg=l=>`${TIPOS[l.negocio].nome} de ${l.donoNome||'Visitante'}`;   // "de": serve para qualquer nome
+// nome escolhido pelo dono (até 24 letras, sem palavrão: todos veem o letreiro) ou "<Tipo> de <dono>"
+const limparNomeNeg=s=>limparFala(String(s||'').replace(/["'`&]/g,'')).slice(0,24).trim();
+const nomeNeg=l=>l.negNome||`${TIPOS[l.negocio].nome} de ${l.donoNome||'Visitante'}`;   // "de": serve para qualquer nome
 
 /* ───────── prédio pronto (coordenadas do lote: x = frente 0..12, z = fundo 0..24) ───────── */
 const X0=1, X1=11, Z0=2, Z1=15, H=4.2, PORTA=[4.8,7.2];
@@ -267,7 +270,7 @@ Continuar?`)) return;
   if(!await abrirNegocioNuvem(l.id,tipo)){ avisar('Não deu para abrir agora, tente de novo'); return; }
   if(l.blocos.size) limparBlocos(l);
   ganhar(-T.preco); reg(l).coleta=Date.now(); reg(l).vendas=0; salvar();
-  l.negocio=tipo; abrirNaTela(l);
+  l.negocio=tipo; l.negNome=''; abrirNaTela(l);
   avisar(`${T.ic} ${nomeNeg(l)} abriu as portas!`);
   dispatchEvent(new CustomEvent('matelandia:negocio',{detail:{tipo, nome:nomeNeg(l)}}));
 }
@@ -282,8 +285,11 @@ function abrirPainel(l){
   const fec=document.createElement('button'); fec.className='sec'; fec.textContent='Fechar o negócio';
   fec.onclick=async()=>{ if(!confirm(`Fechar ${nomeNeg(l)}? O prédio some e o dinheiro gasto não volta.`)) return;
     const v=caixa(l); if(!await fecharNegocioNuvem(l.id)){ avisar('Não deu para fechar agora'); return; }
-    ganhar(v); delete salvo.negocios[l.id]; salvar(); dispatchEvent(new CustomEvent('matelandia:fechou',{detail:{tipo:l.negocio}})); l.negocio=null; fecharNaTela(l); fecharUI(); avisar('Negócio fechado'+(v?` (caixa +${fmt(v)})`:'')); };
-  a.append(rec,fec); $('negocio').classList.add('on');
+    ganhar(v); delete salvo.negocios[l.id]; salvar(); l.negNome=''; dispatchEvent(new CustomEvent('matelandia:fechou',{detail:{tipo:l.negocio}})); l.negocio=null; fecharNaTela(l); fecharUI(); avisar('Negócio fechado'+(v?` (caixa +${fmt(v)})`:'')); };
+  const ren=document.createElement('button'); ren.className='sec'; ren.textContent='✏️ Mudar nome';
+  ren.onclick=()=>{ const r=prompt('Nome do seu comércio (até 24 letras). Deixe vazio para voltar ao nome padrão.', l.negNome||''); if(r===null) return;
+    const nm=limparNomeNeg(r); l.negNome=nm; renomearNegocioNuvem(l.id,nm); abrirNaTela(l); fecharUI(); avisar(`Agora se chama: ${nomeNeg(l)}`); };
+  a.append(rec,ren,fec); $('negocio').classList.add('on');
 }
 function fecharUI(){ $('negocio').classList.remove('on'); loteUI=null; }
 $('negFechar').addEventListener('click',fecharUI);
@@ -309,8 +315,9 @@ export async function iniciarNegocios(){
   if(!await conectarNuvem()) return;
   ouvirNegocios(ns=>{
     for(const l of lotes){ const t=ns[l.id]?.t, tipo=TIPOS[t]?t:null;
-      if(tipo===l.negocio&&(!tipo||abertos.has(l.id))) continue;
-      l.negocio=tipo; if(tipo) abrirNaTela(l); else fecharNaTela(l); }
+      const nm=tipo?limparNomeNeg(ns[l.id].n):'';
+      if(tipo===l.negocio&&nm===(l.negNome||'')&&(!tipo||abertos.has(l.id))) continue;
+      l.negocio=tipo; l.negNome=nm; if(tipo) abrirNaTela(l); else fecharNaTela(l); }
   });
 }
 export function atualizarNegocios(dt, px, pz){

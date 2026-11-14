@@ -58,6 +58,9 @@
         },
         "$outro": {
           ".validate": false
+        },
+        "n": {
+          ".validate": "newData.isString() && newData.val().length <= 24"
         }
       }
     },

@@ -110,6 +110,7 @@ export function subirBlocos(id, blocos){
 // negócios: negocios/{lote} = { t:'padaria', desde:ms }. Só o dono do lote grava (ver regras).
 export function ouvirNegocios(cb){ if(!nuvem.ok) return; F.onValue(ref('negocios'),s=>cb(s.val()||{}),e=>console.warn('negocios',e)); }
 export async function abrirNegocioNuvem(id, tipo){ if(!nuvem.ok) return true; try{ await F.set(ref('negocios/'+id),{ t:tipo, desde:Date.now() }); return true; }catch(e){ console.warn('abrirNegocio',e); return false; } }
+export function renomearNegocioNuvem(id, nome){ if(!nuvem.ok) return; (nome?F.set(ref(`negocios/${id}/n`),nome):F.remove(ref(`negocios/${id}/n`))).catch(e=>console.warn('renomear',e)); }
 export async function fecharNegocioNuvem(id){ if(!nuvem.ok) return true; try{ await F.remove(ref('negocios/'+id)); return true; }catch(e){ console.warn('fecharNegocio',e); return false; } }
 
 // jornal da cidade: jornal/{id} = { tipo, nome, rua?, neg?, uid, t }. Só tipos fixos (o texto é montado no jogo).
