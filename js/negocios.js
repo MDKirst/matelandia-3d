@@ -6,6 +6,8 @@
 // acumula pela renda/hora (até 8 h) e o dono recolhe com V.
 import * as THREE from 'three';
 import { clone as clonarEsqueleto } from 'three/addons/utils/SkeletonUtils.js';
+import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+import { MeshoptDecoder } from 'three/addons/libs/meshopt_decoder.module.js';
 import { $ } from './cena.js';
 import { lotes, ganchos, meu, salvo, salvar, loteEm, limparBlocos, LARG_LOTE as W, ganhar, fmt, avisarTerreno as avisar } from './terrenos.js';
 import { nuvem, conectarNuvem, ouvirNegocios, abrirNegocioNuvem, fecharNegocioNuvem } from './nuvem.js';
@@ -164,6 +166,30 @@ function abrirNaTela(l){
   abertos.set(l.id,n);
   carregarMoldes().then(()=>{ if(abertos.get(l.id)!==n||n.atendente) return; const b=boneco(); if(!b) return;
     b.obj.position.set(6,b.pe,l.balcao+1.5); b.obj.rotation.y=Math.PI; g.add(b.obj); animar(b,'parado'); n.atendente=b; });
+  if(l.negocio==='oficina') carroNoConserto(n);
+}
+// oficina: carro (modelo de IA do jogo) parado de frente para a rua, capô aberto e um mecânico mexendo no motor
+let carroCache=null;
+const loaderCarro=new GLTFLoader(); loaderCarro.setMeshoptDecoder(MeshoptDecoder);
+async function carroNoConserto(n){
+  carroCache ??= new Promise(ok=>loaderCarro.load('assets/veiculos/hatch.glb',g=>ok(g.scene),undefined,()=>ok(null)));
+  const molde=await carroCache; if(!molde||abertos.get(n.l.id)!==n) return;
+  const carro=molde.clone(), cz=6.8; carro.position.set(6,0,cz); n.g.add(carro);           // frente = -Z = para a rua
+  const box=new THREE.Box3().setFromObject(molde), tam=box.getSize(new THREE.Vector3());
+  const frente=cz+box.min.z+0.35, topo=box.max.y*0.6, larg=Math.min(1.4,tam.x*0.58), compCapo=Math.min(1.1,tam.z*0.25);   // +0,35: o bico do carro é baixo
+  // vão do motor: bloco escuro com peças, por cima do capô fechado do modelo
+  cx3(n.g,MAT.escuro,6-larg/2,6+larg/2,topo-0.12,topo+0.02,frente,frente+compCapo);
+  cx3(n.g,MAT.metal,5.6,6.2,topo+0.02,topo+0.22,frente+0.25,frente+0.8); cx3(n.g,lamb(0xb91c1c),6.3,6.55,topo+0.02,topo+0.14,frente+0.2,frente+0.45);
+  cx3(n.g,lamb(0x111827),6-larg/2+0.1,6-larg/2+0.4,topo+0.02,topo+0.2,frente+0.55,frente+0.85);   // bateria
+  // capô levantado, preso perto do para-brisa
+  const piv=new THREE.Group(); piv.position.set(6,topo+0.04,frente+compCapo); n.g.add(piv);
+  const capo=new THREE.Mesh(new THREE.BoxGeometry(larg,0.04,compCapo),lamb(0x9ca3af)); capo.position.set(0,0,-compCapo/2); piv.add(capo); piv.rotation.x=1.15;   // positivo: a ponta da frente sobe
+  cx3(n.g,MAT.metal,6+larg/2-0.1,6+larg/2-0.08,topo,topo+0.7,frente+0.45,frente+0.47);           // vareta segurando o capô
+  // colisão do carro
+  for(let u=Math.floor(6-tam.x/2);u<Math.ceil(6+tam.x/2);u++) for(let v=Math.floor(cz+box.min.z);v<Math.ceil(cz+box.max.z);v++) n.l.ocupaNeg?.add(u+','+v);
+  await carregarMoldes(); if(abertos.get(n.l.id)!==n) return;
+  const m=boneco(); if(!m) return;
+  m.obj.position.set(6.2,m.pe,frente-0.8); m.obj.rotation.y=0; n.g.add(m.obj); animar(m,'mexer'); n.mecanico=m; m.t=0;
 }
 function fecharNaTela(l){ const n=abertos.get(l.id); if(n){ l.grupo.remove(n.g); abertos.delete(l.id); } l.ocupaNeg=null; }
 
@@ -171,7 +197,8 @@ function fecharNaTela(l){ const n=abertos.get(l.id); if(n){ l.grupo.remove(n.g);
 function novoCliente(n){
   const b=boneco(); if(!b) return; const lado=Math.random()<0.5?-1:1;
   const fila=n.clientes.length, bx=4+((fila*1.7+Math.random())%4);
-  b.rota=[[W/2+lado*7,-1.6],[W/2+lado*1.5,-1.4],[6,Z0-0.4],[6,Z0+1.2],[bx,n.l.balcao-0.7],'comprar',[6,Z0+1.2],[6,Z0-0.4],[W/2-lado*1.5,-1.4],[W/2-lado*8,-1.6]];
+  const bz=n.l.balcao, volta=n.l.negocio==='oficina'?[[9.3,Z0+1.2],[9.3,bz-0.7]]:[[6,Z0+1.2]];          // oficina: dá a volta no carro
+  b.rota=[[W/2+lado*7,-1.6],[W/2+lado*1.5,-1.4],[6,Z0-0.4],...volta,[bx,bz-0.7],'comprar',...[...volta].reverse(),[6,Z0-0.4],[W/2-lado*1.5,-1.4],[W/2-lado*8,-1.6]];
   b.persona=sortearPersona(); b.passo=0; b.t=0; b.vel=(1.15+Math.random()*0.4)*b.persona.vel; const [x,z]=b.rota[0]; b.obj.position.set(x,b.pe,z); n.g.add(b.obj); n.clientes.push(b);
 }
 function andarCliente(n,b,dt,perto){
@@ -283,6 +310,7 @@ export function atualizarNegocios(dt, px, pz){
     if(n.prox<=0&&moldes.length){ n.prox=(5+Math.random()*7)/Math.max(0.15,mov); if(mov>0.08&&n.clientes.length<3) novoCliente(n); }
     for(const b of [...n.clientes]){ andarCliente(n,b,dt,d<60); b.obj.position.y=b.pe; b.mixer.update(dt); }
     if(n.atendente) n.atendente.mixer.update(dt);
+    if(n.mecanico){ const m=n.mecanico; m.t+=dt; animar(m, m.t%9<6.5?'mexer':'parado'); m.mixer.update(dt); }
   }
   musicaLoja(dentro);
   for(let i=flut.length-1;i>=0;i--){ const f=flut[i]; f.t-=dt; f.s.position.y+=dt*0.8; f.s.material.opacity=Math.min(1,f.t); if(f.t<=0){ f.n.g.remove(f.s); flut.splice(i,1); } }

@@ -9,12 +9,14 @@ import { ruas } from './cidade.js';
 import { bloqueado } from './mundo.js';
 import { LX0, LZ0, LX1, LZ1 } from './geo.js';
 import { fumaca, fogo, explosao } from './efeitos.js';
+import { prepararRodas } from './moto.js';
 
 // vmax em m/s, acel em m/s², entre = distância entre-eixos (raio de curva), cam = distância da câmera
 const TIPOS = [
   { id:'suv',    nome:'SUV',             arq:'assets/veiculos/suv.glb',    vmax:24, acel:6,  entre:2.8, cam:9  },
   { id:'picape', nome:'Picape',          arq:'assets/veiculos/picape.glb', vmax:22, acel:5,  entre:3.1, cam:9.5 },
   { id:'cavalo', nome:'Cavalo mecânico', arq:'assets/veiculos/cavalo.glb', vmax:17, acel:2.8,entre:4.2, cam:13 },
+  { id:'chopper', nome:'Moto custom',    arq:'assets/veiculos/chopper.glb', vmax:30, acel:7.5, entre:1.75, cam:6.5, moto:true },   // Bison Seca-Suvaco (Couro & Asfalto)
 ];
 const loader = new GLTFLoader(); loader.setMeshoptDecoder(MeshoptDecoder);
 
@@ -65,7 +67,9 @@ export async function iniciarVeiculos(){
     obj.traverse(o=>{ if(o.isMesh){ o.material.side=THREE.FrontSide; } });
     const L=lugares[k]; obj.rotation.order='YXZ'; obj.position.set(L.x,0,L.z); obj.rotation.y=L.h; scene.add(obj);   // YXZ: arfagem e rolagem no eixo do próprio veículo
     const mats=[]; obj.traverse(o=>{ if(o.isMesh){ o.material=o.material.clone(); mats.push([o.material,o.material.color.clone()]); } });
-    frota.push({tipo, obj, h:L.h, v:0, comp:tam.z, larg:tam.x, alt:tam.y, dano:0, quebrado:false, acum:0, queima:0, mats}); ok();
+    const c={tipo, obj, h:L.h, v:0, comp:tam.z, larg:tam.x, alt:tam.y, dano:0, quebrado:false, acum:0, queima:0, mats};
+    if(tipo.moto){ obj.userData={...obj.userData,...g.scene.userData}; Object.assign(c,prepararRodas(obj)); obj.rotation.z=0.12; c.larg=Math.min(c.larg,0.9); }   // moto: no descanso, meio deitada
+    frota.push(c); ok();
   }, undefined, e=>{ console.warn('veículo',tipo.arq,e); ok(); }))));
 }
 

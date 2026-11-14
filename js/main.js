@@ -28,6 +28,7 @@ import { golpearPedestre } from './pedestres.js';
 addEventListener('matelandia:comecar',e=>{ if(!alvoCorrida()) comecar(e.detail, jogador.position.x, jogador.position.z); });
 addEventListener('matelandia:jogar',e=>{ const d=e.detail; if(d.online) entrarOnline(d.nome,d.personagem); else sairOnline(); setTimeout(()=>conquista('boas_vindas'),1500); });
 import { minimapa } from './minimapa.js';
+import { sentar, descer, girarRodas } from './moto.js';
 import { iniciarCeu, desenhar, horaJogo, relogioTxt, quantoNoite } from './ceu.js';
 import { ganhar as conquista, contar, colecionar } from './conquistas.js';
 import { pedirFoto, talvezFotografar } from './foto.js';
@@ -111,9 +112,12 @@ function aoVolante(dt){
     if(alvoT&&v0>9) crime(1,'Batida');
   }
   const p=c.obj.position; jogador.position.set(p.x,0,p.z); rumo=c.h+Math.PI;
+  if(c.tipo.moto){ girarRodas(c,dt);                                                    // moto: inclina na curva e o piloto vai junto
+    c.obj.rotation.z=THREE.MathUtils.lerp(c.obj.rotation.z, giro*Math.min(1,Math.abs(c.v)/10)*0.32*Math.sign(c.v||1), Math.min(1,dt*5)); }
   // quebra-mola: eixo da frente e de trás sobem; quanto mais rápido, maior o pulo
   { const [fx,fz]=frente(c.h), a=c.comp*0.35, yf=alturaLombada(p.x+fx*a,p.z+fz*a), yt=alturaLombada(p.x-fx*a,p.z-fz*a), k=1+Math.max(0,Math.abs(c.v)-6)*0.25;
     p.y=(yf+yt)/2*k; c.obj.rotation.x=Math.atan2((yf-yt)*k,c.comp); }
+  if(c.tipo.moto) sentar(jogador,c.obj,false);                                      // piloto no banco (anda e inclina com a moto)
   // câmera vem para trás do veículo quando ele anda (parado, dá para olhar em volta)
   if(Math.abs(c.v)>0.6){ let d=c.h-cam.yaw; d=Math.atan2(Math.sin(d),Math.cos(d)); cam.yaw+=d*Math.min(1,dt*2.5); }
   cam.dist+= (c.tipo.cam-cam.dist)*Math.min(1,dt*3);
@@ -146,11 +150,13 @@ quandoApanhar((dano,fx,fz)=>{ if(veic.dirigindo) return; if(levarPancada(dano,fx
 
 function trocarVeiculo(){
   if(veic.dirigindo){
-    const [x,z,h]=sair(); jogador.position.set(x,0,z); jogador.visible=true; rumo=h-Math.PI/2; // olhando para fora do veículo cam.dist=distAPe;
+    const era=veic.dirigindo, [x,z,h]=sair(); jogador.position.set(x,0,z); jogador.visible=true; rumo=h-Math.PI/2;
+    if(era.tipo.moto){ descer(jogador); era.obj.rotation.z=0.12; } // olhando para fora do veículo cam.dist=distAPe;
     $('velo').style.display='none';
   } else {
     const c=veiculoPerto(jogador.position.x,jogador.position.z); if(!c) return;
-    distAPe=cam.dist; entrar(c); jogador.visible=false; animar('parado'); conquista('motorista'); colecionar('frota','veic',c.tipo.id,5);
+    distAPe=cam.dist; entrar(c); jogador.visible=!!c.tipo.moto; animar('parado');
+    if(c.tipo.moto){ c.obj.rotation.z=0; sentar(jogador,c.obj,true); } conquista('motorista'); colecionar('frota','veic',c.tipo.id,5);
     $('velo').style.display='block';
   }
 }

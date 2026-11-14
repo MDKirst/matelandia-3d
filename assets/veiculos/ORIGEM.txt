@@ -11,3 +11,6 @@ Copiados do Couro & Asfalto (public/modelos/veiculos, com autorizacao do Maicon 
 
 Ficaram de fora os modelados no Blender (sem IA): bombeiros, guincho,
 caminhao-frango, cavalo-branco, reboque-bau, reboque-lona, bitrem-reboques.
+
+chopper.glb ("Bison Seca-Suvaco 1700", moto custom de guidao alto): copiado do Couro & Asfalto
+(public/modelos/moto-chopper.glb, imagem do Gemini -> 3D TRELLIS.2) em 14/11/2026, pedido do Maicon.
