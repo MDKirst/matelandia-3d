@@ -243,7 +243,7 @@ function agir(tirar){
     if(fm==='porta'&&(y+1>=ALT||l.blocos.has(i+','+j+','+(y+1)))) return avisar('A porta precisa de 2 de altura livres');
     if(l.blocos.has(k)&&forma(tipoDe(l.blocos.get(k)))!=='piso') return;                          // só o piso pode ser substituído
     const gira=(fm==='porta'||fm==='janela')&&obra.giro?100:0;
-    l.blocos.set(k,obra.tipo+gira); refazer(l); porBloco(l.id,k,obra.tipo+gira); }
+    l.blocos.set(k,obra.tipo+gira); refazer(l); porBloco(l.id,k,obra.tipo+gira); dispatchEvent(new Event('matelandia:bloco')); }
 }
 let ini=null;
 cv.addEventListener('pointerdown',e=>{ ini={x:e.clientX,y:e.clientY,b:e.button}; });

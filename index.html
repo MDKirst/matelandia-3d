@@ -51,6 +51,30 @@
   #acoes{position:fixed;right:12px;bottom:280px;display:none;flex-direction:column;gap:6px}
   #acoes button{font-size:13px;padding:9px 12px;border-radius:10px;box-shadow:0 3px 10px rgba(0,0,0,.45)}
   #usar{position:fixed;right:18px;bottom:190px;width:74px;height:74px;border-radius:50%;font-size:14px;display:none;box-shadow:0 4px 14px rgba(0,0,0,.5)}
+  /* conquistas e foto */
+  #trofeu{position:fixed;top:14px;right:14px;z-index:8;display:flex;gap:12px;align-items:center;background:rgba(12,14,18,.88);border:1px solid rgba(250,204,21,.6);border-radius:14px;padding:10px 16px 10px 12px;min-width:240px;max-width:min(340px,calc(100vw - 28px));box-shadow:0 8px 28px rgba(0,0,0,.5);transform:translateX(calc(100% + 30px));transition:transform .4s cubic-bezier(.2,.9,.3,1.2);pointer-events:none}
+  #trofeu.on{transform:none}
+  #trofeu .ic{font-size:34px;line-height:1}
+  #trofeu small{display:block;color:#facc15;font-size:11px;font-weight:800;letter-spacing:1px;text-transform:uppercase}
+  #trofeu b{display:block;font-size:15px} #trofeu span{display:block;font-size:12px;color:#cbd5e1}
+  #flash{position:fixed;inset:0;background:#fff;opacity:0;pointer-events:none;z-index:9}
+  #flash.on{animation:flash .45s ease-out}
+  @keyframes flash{0%{opacity:.85}100%{opacity:0}}
+  #foto,#conquistas{position:fixed;inset:0;z-index:11;display:none;align-items:center;justify-content:center;background:rgba(8,10,14,.6);padding:16px;box-sizing:border-box}
+  #foto.on,#conquistas.on{display:flex}
+  #foto .caixa,#conquistas .caixa{background:#11151b;border:1px solid #334155;border-radius:14px;padding:12px;max-width:min(860px,100%);max-height:100%;display:flex;flex-direction:column;gap:10px;box-sizing:border-box}
+  #fotoImg{max-width:100%;max-height:calc(100vh - 120px);border-radius:8px;object-fit:contain;min-height:0}
+  #foto .acoes{display:flex;gap:8px;justify-content:flex-end;flex-wrap:wrap}
+  #foto .acoes button{padding:9px 14px;font-size:13px}
+  #conquistas .caixa{width:min(560px,100%)}
+  #conquistas .cab{display:flex;justify-content:space-between;align-items:center;font-size:16px}
+  #conquistas .cab button{padding:6px 11px}
+  #conqLista{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:8px;overflow:auto}
+  #conqLista .item{display:flex;gap:10px;align-items:center;background:#1a2029;border-radius:10px;padding:8px 10px;opacity:.55}
+  #conqLista .item.ok{opacity:1;border:1px solid rgba(250,204,21,.45)}
+  #conqLista .ic{font-size:24px;width:30px;text-align:center}
+  #conqLista b{display:block;font-size:13px} #conqLista span{display:block;font-size:11.5px;color:#94a3b8}
+  body.em-home #trofeu{top:auto;bottom:14px}
   /* tela inicial */
   #home{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;gap:28px;padding:24px;box-sizing:border-box;
     background:linear-gradient(90deg,rgba(8,10,14,.92) 0%,rgba(8,10,14,.72) 45%,rgba(8,10,14,.25) 100%);z-index:10;transition:opacity .35s}
@@ -133,6 +157,8 @@
     <button id="menu" class="sec">☰ Menu (Esc)</button>
     <button id="chatBtn" class="sec">💬 Chat (Enter)</button>
     <button id="casaBtn" class="sec">🏠 Meu terreno (L)</button>
+    <button id="fotoBtn" class="sec">📷 Foto (P)</button>
+    <button id="trofeuBtn" class="sec">🏆</button>
   </div>
   <input id="tp" placeholder="Ir para: lat, lon  (Enter)">
   <div id="coord" style="margin-top:6px;font-size:11px;color:#94a3b8"></div>
@@ -149,7 +175,7 @@
   <b>T</b> conversar · <b>G</b> cumprimentar · <b>H</b> seguir · <b>X</b> assustar<br>
   <b>J</b> soco · <b>K</b> chute<br>
   <b>N</b> entrega (no veículo) · <b>B</b> comprar terreno · <b>C</b> construir<br>
-  <b>M</b> som · <b>[ ]</b> detalhe do satélite · <b>Esc</b> menu<br>
+  <b>M</b> som · <b>[ ]</b> detalhe do satélite · <b>P</b> foto · <b>L</b> meu terreno · <b>Esc</b> menu<br>
   <b>Enter</b> chat com os jogadores (online)<br>
   Celular: esquerda anda, direita gira
 </div>
@@ -163,6 +189,10 @@
 <div id="missao"><div id="missaoTxt"></div><div id="missaoSeta">⬆</div><div id="missaoDist"></div></div>
 <div id="guia"><div id="guiaTxt">🏠 Seu terreno</div><div id="guiaSeta">⬆</div><div id="guiaDist"></div></div>
 <div id="aviso"></div>
+<div id="trofeu"></div>
+<div id="flash"></div>
+<div id="foto"><div class="caixa"><img id="fotoImg" alt="Foto do jogo"><div class="acoes"><button id="fotoSalvar">💾 Salvar</button><button id="fotoShare" class="sec">📤 Compartilhar</button><button id="fotoFechar" class="sec">Fechar</button></div></div></div>
+<div id="conquistas"><div class="caixa"><div class="cab"><b id="conqTit">🏆 Conquistas</b><button id="conqFechar" class="sec" aria-label="Fechar">✕</button></div><div id="conqLista"></div></div></div>
 <div id="chat"><div id="chatLog"></div><input id="chatIn" maxlength="120" placeholder="Mensagem para a sala (Enter envia, Esc fecha)" autocomplete="off"></div>
 <button id="usar">Entrar</button>
 <div id="luta"><button data-golpe="soco" title="Soco (J)">👊</button><button data-golpe="chute" title="Chute (K)">🦶</button></div>

@@ -25,9 +25,12 @@ import { alternarCorrida, atualizarCorrida, alvoCorrida } from './entregas.js';
 import { entrarOnline, sairOnline, enviarEstado, atualizarOnline, posicoesJogadores, golpearJogador, quandoApanhar } from './online.js';
 import { vida, golpe, golpear, atualizarLuta, levarPancada, poseGolpe, DUR, DANO } from './luta.js';
 import { golpearPedestre } from './pedestres.js';
-addEventListener('matelandia:jogar',e=>{ const d=e.detail; if(d.online) entrarOnline(d.nome,d.personagem); else sairOnline(); });
+addEventListener('matelandia:jogar',e=>{ const d=e.detail; if(d.online) entrarOnline(d.nome,d.personagem); else sairOnline(); setTimeout(()=>conquista('boas_vindas'),1500); });
 import { minimapa } from './minimapa.js';
 import { iniciarCeu, desenhar, horaJogo, relogioTxt, quantoNoite } from './ceu.js';
+import { ganhar as conquista, contar, colecionar } from './conquistas.js';
+import { pedirFoto, talvezFotografar } from './foto.js';
+import { policia } from './policia.js';
 import { frota, iniciarVeiculos, veiculoPerto, entrar, sair, dirigir, dentroDeVeiculo, frente, esquerda } from './veiculos.js';
 import * as veic from './veiculos.js';
 import { iniciarTransito, atualizarTransito, posicoesTransito, carros } from './transito.js';
@@ -111,6 +114,7 @@ function aoVolante(dt){
   cam.dist+= (c.tipo.cam-cam.dist)*Math.min(1,dt*3);
   const s=document.createElement('small'); s.textContent=' km/h · '+c.tipo.nome+(c.quebrado?' · QUEBRADO':c.dano>0?` · motor ${Math.round(100-c.dano)}%`:'');
   $('velo').replaceChildren(String(Math.round(Math.abs(c.v)*3.6)), s);
+  if(Math.abs(c.v)*3.6>100) conquista('veloz');
 }
 
 // preso: desce do veículo e aparece na frente do posto da PM
@@ -135,7 +139,7 @@ function trocarVeiculo(){
     $('velo').style.display='none';
   } else {
     const c=veiculoPerto(jogador.position.x,jogador.position.z); if(!c) return;
-    distAPe=cam.dist; entrar(c); jogador.visible=false; animar('parado');
+    distAPe=cam.dist; entrar(c); jogador.visible=false; animar('parado'); conquista('motorista'); colecionar('frota','veic',c.tipo.id,5);
     $('velo').style.display='block';
   }
 }
@@ -170,9 +174,10 @@ function quadro(){
     if(pedido.comprar){ pedido.comprar=false; if(!veic.dirigindo) comprar(jogador.position.x,jogador.position.z); }
     if(pedido.obra){ pedido.obra=false; if(!veic.dirigindo) alternarObra(jogador.position.x,jogador.position.z); }
     if(pedido.casa){ pedido.casa=false; irAoTerreno(); }
+    if(pedido.foto){ pedido.foto=false; if(!obra.ativa){ pedirFoto((ruaAtual?ruaAtual+' · ':'')+relogioTxt(horaJogo())); } }
     if(pedido.acao){ const a=pedido.acao; pedido.acao=null;                     // T/G/H/X com um pedestre perto
       if(!veic.dirigindo){ const p=jogador.position, alvo=pedestrePerto(p.x,p.z);
-        if(alvo){ rumo=Math.atan2(alvo.x-p.x,alvo.z-p.z); if(a==='cumprimentar') gesto=2.2; interagir(a,p.x,p.z); } } }
+        if(alvo){ rumo=Math.atan2(alvo.x-p.x,alvo.z-p.z); if(a==='cumprimentar') gesto=2.2; interagir(a,p.x,p.z); if(a==='conversar') contar('papo',10); } } }
     if(pedido.golpe){ const g=pedido.golpe; pedido.golpe=null; if(!veic.dirigindo) golpear(g); }
     atualizarLuta(dt, acertar);
     if(veic.dirigindo) aoVolante(dt); else { jogador.visible=true; aPe(dt); } }
@@ -225,7 +230,12 @@ function quadro(){
     minimapa(p.x,p.z,rumo, frota.filter(c=>c!==veic.dirigindo).map(c=>({x:c.obj.position.x,z:c.obj.position.z,h:c.h,comp:c.comp,larg:c.larg})), posicoesTransito(), alvoCorrida(), posicoesJogadores(), terrenosNoMapa());
     atualizarGuia(p.x,p.z);
     const r=ruaMaisProxima(p.x,p.z), nome=r?r.nome:'';
-    if(nome!==ruaAtual){ ruaAtual=nome;
+    if(!home.aberta){ const h=horaJogo();                                      // conquistas que dependem do estado
+      if(h<4.5&&!home.aberta) conquista('coruja');
+      if(policia.estrelas>=3) conquista('procurado');
+      if(quantosSeguem()>=3) conquista('lider');
+      if(posicoesJogadores().some(([x,z])=>Math.hypot(x-p.x,z-p.z)<15)) conquista('encontro'); }
+    if(nome!==ruaAtual){ ruaAtual=nome; if(nome&&!home.aberta) colecionar('explorador','ruas',nome,25);
       const el=$('street'); el.textContent=nome; // nome vem do OSM (editável por qualquer um): nunca como HTML
       if(nome){ const s=document.createElement('small'); s.textContent='MATELÂNDIA · PR'; el.appendChild(s); } }
     $('relogio').textContent=(quantoNoite()>0.5?'🌙 ':'☀️ ')+relogioTxt(horaJogo());
@@ -233,7 +243,7 @@ function quadro(){
   }
   { const D4=veic.dirigindo, vs=posicoesTransito().concat(posicoesPolicia());          // faróis: trânsito, polícia e o seu
     if(D4) vs.push([D4.obj.position.x,D4.obj.position.z,D4.h,D4.comp/2,D4.larg/2]);
-    desenhar(vs); }
+    desenhar(vs); if(talvezFotografar(renderer.domElement)) conquista('fotografo'); }
 }
 
 status();
