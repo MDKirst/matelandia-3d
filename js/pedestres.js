@@ -12,7 +12,7 @@ import { ruas } from './cidade.js';
 import { bloqueado } from './mundo.js';
 
 export const PESSOAS = ['male-casual','female-casual','male-shirt','female-dress','male-long-sleeve','female-tank-top','male-suit','female-alternative',
-  'male-casual-2-24','female-casual-2-24','male-worker-24','female-worker-24','male-farmer-24','female-formal-24','male-casual-hoodie-24','female-suit-24','male-beach-24','male-suit-24'];
+  'male-casual-2-24','female-casual-2-24','male-worker-24','female-worker-24','male-farmer-24','female-formal-24','male-casual-hoodie-24','female-suit-24','male-beach-24','male-suit-24','male-punk-24','female-jeans'];
 const COM_CALCADA = new Set(['primary','secondary','tertiary','residential','unclassified','living_street','primary_link','secondary_link','tertiary_link']);
 const QTD = 34, RAIO_NASCE = [25, 140], RAIO_SOME = 190, RAIO_ANIMA = 90;
 // praças (centro e raio aproximados, em metros locais): grupinhos conversando

@@ -14,7 +14,9 @@ import { MeshoptEncoder } from 'meshoptimizer';
 const [fonte, saida] = process.argv.slice(2);
 if (!fonte || !saida) { console.error('uso: node tools/otimizar-pessoa.mjs <pasta> assets/pessoas'); process.exit(1); }
 // nome original (sem o prefixo "Man_"/"Female_") → nome no jogo
-const USADAS = { Idle:'parado', Idle_Neutral:null, Walk:'andar', Run:'correr', Sitting:'sentar', Wave:'acenar', Clapping:'acenar', Interact:'mexer' };
+// (os da Poly Pizza vêm com o prefixo do esqueleto, "CharacterArmature|Walk", e o "Animated Woman" usa Walking/Running/SitIdle)
+const USADAS = { Idle:'parado', Idle_Neutral:null, Walk:'andar', Walking:'andar', Run:'correr', Running:'correr', Sitting:'sentar', SitIdle:'sentar',
+  Wave:'acenar', Clapping:'acenar', Interact:'mexer', PickUp:'mexer' };
 
 await MeshoptEncoder.ready;
 const io = new NodeIO().registerExtensions([...ALL_EXTENSIONS]).registerDependencies({ 'meshopt.encoder': MeshoptEncoder });
@@ -24,7 +26,7 @@ for (const arq of readdirSync(fonte).filter(n => n.endsWith('.glb'))) {
   const doc = await io.read(join(fonte, arq));
   const vistos = new Set();
   for (const a of doc.getRoot().listAnimations()) {
-    const base = a.getName().replace(/^(Man|Female)_/, ''), novo = USADAS[base];
+    const base = a.getName().replace(/^.*\|/, '').replace(/^(Man|Female)_/, ''), novo = USADAS[base];
     if (!novo || vistos.has(novo)) { a.dispose(); continue; }
     a.setName(novo); vistos.add(novo);
   }

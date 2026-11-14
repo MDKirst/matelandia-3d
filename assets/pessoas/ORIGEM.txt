@@ -4,3 +4,6 @@ baixados em 11/11/2026 em GLB da redistribuicao publica do GDevelop
 Google Drive oficial (quaternius.com) recusou o download por excesso de acessos.
 Enxugados por tools/otimizar-pessoa.mjs (so parado/andar/correr/sentar/acenar/mexer,
 malha quantizada, meshopt): 43,7 MB -> 16,6 MB.
+
+male-punk-24 ("Punk") e female-jeans ("Animated Woman"): Quaternius, CC0, baixados em 13/11/2026
+da Poly Pizza (poly.pizza/m/BTALZymknF e poly.pizza/m/9kF7eTDbhO), enxugados pelo mesmo script.

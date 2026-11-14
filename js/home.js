@@ -14,7 +14,7 @@ export const PERSONAGENS = [
      ['male-long-sleeve','João','manga longa'],['female-tank-top','Júlia','regata'],['male-suit','Dr. Paulo','terno'],['female-alternative','Bia','alternativa'],
      ['male-casual-2-24','Rafa','casual'],['female-casual-2-24','Luana','casual'],['male-worker-24','Seu Antônio','trabalhador'],['female-worker-24','Dona Cida','trabalhadora'],
      ['male-farmer-24','Seu Valdir','agricultor'],['female-formal-24','Helena','social'],['male-casual-hoodie-24','Theo','moletom'],['female-suit-24','Marta','executiva'],
-     ['male-beach-24','Kauã','praia'],['male-suit-24','Ricardo','executivo']]
+     ['male-beach-24','Kauã','praia'],['male-suit-24','Ricardo','executivo'],['male-punk-24','Dudu','punk'],['female-jeans','Paula','jeans']]
     .map(([id,nome,papel])=>({ id, nome, papel, arq:`assets/pessoas/${id}.glb` })),
 ];
 
