@@ -6,7 +6,7 @@
       ".read": true,
       "$lote": {
         ".write": "auth != null && (!data.exists() || data.child('dono').val() === auth.uid)",
-        ".validate": "$lote.matches(/^-?[0-9]{1,5}_-?[0-9]{1,5}$/) && newData.child('dono').val() === auth.uid && newData.child('nome').isString() && newData.child('nome').val().length <= 16 && (data.exists() || newData.parent().parent().child('donos').child(auth.uid).child('s1').val() === $lote || newData.parent().parent().child('donos').child(auth.uid).child('s2').val() === $lote)",
+        ".validate": "$lote.matches(/^-?[0-9]{1,5}_-?[0-9]{1,5}$/) && newData.child('dono').val() === auth.uid && newData.child('nome').isString() && newData.child('nome').val().length <= 16 && (data.exists() || auth.uid === 'MyJ32756ZkMyoQiaboetnmrVPgr2' || newData.parent().parent().child('donos').child(auth.uid).child('s1').val() === $lote || newData.parent().parent().child('donos').child(auth.uid).child('s2').val() === $lote)",
         "dono": {
           ".validate": true
         },

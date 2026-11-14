@@ -85,9 +85,14 @@ export function ouvirBlocos(id, cb){
 // tenta ficar com o terreno: grava o lote e ocupa uma das 2 vagas do jogador numa gravação só
 // (as regras recusam se o lote já tem dono ou se não há vaga). Devolve 'ok', 'limite' ou 'ocupado'
 export const LIMITE_TERRENOS=2;
+// admin (conta Google do criador do jogo): sem limite de terrenos. A regra do banco tem o mesmo id,
+// então isto aqui só evita a pergunta das vagas; ninguém mais passa do limite.
+const ADMINS=['MyJ32756ZkMyoQiaboetnmrVPgr2'];
+export const souAdmin=()=>nuvem.ok&&ADMINS.includes(nuvem.uid);
 export async function tomarLote(id, nome){
   if(!nuvem.ok) return 'ocupado';
   try{
+    if(souAdmin()){ await F.set(ref('lotes/'+id),{ dono:nuvem.uid, nome:(nome||'Visitante').slice(0,16) }); return 'ok'; }
     const vagas=(await F.get(ref('donos/'+nuvem.uid))).val()||{};
     const vaga=['s1','s2'].find(v=>!vagas[v]); if(!vaga) return 'limite';
     await F.update(ref(''),{ ['lotes/'+id]:{ dono:nuvem.uid, nome:(nome||'Visitante').slice(0,16) }, [`donos/${nuvem.uid}/${vaga}`]:id });
