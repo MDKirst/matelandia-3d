@@ -20,7 +20,7 @@ import { baterNoCarro } from './transito.js';
 import { quandoAtropelar, interagir, pedestrePerto, atualizarBaloes, quantosSeguem } from './pedestres.js';
 import { iniciarPolicia, atualizarPolicia, crime, posicoesPolicia } from './policia.js';
 import { somBatida, somExplosao, somPancada, somSirene, somMundo } from './som.js';
-import { iniciarTerrenos, comprar, alternarObra, dicaTerreno, obra, lotesMeus, terrenosNoMapa, avisarTerreno } from './terrenos.js';
+import { iniciarTerrenos, comprar, alternarObra, dicaTerreno, obra, lotesMeus, terrenosNoMapa, avisarTerreno, sairObra } from './terrenos.js';
 import { alternarCorrida, atualizarCorrida, alvoCorrida } from './entregas.js';
 import { entrarOnline, sairOnline, enviarEstado, atualizarOnline, posicoesJogadores, golpearJogador, quandoApanhar } from './online.js';
 import { vida, golpe, golpear, atualizarLuta, levarPancada, poseGolpe, DUR, DANO } from './luta.js';
@@ -186,7 +186,7 @@ function quadro(){
     if(pedido.comprar){ pedido.comprar=false; if(!veic.dirigindo) comprar(jogador.position.x,jogador.position.z); }
     if(pedido.obra){ pedido.obra=false; if(!veic.dirigindo) alternarObra(jogador.position.x,jogador.position.z); }
     if(pedido.casa){ pedido.casa=false; irAoTerreno(); }
-    if(pedido.negocio){ pedido.negocio=false; if(!veic.dirigindo&&!obra.ativa) acaoNegocio(jogador.position.x,jogador.position.z); }
+    if(pedido.negocio){ pedido.negocio=false; if(veic.dirigindo) avisarTerreno('Desça do veículo para cuidar do negócio'); else { if(obra.ativa) sairObra(); acaoNegocio(jogador.position.x,jogador.position.z); } }
     if(pedido.foto){ pedido.foto=false; if(!obra.ativa){ pedirFoto((ruaAtual?ruaAtual+' · ':'')+relogioTxt(horaJogo())); } }
     if(pedido.acao){ const a=pedido.acao; pedido.acao=null;                     // T/G/H/X com um pedestre perto
       if(!veic.dirigindo){ const p=jogador.position, alvo=pedestrePerto(p.x,p.z);
@@ -217,7 +217,12 @@ function quadro(){
     [...frota.filter(c=>c!==D).map(c=>[c.obj.position.x,c.obj.position.z,c.h,c.comp/2,c.larg/2]), ...posicoesTransito(), ...posicoesPolicia()]);   // pedestre não atravessa veículo
   if(!home.aberta) atualizarPolicia(dt,{x:p.x,z:p.z,dirigindo:!!D,v:D?D.v:0},prender);
   efeitosVeiculos(dt); atualizarEfeitos(dt); atualizarBaloes(dt); atualizarNegocios(dt,p.x,p.z);
-  $('negBtn').style.display=!home.aberta&&!veic.dirigindo&&matchMedia('(pointer:coarse)').matches&&pertoDeNegocioMeu(p.x,p.z)?'block':'none';
+  // celular: sem teclado, os botões de terreno aparecem conforme o lugar (B comprar / C construir / V negócio)
+  { const toqueTela=matchMedia('(pointer:coarse)').matches&&!home.aberta&&!veic.dirigindo, tb=$('terrBtn');
+    const d=toqueTela?dicaTerreno(p.x,p.z):'', acao=obra.ativa?'obra':d.startsWith('B comprar')?'comprar':d.startsWith('C construir')?'obra':null;
+    $('negBtn').style.display=toqueTela&&!obra.ativa&&pertoDeNegocioMeu(p.x,p.z)?'block':'none';
+    tb.style.display=acao?'block':'none';
+    if(acao&&tb.dataset.k!==acao+obra.ativa){ tb.dataset.k=acao+obra.ativa; tb.dataset.acao=acao; tb.textContent=obra.ativa?'✅ Sair da obra':acao==='comprar'?'💰 Comprar terreno':'🧱 Construir'; } }
   if(!home.aberta) atualizarCorrida(dt, veic.dirigindo);
   alvoTrab=!home.aberta?atualizarTrabalho(dt,p.x,p.z,!veic.dirigindo):null;
   // online: manda meu estado e move os outros jogadores

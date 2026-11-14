@@ -196,7 +196,7 @@ function sairObra(){ obra.ativa=false; obra.lote=null; $('barra').style.display=
 // dica do que dá para fazer aqui
 export function dicaTerreno(x,z){
   const l=loteEm(x,z,1); if(!l) { if(obra.ativa) sairObra(); return ''; }
-  if(obra.ativa) return 'Clique: colocar · Direito: tirar · 1–8 blocos · 9 porta · 0 janela · P piso · C: sair';
+  if(obra.ativa) return 'Clique: colocar · Direito: tirar · 1–8 blocos · 9 porta · 0 janela · P piso · C: sair · V: negócio';
   const neg=ganchos.dica?.(l); if(neg) return neg;
   if(!meu(l)&&l.dono) return `Terreno de ${l.donoNome||'outro jogador'}`;
   return meu(l)?'C construir · V abrir um negócio':`B comprar terreno (${fmt(l.preco)}) · saldo ${fmt(salvo.saldo)}`;
@@ -317,4 +317,7 @@ export const terrenosNoMapa=()=>({ meus:lotes.filter(meu).map(desenhoLote), outr
 export { avisar as avisarTerreno };
 // para o negocios.js (sem import circular: ele registra a dica aqui)
 export const ganchos={ dica:null };
+// tira todos os blocos do terreno (para abrir um negócio no lugar)
+export function limparBlocos(l){ if(!meu(l)) return; for(const k of [...l.blocos.keys()]) tirarBloco(l.id,k); l.blocos.clear(); refazer(l); }
+export { sairObra };
 export { meu, salvo, salvar, loteEm, W as LARG_LOTE, D as FUNDO_LOTE, meuNome };

@@ -65,6 +65,7 @@ $('usar').addEventListener('click',e=>{ pedido.usar=true; e.currentTarget.blur()
 $('casaBtn').addEventListener('click',e=>{ pedido.casa=true; e.currentTarget.blur(); });
 $('fotoBtn').addEventListener('click',e=>{ pedido.foto=true; e.currentTarget.blur(); });
 $('trabBtn').addEventListener('click',e=>{ pedido.trabalho=true; e.currentTarget.blur(); });
+$('terrBtn').addEventListener('click',e=>{ pedido[e.currentTarget.dataset.acao||'comprar']=true; e.currentTarget.blur(); });
 $('negBtn').addEventListener('click',e=>{ pedido.negocio=true; e.currentTarget.blur(); });
 for(const b of document.querySelectorAll('#acoes button')) b.addEventListener('click',e=>{ pedido.acao=b.dataset.acao; e.currentTarget.blur(); });
 for(const b of document.querySelectorAll('#luta button')) b.addEventListener('click',e=>{ pedido.golpe=b.dataset.golpe; e.currentTarget.blur(); });

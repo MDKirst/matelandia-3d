@@ -7,7 +7,7 @@
 import * as THREE from 'three';
 import { clone as clonarEsqueleto } from 'three/addons/utils/SkeletonUtils.js';
 import { $ } from './cena.js';
-import { lotes, ganchos, meu, salvo, salvar, loteEm, LARG_LOTE as W, ganhar, fmt, avisarTerreno as avisar } from './terrenos.js';
+import { lotes, ganchos, meu, salvo, salvar, loteEm, limparBlocos, LARG_LOTE as W, ganhar, fmt, avisarTerreno as avisar } from './terrenos.js';
 import { nuvem, conectarNuvem, ouvirNegocios, abrirNegocioNuvem, fecharNegocioNuvem } from './nuvem.js';
 import { carregarModelo, PESSOAS } from './pedestres.js';
 import { horaJogo } from './ceu.js';
@@ -167,14 +167,18 @@ function abrirCardapio(l){
     b.disabled=salvo.saldo<T.preco; b.title=b.disabled?'Saldo insuficiente':'';
     b.onclick=()=>escolher(l,id); g.append(b); }
   $('negTit').textContent='🏪 Abrir um negócio no seu terreno';
-  $('negInfo').textContent=`Saldo: ${fmt(salvo.saldo)}. O comércio aparece pronto, com atendente, e os clientes da cidade compram. Fora do jogo o caixa junta até ${MAX_HORAS} h de renda.`;
+  $('negInfo').textContent=`Saldo: ${fmt(salvo.saldo)}. O comércio aparece pronto, com atendente, e os clientes da cidade compram. Fora do jogo o caixa junta até ${MAX_HORAS} h de renda.`+(l.blocos.size?` Atenção: os ${l.blocos.size} blocos que você construiu aqui serão retirados.`:'');
   $('negAcoes').replaceChildren(); $('negocio').classList.add('on');
 }
 async function escolher(l,tipo){
   const T=TIPOS[tipo]; if(salvo.saldo<T.preco||!meu(l)) return;
-  if(l.blocos.size){ fecharUI(); avisar('Tire os blocos do terreno antes de abrir o negócio'); return; }
+  if(l.blocos.size&&!confirm(`Seu terreno tem ${l.blocos.size} blocos construídos.
+Para montar o negócio (${T.nome}) eles serão retirados (o prédio pronto fica no lugar).
+
+Continuar?`)) return;
   fecharUI(); avisar('Montando o comércio…');
   if(!await abrirNegocioNuvem(l.id,tipo)){ avisar('Não deu para abrir agora, tente de novo'); return; }
+  if(l.blocos.size) limparBlocos(l);
   ganhar(-T.preco); reg(l).coleta=Date.now(); reg(l).vendas=0; salvar();
   l.negocio=tipo; abrirNaTela(l);
   avisar(`${T.ic} ${nomeNeg(l)} abriu as portas!`);

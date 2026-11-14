@@ -90,6 +90,9 @@
   #negBtn{position:fixed;right:18px;bottom:272px;display:none;padding:10px 12px;border-radius:12px;box-shadow:0 4px 14px rgba(0,0,0,.5)}
   @media (max-height:480px){#negBtn{bottom:206px;padding:8px 10px}}
   body.em-home #negBtn{display:none!important}
+  #terrBtn{position:fixed;right:18px;bottom:322px;display:none;padding:10px 12px;border-radius:12px;box-shadow:0 4px 14px rgba(0,0,0,.5)}
+  @media (max-height:480px){#terrBtn{bottom:250px;padding:8px 10px}}
+  body.em-home #terrBtn{display:none!important}
   #trabalhos,#jornal{position:fixed;inset:0;z-index:11;display:none;align-items:center;justify-content:center;background:rgba(8,10,14,.6);padding:16px;box-sizing:border-box}
   #trabalhos.on,#jornal.on{display:flex}
   #trabalhos .caixa,#jornal .caixa{background:#11151b;border:1px solid #334155;border-radius:14px;padding:14px;width:min(560px,100%);max-height:100%;overflow:auto;display:flex;flex-direction:column;gap:10px;box-sizing:border-box}
@@ -239,6 +242,7 @@
 <div id="trabalhos"><div class="caixa"><div class="cab"><b>💼 Trabalhos</b><button id="trabFechar" class="sec" aria-label="Fechar">✕</button></div><div id="trabInfo"></div><div id="trabLista"></div><div id="trabAcoes"></div></div></div>
 <div id="jornal"><div class="caixa"><div class="cab"><b>📰 Jornal de Matelândia</b><button id="jornalFechar" class="sec" aria-label="Fechar">✕</button></div><div id="jornalLista"></div></div></div>
 <button id="negBtn">🏪 Negócio</button>
+<button id="terrBtn">💰 Comprar terreno</button>
 <div id="conquistas"><div class="caixa"><div class="cab"><b id="conqTit">🏆 Conquistas</b><button id="conqFechar" class="sec" aria-label="Fechar">✕</button></div><div id="conqLista"></div></div></div>
 <div id="chat"><div id="chatLog"></div><input id="chatIn" maxlength="120" placeholder="Mensagem para a sala (Enter envia, Esc fecha)" autocomplete="off"></div>
 <button id="usar">Entrar</button>
