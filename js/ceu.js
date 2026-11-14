@@ -146,15 +146,36 @@ function atualizarFarois(veiculos){
   gF.attributes.position.needsUpdate=true; gL.attributes.position.needsUpdate=true; fachos.instanceMatrix.needsUpdate=true;
 }
 
+// luzes de quem quiser (negócios dos jogadores): malhas somadas à noite, com força própria
+const extras=[];
+export const TEX_QUENTE=texBrilho(255,205,140,2.2);
+export function luzExtra(geo,{map=null,cor=0xffffff,forca=1}={}){
+  const m=aditivo(new THREE.MeshBasicMaterial({map,color:0x000000,polygonOffset:true,polygonOffsetFactor:-2,polygonOffsetUnits:-2}));
+  m.userData={cor:new THREE.Color(cor),forca}; extras.push(m); return new THREE.Mesh(geo,m);
+}
+export function porLuz(grupo){ luzes.add(grupo);
+  return ()=>{ luzes.remove(grupo); grupo.traverse(o=>{ const i=extras.indexOf(o.material); if(i>=0) extras.splice(i,1); }); }; }
 export function iniciarCeu(){ return construirPostes(); }
 
 // chamado no lugar de renderer.render(scene,camera)
-export function desenhar(veiculos){
+// à noite o filtro escurece tudo por igual; o jogador (e o veículo dele) é desenhado de novo por cima,
+// com a luz só um pouco reduzida, para não virar um vulto. Usa a camada 1 do three (as luzes também).
+let luzesCena=null;
+function realcar(objs){
+  luzesCena ??= scene.children.filter(o=>o.isLight).map(l=>{ l.layers.enable(1); return [l,l.intensity]; });
+  for(const o of objs) if(o&&o.visible) o.traverse(x=>x.layers.enable(1));
+  const k=1-0.5*noite; for(const [l,i] of luzesCena) l.intensity=i*k;
+  const fundo=scene.background; scene.background=null;                          // com fundo, o three limparia a tela inteira
+  camera.layers.set(1); renderer.render(scene,camera); camera.layers.set(0); scene.background=fundo;
+  for(const [l,i] of luzesCena) l.intensity=i;
+}
+export function desenhar(veiculos, destaques=[]){
   amostrar(horaJogo());
   renderer.render(scene,camera);
   if(tinta.r>0.995&&tinta.g>0.995&&tinta.b>0.995) return;   // dia: nada a fazer
   const ac=renderer.autoClear; renderer.autoClear=false;
   matTela.color.copy(tinta); renderer.render(telaCena,camTela);
+  if(noite>0.15&&destaques.length) realcar(destaques);
   if(noite>0.01){
     const k=noite;
     if(pontos){ pontos.material.color.setScalar(k); poças.material.color.setRGB(0.55*k,0.5*k,0.42*k); }
@@ -162,6 +183,7 @@ export function desenhar(veiculos){
     estrelas.material.color.setScalar(0.8*Math.max(0,k-0.4)/0.6);
     farois.material.color.setScalar(k); lanternas.material.color.setScalar(k); fachos.material.color.setScalar(0.45*k);
     atualizarFarois(veiculos); janelasPerto();
+    for(const m of extras) m.color.copy(m.userData.cor).multiplyScalar(m.userData.forca*k);
     renderer.render(luzes,camera);
   }
   renderer.autoClear=ac;

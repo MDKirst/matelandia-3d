@@ -49,7 +49,7 @@
       ".read": true,
       "$lote": {
         ".write": "auth != null && root.child('lotes').child($lote).child('dono').val() === auth.uid",
-        ".validate": "newData.child('t').isString() && newData.child('t').val().matches(/^(padaria|lanchonete|mercado|roupas|farmacia|oficina)$/) && newData.child('desde').isNumber()",
+        ".validate": "newData.child('t').isString() && newData.child('t').val().matches(/^(padaria|lanchonete|mercado|roupas|farmacia|oficina|bar)$/) && newData.child('desde').isNumber()",
         "t": {
           ".validate": true
         },
@@ -85,7 +85,7 @@
           ".validate": "newData.isString() && newData.val().length <= 48"
         },
         "neg": {
-          ".validate": "newData.isString() && newData.val().matches(/^(padaria|lanchonete|mercado|roupas|farmacia|oficina)$/)"
+          ".validate": "newData.isString() && newData.val().matches(/^(padaria|lanchonete|mercado|roupas|farmacia|oficina|bar)$/)"
         },
         "$outro": {
           ".validate": false

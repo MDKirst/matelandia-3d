@@ -166,7 +166,7 @@ export async function gravarSom(nome, seg=2){
 // música ambiente baixinha dentro dos comércios: acordes suaves, baixo e arpejo (gerados na hora).
 // Cada tipo de loja tem andamento e tom próprios. tipo=null: some devagar e para de tocar.
 const PROG=[[60,64,67,71],[57,60,64,67],[62,65,69,72],[55,59,62,65]];      // Cmaj7 · Am7 · Dm7 · G7 (MIDI)
-const ESTILO={ padaria:[76,0], lanchonete:[92,2], mercado:[84,-3], roupas:[100,5], farmacia:[70,-5], oficina:[96,-2] };
+const ESTILO={ padaria:[76,0], lanchonete:[92,2], mercado:[84,-3], roupas:[100,5], farmacia:[70,-5], oficina:[96,-2], bar:[104,3] };
 const hz=m=>440*2**((m-69)/12);
 let mus=null;
 function notaMus(f,t0,dur,tipo,vol,ataque){

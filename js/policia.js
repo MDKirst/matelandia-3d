@@ -117,7 +117,7 @@ export function atualizarPolicia(dt, jog, prender){
     if(c.guarda){
       // policial a pé correndo atrás do jogador
       const g=c.guarda, ax=jog.x-g.x, az=jog.z-g.z, dg=Math.hypot(ax,az);
-      if(dg<1.4&&(!jog.dirigindo||Math.abs(jog.v)<1.5)){ avisar('PRESO!',4); prender(posto); limpar(); return; }
+      if(dg<1.4&&(!jog.dirigindo||Math.abs(jog.v)<1.5)){ avisar('PRESO! Multa de M$ 500',4); prender(posto); limpar(); return; }
       if(dg>45){ scene.remove(g.obj); c.guarda=null; }                             // fugiu: volta para a viatura
       else { const sp=5.2, nx=g.x+ax/dg*sp*dt, nz=g.z+az/dg*sp*dt;
         if(!bloqueado(nx,nz)){ g.x=nx; g.z=nz; } else if(!bloqueado(nx,g.z)) g.x=nx; else if(!bloqueado(g.x,nz)) g.z=nz;

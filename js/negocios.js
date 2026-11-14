@@ -12,7 +12,7 @@ import { $ } from './cena.js';
 import { lotes, ganchos, meu, salvo, salvar, loteEm, limparBlocos, LARG_LOTE as W, ganhar, fmt, avisarTerreno as avisar } from './terrenos.js';
 import { nuvem, conectarNuvem, ouvirNegocios, abrirNegocioNuvem, fecharNegocioNuvem } from './nuvem.js';
 import { carregarModelo, PESSOAS } from './pedestres.js';
-import { horaJogo } from './ceu.js';
+import { horaJogo, luzExtra, porLuz, TEX_QUENTE } from './ceu.js';
 import { perfil } from './rotina.js';
 import { sortearPersona } from './personas.js';
 import { estacionarMoto } from './veiculos.js';
@@ -22,6 +22,7 @@ import { musicaLoja } from './som.js';
 const C_PADARIA=[[0,0],[5.5,0.05],[6.3,1],[9,0.5],[11,0.3],[15,0.5],[16.5,0.9],[18.5,0.6],[20,0.1],[24,0]];
 const C_COMIDA=[[0,0.1],[10.8,0.15],[11.6,1],[13.6,0.3],[18.5,0.4],[19.8,1],[22.5,0.5],[24,0.1]];
 const C_LOJA=[[0,0],[7.8,0.05],[8.5,0.8],[11.8,0.9],[12.2,0.5],[13.5,0.8],[18,0.7],[18.6,0.05],[24,0]];
+const C_BAR=[[0,0.8],[2,0.3],[3,0.05],[11,0.1],[12,0.4],[14,0.15],[17,0.4],[18.5,0.8],[20,1],[24,0.8]];
 const C_FARMA=[[0,0.15],[7,0.4],[8,0.8],[19,0.7],[22,0.3],[24,0.15]];
 export const TIPOS = {
   padaria:   { nome:'Padaria',    ic:'🥖', preco:6000,  hora:900,  venda:[8,25],   cor:0xF97316, piso:'#e9dcc4', prod:[0xc8893f,0xe0b070,0xa86b2e,0xf2d6a2,0x8a4f22], curva:C_PADARIA, fala:'Me vê 10 pães, por favor!' },
@@ -29,6 +30,7 @@ export const TIPOS = {
   mercado:   { nome:'Mercado',    ic:'🛒', preco:9000,  hora:1400, venda:[20,90],  cor:0x16a34a, piso:'#e6e6e1', prod:[0xdc2626,0x2563eb,0xfacc15,0x16a34a,0xf97316,0xffffff,0x7c3aed], curva:C_LOJA, fala:'Só vim buscar arroz e feijão.' },
   roupas:    { nome:'Loja de Roupas', ic:'👕', preco:8000, hora:1200, venda:[40,150], cor:0x7c3aed, piso:'#efe9f5', prod:[0x1e3a8a,0xdb2777,0x0f766e,0xfbbf24,0x111827,0xf5f5f4], curva:C_LOJA, fala:'Tem essa camiseta no M?', araras:true },
   farmacia:  { nome:'Farmácia',   ic:'💊', preco:8500,  hora:1300, venda:[15,70],  cor:0x0d9488, piso:'#eef6f5', prod:[0xffffff,0x0ea5e9,0xf43f5e,0x22c55e,0xfde68a], curva:C_FARMA, fala:'Tem remédio pra dor de cabeça?' },
+  bar:       { nome:'Bar',        ic:'🍻', preco:15000, hora:2200, venda:[20,80],  cor:0xb45309, piso:'#d6c2a0', prod:[0xf59e0b,0x7c2d12,0x16a34a,0xdc2626,0xfde68a], curva:C_BAR, fala:'Uma porção e um refri!', mesas:true, bar:true, fundo:22 },   // grande: ocupa quase o lote todo
   oficina:   { nome:'Oficina',    ic:'🔧', preco:10000, hora:1600, venda:[60,220], cor:0x334155, piso:'#9ca3af', prod:[0x111827,0x374151,0xb91c1c,0x1d4ed8], curva:C_LOJA, fala:'Meu carro tá fazendo um barulho…', oficina:true },
 };
 const MAX_HORAS=8;
@@ -39,6 +41,7 @@ const MENU = {
   mercado:   [['🍎','Frutas','5/kg'],['🥛','Leite','5'],['🍚','Arroz 5 kg','28'],['🫘','Feijão 1 kg','9'],['🍫','Chocolate','7']],
   roupas:    [['👕','Camiseta','39'],['👖','Calça jeans','119'],['👟','Tênis','199'],['🧢','Boné','49'],['👗','Vestido','89']],
   farmacia:  [['💊','Analgésico','9'],['🧴','Protetor solar','45'],['🩹','Curativos','7'],['🪥','Escova de dente','8'],['🧼','Sabonete','3']],
+  bar:       [['🍟','Porção de fritas','28'],['🥟','Pastel','8'],['🍢','Espetinho','10'],['🥤','Refri lata','6'],['🧃','Suco natural','9']],
   oficina:   [['🛞','Pneu aro 14','320'],['🛢️','Troca de óleo','150'],['🔧','Revisão','250'],['🔋','Bateria','480'],['🧽','Lavagem','40']],
 };
 function texCartaz([ic,nome,preco],cor){
@@ -81,6 +84,7 @@ function texPiso(c){ const cv=document.createElement('canvas'); cv.width=cv.heig
 
 function montarPredio(l){
   const T=TIPOS[l.negocio], g=new THREE.Group(), cor=lamb(T.cor);
+  const Z1=T.fundo||15;                                                        // fundo do prédio (o bar é mais comprido)
   // piso
   const piso=new THREE.Mesh(new THREE.PlaneGeometry(X1-X0,Z1-Z0).rotateX(-Math.PI/2),new THREE.MeshLambertMaterial({map:texPiso(T.piso)}));
   piso.position.set((X0+X1)/2,0.03,(Z0+Z1)/2); g.add(piso);
@@ -99,7 +103,7 @@ function montarPredio(l){
   const toldo=new THREE.Mesh(new THREE.BoxGeometry(X1-X0-0.4,0.06,1.4),cor); toldo.position.set((X0+X1)/2,2.75,Z0-0.65); toldo.rotation.x=-0.32; g.add(toldo);
   const franja=new THREE.Mesh(new THREE.BoxGeometry(X1-X0-0.4,0.25,0.04),lamb(0xffffff)); franja.position.set((X0+X1)/2,2.42,Z0-1.3); g.add(franja);
   // balcão e caixa registradora
-  const bz=T.oficina?12:9;
+  const bz=T.oficina?12:T.bar?Z1-4:9;
   cx3(g,MAT.balcao,3,9,0,1.0,bz,bz+0.8); cx3(g,cor,3,9,1.0,1.06,bz-0.05,bz+0.85);
   cx3(g,MAT.metal,7.8,8.25,1.06,1.22,bz+0.3,bz+0.62); cx3(g,MAT.escuro,7.83,8.22,1.22,1.42,bz+0.52,bz+0.58);   // caixa registradora e tela
   const itens=MENU[l.negocio]||[];
@@ -112,7 +116,7 @@ function montarPredio(l){
   // copos/potes no balcão
   for(let i=0;i<3;i++){ const cp=new THREE.Mesh(new THREE.CylinderGeometry(0.06,0.05,0.16,10),lamb(T.prod[i%T.prod.length])); cp.position.set(6.4+i*0.25,1.14,bz+0.4); g.add(cp); }
   // quadro de preços na parede do fundo (atrás do atendente) e cartazes nas laterais
-  const quadro=new THREE.Mesh(new THREE.PlaneGeometry(4.6,1.72),new THREE.MeshBasicMaterial({map:texQuadro(itens,T.oficina?'SERVIÇOS':['padaria','lanchonete'].includes(l.negocio)?'CARDÁPIO':'OFERTAS')}));
+  const quadro=new THREE.Mesh(new THREE.PlaneGeometry(4.6,1.72),new THREE.MeshBasicMaterial({map:texQuadro(itens,T.oficina?'SERVIÇOS':['padaria','lanchonete','bar'].includes(l.negocio)?'CARDÁPIO':'OFERTAS')}));
   quadro.position.set(6,2.75,Z1-0.22); quadro.rotation.y=Math.PI; g.add(quadro);
   itens.forEach((it,i)=>{ if(i>=4) return; const esq=i<2, z=4.6+(i%2)*4.2;
     const c=new THREE.Mesh(new THREE.PlaneGeometry(1.0,1.25),new THREE.MeshBasicMaterial({map:texCartaz(it,T.cor)}));
@@ -124,8 +128,9 @@ function montarPredio(l){
   const prat=(x0,x1)=>{ cx3(g,MAT.madeira,x0,x1,0,2.1,4,bz-0.6).material=MAT.madeira;
     for(let y=0.45;y<2.1;y+=0.55) for(let z=4.2;z<bz-0.8;z+=0.42) prods.push([(x0+x1)/2+(x0<5?0.35:-0.35),y+0.15,z,cores[(prods.length*7+3)%cores.length]]); };
   if(T.mesas){ prat(X0+0.2,X0+0.8);
-    for(const z of [4.5,7]) { cx3(g,MAT.madeira,7.6,9.4,0.72,0.78,z,z+1.2); cx3(g,MAT.metal,8.45,8.55,0,0.72,z+0.55,z+0.65);
-      for(const dx of [-0.75,0.75]) cx3(g,cor,8.5+dx-0.22,8.5+dx+0.22,0,0.45,z+0.38,z+0.82); } }
+    const filas=[]; for(let z=4.5;z<bz-2.2;z+=2.5) filas.push(z);
+    for(const mx of (T.bar?[3.4,8.5]:[8.5])) for(const z of filas){ cx3(g,MAT.madeira,mx-0.9,mx+0.9,0.72,0.78,z,z+1.2); cx3(g,MAT.metal,mx-0.05,mx+0.05,0,0.72,z+0.55,z+0.65);
+      for(const dx of [-0.75,0.75]) cx3(g,cor,mx+dx-0.22,mx+dx+0.22,0,0.45,z+0.38,z+0.82); } }
   else if(T.araras){ for(const x of [3,8]){ cx3(g,MAT.metal,x,x+0.05,0,1.6,4,8); cx3(g,MAT.metal,x,x+0.05,0,1.6,7.95,8); cx3(g,MAT.metal,x-0.02,x+0.07,1.55,1.6,4,8);
       for(let z=4.2;z<7.9;z+=0.28) prods.push([x+0.02,1.05,z,cores[(prods.length*5+1)%cores.length],'roupa']); } prat(X1-0.8,X1-0.2); }
   else if(T.oficina){ for(let i=0;i<6;i++){ const p=new THREE.Mesh(new THREE.TorusGeometry(0.33,0.13,8,16),MAT.escuro); p.rotation.y=Math.PI/2; p.position.set(X0+0.6,0.46+(i%3)*0.27,4+Math.floor(i/3)*0.9+(i%3)*0.05); g.add(p); }
@@ -142,7 +147,7 @@ function montarPredio(l){
   for(let u=X0;u<X1;u++){ cel(u,Z1-1); if(u<Math.floor(porta[0])||u>=Math.ceil(porta[1])) cel(u,Z0); }
   for(let v=Z0;v<Z1;v++){ cel(X0,v); cel(X1-1,v); }
   for(let u=3;u<9;u++) cel(u,bz);
-  l.ocupaNeg=oc; l.balcao=bz;
+  l.ocupaNeg=oc; l.balcao=bz; g.userData.letreiro=let1.material.map; g.userData.fundo=Z1;
   return g;
 }
 
@@ -164,6 +169,11 @@ function abrirNaTela(l){
   fecharNaTela(l); if(!l.negocio) return;
   const g=montarPredio(l); l.grupo.add(g);
   const n={ l, g, atendente:null, clientes:[], prox:2+Math.random()*4 };
+  { const lg=new THREE.Group(), F=g.userData.fundo; lg.position.copy(l.grupo.position); lg.rotation.copy(l.grupo.rotation);   // à noite: letreiro aceso, salão iluminado e luz na calçada
+    const s=luzExtra(new THREE.PlaneGeometry(X1-X0,1.1),{map:g.userData.letreiro,forca:0.9}); s.position.set((X0+X1)/2,H-0.6,Z0-0.07); s.rotation.y=Math.PI; lg.add(s);
+    const ch=luzExtra(new THREE.PlaneGeometry(X1-X0+3,F-Z0+3).rotateX(-Math.PI/2),{map:TEX_QUENTE,forca:0.55}); ch.position.set((X0+X1)/2,0.06,(Z0+F)/2); lg.add(ch);
+    const cal=luzExtra(new THREE.PlaneGeometry(11,6).rotateX(-Math.PI/2),{map:TEX_QUENTE,forca:0.5}); cal.position.set((X0+X1)/2,0.07,Z0-1.5); lg.add(cal);
+    n.tiraLuz=porLuz(lg); }
   abertos.set(l.id,n);
   carregarMoldes().then(()=>{ if(abertos.get(l.id)!==n||n.atendente) return; const b=boneco(); if(!b) return;
     b.obj.position.set(6,b.pe,l.balcao+1.5); b.obj.rotation.y=Math.PI; g.add(b.obj); animar(b,'parado'); n.atendente=b; });
@@ -194,7 +204,7 @@ async function carroNoConserto(n){
   const m=boneco(); if(!m) return;
   m.obj.position.set(6.2,m.pe,frente-0.8); m.obj.rotation.y=0; n.g.add(m.obj); animar(m,'mexer'); n.mecanico=m; m.t=0;
 }
-function fecharNaTela(l){ const n=abertos.get(l.id); if(n){ l.grupo.remove(n.g); abertos.delete(l.id); } l.ocupaNeg=null; }
+function fecharNaTela(l){ const n=abertos.get(l.id); if(n){ n.tiraLuz?.(); l.grupo.remove(n.g); abertos.delete(l.id); } l.ocupaNeg=null; }
 
 // cliente: calçada → porta → balcão → compra → porta → calçada → some
 function novoCliente(n){
@@ -309,7 +319,7 @@ export function atualizarNegocios(dt, px, pz){
     const l=n.l, d=Math.hypot(l.cx-px,l.cz-pz);
     if(d>160){ for(const b of n.clientes) n.g.remove(b.obj); n.clientes.length=0; continue; }   // longe: sem clientes
     const T=TIPOS[l.negocio], mov=perfil(h,T.curva);
-    { const dx=px-l.A[0], dz=pz-l.A[1], u=dx*l.t[0]+dz*l.t[1], v=dx*l.n[0]+dz*l.n[1]; if(u>X0&&u<X1&&v>Z0&&v<Z1) dentro=l.negocio; }   // jogador dentro da loja
+    { const dx=px-l.A[0], dz=pz-l.A[1], u=dx*l.t[0]+dz*l.t[1], v=dx*l.n[0]+dz*l.n[1]; if(u>X0&&u<X1&&v>Z0&&v<(T.fundo||Z1)) dentro=l.negocio; }   // jogador dentro da loja
     n.prox-=dt;
     if(n.prox<=0&&moldes.length){ n.prox=(5+Math.random()*7)/Math.max(0.15,mov); if(mov>0.08&&n.clientes.length<3) novoCliente(n); }
     for(const b of [...n.clientes]){ andarCliente(n,b,dt,d<60); b.obj.position.y=b.pe; b.mixer.update(dt); }

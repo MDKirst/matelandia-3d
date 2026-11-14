@@ -20,6 +20,7 @@ import { baterNoCarro } from './transito.js';
 import { quandoAtropelar, interagir, pedestrePerto, atualizarBaloes, quantosSeguem } from './pedestres.js';
 import { iniciarPolicia, atualizarPolicia, crime, posicoesPolicia } from './policia.js';
 import { somBatida, somExplosao, somPancada, somSirene, somMundo } from './som.js';
+import { ganhar as pagar } from './terrenos.js';
 import { iniciarTerrenos, comprar, alternarObra, dicaTerreno, obra, lotesMeus, terrenosNoMapa, avisarTerreno, sairObra } from './terrenos.js';
 import { alternarCorrida, atualizarCorrida, alvoCorrida } from './entregas.js';
 import { entrarOnline, sairOnline, enviarEstado, atualizarOnline, posicoesJogadores, golpearJogador, quandoApanhar } from './online.js';
@@ -133,6 +134,7 @@ function aoVolante(dt){
 function prender(posto){
   if(veic.dirigindo){ sair(); jogador.visible=true; cam.dist=distAPe; $('velo').style.display='none'; }
   const [x,z]=pontoLivre(posto[0]+6,posto[1]+6); jogador.position.set(x,0,z);
+  pagar(-500);                                                              // multa (o saldo não fica negativo)
 }
 quandoAtropelar(()=>{ somPancada(); crime(1,'Atropelamento'); revolta(jogador.position.x,jogador.position.z); });
 // avacalhar: nocaute ou 2 pancadas em 20 s → a turma junta e bate (até desmaiar)
@@ -275,7 +277,7 @@ function quadro(){
   }
   { const D4=veic.dirigindo, vs=posicoesTransito().concat(posicoesPolicia());          // faróis: trânsito, polícia e o seu
     if(D4) vs.push([D4.obj.position.x,D4.obj.position.z,D4.h,D4.comp/2,D4.larg/2]);
-    desenhar(vs); if(talvezFotografar(renderer.domElement)) conquista('fotografo'); }
+    desenhar(vs, home.aberta?[]:[jogador, D4&&D4.obj]); if(talvezFotografar(renderer.domElement)) conquista('fotografo'); }
 }
 
 status();
