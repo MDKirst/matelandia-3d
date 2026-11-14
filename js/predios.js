@@ -10,6 +10,7 @@ import { toXZ, toLL, D2R } from './geo.js';
 import { predios, bbox, ruas } from './cidade.js';
 import { DADOS_PREDIOS, TILE_URL, ZOOM_MAX } from './config.js';
 import { substituidoPorMarco } from './marcos.js';
+import { acenderJanelas } from './ceu.js';
 
 const PAREDES = [0xf2ead9,0xe8dcc8,0xd9c7a8,0xcfd6da,0xe9c9a8,0xf0e6d6,0xc9d3b5,0xd8b08c,0xe6e1d3,0xbfcad3].map(c=>new THREE.Color(c));
 const CERAMICA = [0xa5553a,0x9b4c33,0xb0603f,0x8f4a35,0xb86b4b].map(c=>new THREE.Color(c));
@@ -213,7 +214,7 @@ export async function carregarPredios(){
   for(const qd of quadras.values()){
     for(const [lista,m] of [[qd.paredes,mat],[qd.galpoes,matGalpao]]){ if(!lista.length) continue;
       const g=mergeGeometries(lista,false); lista.forEach(x=>x.dispose());
-      if(g){ g.computeBoundingSphere(); scene.add(new THREE.Mesh(g,m)); } }
+      if(g){ g.computeBoundingSphere(); scene.add(new THREE.Mesh(g,m)); if(m===mat) acenderJanelas([g]); } }
     const t=mergeGeometries(qd.telhados,false); qd.telhados.forEach(x=>x.dispose()); if(!t) continue;
     t.computeBoundingSphere();
     const mesh=new THREE.Mesh(t,matTelhadoCor); scene.add(mesh);

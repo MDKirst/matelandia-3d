@@ -13,6 +13,7 @@ Jogo de navegador em 3D da cidade de Matelândia-PR: ande, dirija, faça entrega
 
 ## Como funciona
 - **Terrenos e construções** ficam num banco compartilhado (Firebase): todos veem o que os outros construíram, e só o dono mexe no próprio terreno. Cada jogador pode ter até 2 terrenos.
+- **Dia e noite:** um dia do jogo dura 48 minutos e é igual para todos os jogadores. À noite os postes, as janelas e os faróis acendem, aparecem estrelas e grilos, e a rua esvazia de madrugada. Para testar uma hora: `?hora=21` no endereço.
 - **Dinheiro (M$)**, nome e personagem ficam guardados só no navegador de cada um.
 - **Celular:** lado esquerdo da tela anda, lado direito gira a câmera; funciona em pé ou deitado.
 

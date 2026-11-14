@@ -105,6 +105,11 @@ function passarinho(t0,vol){ const n=2+((Math.random()*4)|0), f0=2600+Math.rando
     o.frequency.setValueAtTime(f0,t); o.frequency.exponentialRampToValueAtTime(f0*(1.3+Math.random()*0.4),t+0.06);
     const g=ctx.createGain(); g.gain.setValueAtTime(0.0001,t); g.gain.exponentialRampToValueAtTime(vol,t+0.01); g.gain.exponentialRampToValueAtTime(0.0001,t+0.08);
     o.connect(g).connect(mestre); o.start(t); o.stop(t+0.1); } }
+// grilo: trinados curtos e agudos em 2-3 rajadas (noite)
+function grilo(t0,vol){ const f=4200+Math.random()*700, rajadas=2+((Math.random()*2)|0);
+  for(let r=0;r<rajadas;r++) for(let i=0;i<4;i++){ const t=t0+r*0.32+i*0.035, o=ctx.createOscillator(); o.type='sine'; o.frequency.value=f;
+    const g=ctx.createGain(); g.gain.setValueAtTime(0.0001,t); g.gain.exponentialRampToValueAtTime(vol,t+0.006); g.gain.exponentialRampToValueAtTime(0.0001,t+0.028);
+    o.connect(g).connect(mestre); o.start(t); o.stop(t+0.04); } }
 function buzinaLonge(t0,vol){ const d=0.18+Math.random()*0.35, f=filtro('lowpass',1200);
   const g=ctx.createGain(); g.gain.setValueAtTime(0.0001,t0); g.gain.exponentialRampToValueAtTime(vol,t0+0.03); g.gain.setValueAtTime(vol,t0+d); g.gain.exponentialRampToValueAtTime(0.0001,t0+d+0.08);
   f.connect(g).connect(mestre);
@@ -132,7 +137,7 @@ export function somMundo(dt, e){
     if(t>=g.prox){ g.prox=t+0.08+Math.random()*0.22; g.sil.gain.setTargetAtTime(Math.random()<0.3?0.05:0.4+Math.random()*0.6,t,0.03); g.bp.frequency.setTargetAtTime(g.f*(0.8+Math.random()*0.5),t,0.05); } }
   // fundo da cidade + eventos ao longe
   alvo(m.cG.gain,e.home?0.05:0.035,0.5);
-  if(t>=m.proxEvento){ m.proxEvento=t+3+Math.random()*7; if(Math.random()<0.7) passarinho(t+0.05,0.03+Math.random()*0.03); else buzinaLonge(t+0.05,0.025+Math.random()*0.02); }
+  if(t>=m.proxEvento){ m.proxEvento=t+3+Math.random()*7; const nt=e.noite||0; if(Math.random()<0.7){ if(Math.random()<nt) grilo(t+0.05,0.02+Math.random()*0.02); else passarinho(t+0.05,0.03+Math.random()*0.03); } else if(Math.random()>nt*0.7) buzinaLonge(t+0.05,0.025+Math.random()*0.02); }
   // passos a pé
   if(!e.home&&!e.motor&&(e.ape==='andar'||e.ape==='correr')){ const ritmo=e.ape==='correr'?0.29:0.48; m.passo-=dt; if(m.passo<=0){ m.passo=ritmo; pisada(t,e.ape==='correr'?0.22:0.14); } }
   else m.passo=0;

@@ -10,6 +10,7 @@ import { scene } from './cena.js';
 import { toXZ } from './geo.js';
 import { ruas } from './cidade.js';
 import { bloqueado } from './mundo.js';
+import { horaJogo, fatorPessoas } from './ceu.js';
 
 export const PESSOAS = ['male-casual','female-casual','male-shirt','female-dress','male-long-sleeve','female-tank-top','male-suit','female-alternative',
   'male-casual-2-24','female-casual-2-24','male-worker-24','female-worker-24','male-farmer-24','female-formal-24','male-casual-hoodie-24','female-suit-24','male-beach-24','male-suit-24','male-punk-24','female-jeans'];
@@ -124,8 +125,11 @@ export function quandoAtropelar(f){ aoAtropelar=f; }
 // jogador: {x,z, dirigindo, v (m/s), h, veic:{x,z,h,meio,larg,v}}; veiculos: [[x,z,ry,meio,larg]] (do jogador, estacionados e trânsito)
 export function atualizarPedestres(dt, jog, veiculos=[]){
   const {x:px, z:pz}=jog;
-  for(const p of gente){
-    if(!p.obj||Math.hypot(p.x-px,p.z-pz)>RAIO_SOME){ nascer(p,px,pz); if(!p.obj) continue; }
+  const limite=Math.round(QTD*fatorPessoas(horaJogo()));       // de madrugada a rua esvazia
+  for(const [k,p] of gente.entries()){
+    if(!p.obj||Math.hypot(p.x-px,p.z-pz)>RAIO_SOME){
+      if(k>=limite){ if(p.obj){ scene.remove(p.obj); p.mixer.stopAllAction(); p.obj=null; } continue; }   // sobra: não renasce
+      nascer(p,px,pz); if(!p.obj) continue; }
     const dJog=Math.hypot(p.x-px,p.z-pz);
     // atropelado: o veículo do jogador encostou nele andando
     const V=jog.veic;

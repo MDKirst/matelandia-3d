@@ -27,6 +27,7 @@ import { vida, golpe, golpear, atualizarLuta, levarPancada, poseGolpe, DUR, DANO
 import { golpearPedestre } from './pedestres.js';
 addEventListener('matelandia:jogar',e=>{ const d=e.detail; if(d.online) entrarOnline(d.nome,d.personagem); else sairOnline(); });
 import { minimapa } from './minimapa.js';
+import { iniciarCeu, desenhar, horaJogo, relogioTxt, quantoNoite } from './ceu.js';
 import { frota, iniciarVeiculos, veiculoPerto, entrar, sair, dirigir, dentroDeVeiculo, frente, esquerda } from './veiculos.js';
 import * as veic from './veiculos.js';
 import { iniciarTransito, atualizarTransito, posicoesTransito, carros } from './transito.js';
@@ -207,7 +208,7 @@ function quadro(){
     somMundo(dt,{ home:home.aberta, ape:estadoAPe,
       motor:D3&&!home.aberta?{v:D3.v,vmax:D3.tipo.vmax,quebrado:D3.quebrado}:null,
       carros:[...carros.filter(c=>c.r&&c.obj.visible).map(c=>[d2(c.obj.position.x,c.obj.position.z),c.v||0]), ...frota.filter(c=>c!==D3&&Math.abs(c.v||0)>0.5).map(c=>[d2(c.obj.position.x,c.obj.position.z),c.v])],
-      pessoas:posicoesPedestres().map(([x,z])=>d2(x,z)) }); }
+      pessoas:posicoesPedestres().map(([x,z])=>d2(x,z)), noite:quantoNoite() }); }
 
   if(home.aberta){ orbita+=dt*0.04;                                    // sobrevoo lento da cidade atrás da tela inicial
     alvo.set(p.x,0,p.z); camera.position.set(p.x+Math.sin(orbita)*170, 85, p.z+Math.cos(orbita)*170); camera.lookAt(alvo); }
@@ -227,9 +228,12 @@ function quadro(){
     if(nome!==ruaAtual){ ruaAtual=nome;
       const el=$('street'); el.textContent=nome; // nome vem do OSM (editável por qualquer um): nunca como HTML
       if(nome){ const s=document.createElement('small'); s.textContent='MATELÂNDIA · PR'; el.appendChild(s); } }
+    $('relogio').textContent=(quantoNoite()>0.5?'🌙 ':'☀️ ')+relogioTxt(horaJogo());
     const [la,lo]=toLL(p.x,p.z); $('coord').textContent=la.toFixed(5)+', '+lo.toFixed(5);
   }
-  renderer.render(scene,camera);
+  { const D4=veic.dirigindo, vs=posicoesTransito().concat(posicoesPolicia());          // faróis: trânsito, polícia e o seu
+    if(D4) vs.push([D4.obj.position.x,D4.obj.position.z,D4.h,D4.comp/2,D4.larg/2]);
+    desenhar(vs); }
 }
 
 status();
@@ -248,6 +252,7 @@ carregarCidade().then(async()=>{
   const p=jogador.position, [x,z]=pontoLivre(p.x,p.z); p.set(x,0,z);   // não nascer dentro de uma casa
   progresso('Demarcando terrenos…');
   console.info('terrenos', iniciarTerrenos());
+  console.info('postes', iniciarCeu());
   progresso('Ligando os motores…');
   await iniciarVeiculos(); await iniciarTransito(jogador.position.x,jogador.position.z);
   await iniciarPolicia(lugaresCache);

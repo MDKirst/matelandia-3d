@@ -25,6 +25,7 @@ const MODELOS = [
 ];
 // tinta por cima da textura (multiplica: pega bem na picape branca, quase nada no SUV preto)
 const TINTAS = [0xffffff,0xffffff,0xd9443b,0x3b6fd9,0xb9bec4,0x3a3f45,0x2f8f5b,0xe0b54a];
+import { horaJogo, fatorCarros } from './ceu.js';
 const QTD = 18, RAIO_NASCE = [90, 320], RAIO_SOME = 420;
 const TIPOS_OK = new Set(['motorway','motorway_link','trunk','trunk_link','primary','primary_link','secondary','secondary_link',
   'tertiary','tertiary_link','residential','unclassified','living_street']);
@@ -104,8 +105,11 @@ export async function iniciarTransito(px,pz){
 
 // outros: [[x,z,rf,rl]] obstáculos que o carro respeita (jogador, veículos estacionados); também desvia dos outros carros
 export function atualizarTransito(dt, px, pz, outros){
-  for(const c of carros){
-    if(!c.r || Math.hypot(c.obj.position.x-px,c.obj.position.z-pz)>RAIO_SOME){ colocar(c,px,pz); if(!c.r) continue; }
+  const limite=Math.round(QTD*fatorCarros(horaJogo()));        // menos carro de madrugada
+  for(const [k,c] of carros.entries()){
+    if(!c.r || Math.hypot(c.obj.position.x-px,c.obj.position.z-pz)>RAIO_SOME){
+      if(k>=limite){ c.r=null; c.obj.visible=false; continue; }   // sobra: só volta quando a hora pedir
+      colocar(c,px,pz); if(!c.r) continue; }
     let P=pose(c);
     if(c.quebrado){                                          // batido pelo jogador: parado soltando fumaça (some quando ficar longe)
       c.quebrado=Math.max(0.001,c.quebrado-dt); c.v=0; c.acum=(c.acum||0)+dt*(c.quebrado>20?14:6);
