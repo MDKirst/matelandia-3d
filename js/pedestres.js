@@ -12,6 +12,7 @@ import { ruas } from './cidade.js';
 import { bloqueado } from './mundo.js';
 import { horaJogo, fatorPessoas } from './ceu.js';
 import { sortearPersona } from './personas.js';
+import { ehComercio } from './comercio.js';
 import { grupoDe, movimento, peso, nomeGrupo, perfil, PRACA, saudacao, FALA_LUGAR } from './rotina.js';
 
 export const PESSOAS = ['male-casual','female-casual','male-shirt','female-dress','male-long-sleeve','female-tank-top','male-suit','female-alternative',
@@ -24,7 +25,7 @@ const PRACAS = [ {c:[-55,-34], r:22}, {c:[-585,158], r:28} ];
 const loader = new GLTFLoader(); loader.setMeshoptDecoder(MeshoptDecoder);
 const moldes = [];            // {cena, anims:{nome:clip}, altura}
 const gente = [];             // pessoas vivas
-let lojas = [], vias = [], nos = null, pontos = [];   // pontos: lugares reais com a calçada da frente (rotina)
+let lojas = [], centros = [], vias = [], nos = null, pontos = [];   // pontos: lugares reais com a calçada da frente (rotina)
 const chave = p=>Math.round(p[0]*10)+'_'+Math.round(p[1]*10);
 const sorte = ()=>Math.random();
 
@@ -118,7 +119,7 @@ function nascer(p, px, pz){
     const q=[a[0]+(b[0]-a[0])*t0, a[1]+(b[1]-a[1])*t0], d=Math.hypot(q[0]-px,q[1]-pz);   // ponto no meio do trecho, não só no vértice
     if(d<RAIO_NASCE[0]||d>RAIO_NASCE[1]) continue;
     // rua sem comércio por perto aceita menos gente
-    const comercio=lojas.some(l=>Math.abs(l[0]-q[0])<60&&Math.abs(l[1]-q[1])<60);
+    const comercio=centros.some(l=>Math.abs(l[0]-q[0])<60&&Math.abs(l[1]-q[1])<60);
     if(!comercio&&sorte()<0.55) continue;
     const dir=sorte()<0.5?1:-1;
     const Lseg=Math.hypot(b[0]-a[0],b[1]-a[1]);
@@ -149,8 +150,11 @@ function esquina(p){
 
 export async function iniciarPedestres(lugares, px, pz){
   montarCaminhos();
-  lojas = lugares.filter(l=>l.f==='osm'||(l.conf??0)>=0.5).map(l=>toXZ(l.lat,l.lon));
-  prenderLugares(lugares.filter(l=>l.f==='osm'||(l.conf??0)>=0.5));
+  const validos=lugares.filter(l=>l.f==='osm'||(l.conf??0)>=0.5);
+  centros = validos.map(l=>toXZ(l.lat,l.lon));                          // onde a cidade tem movimento (mais gente nasce perto)
+  const publicos=validos.filter(l=>!ehComercio(l));                     // os comércios viraram terreno: vitrine e rotina só nos públicos
+  lojas = publicos.map(l=>toXZ(l.lat,l.lon));
+  prenderLugares(publicos);
   // carrega aos poucos: os 6 primeiros já povoam, o resto entra conforme chega
   const fila=[...PESSOAS].sort(()=>Math.random()-0.5);
   const primeiros=await Promise.all(fila.slice(0,6).map(carregarModelo)); moldes.push(...primeiros.filter(Boolean));

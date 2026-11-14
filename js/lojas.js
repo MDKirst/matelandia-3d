@@ -8,6 +8,7 @@ import { scene } from './cena.js';
 import { toXZ } from './geo.js';
 import { ruas, predios } from './cidade.js';
 import { substituidoPorMarco } from './marcos.js';
+import { ehComercio } from './comercio.js';
 
 const DADOS = 'dados/lugares.json';
 // ramo → [cor do letreiro, cor do toldo]; o ramo sai da categoria e, sem ela, do nome
@@ -101,6 +102,7 @@ export async function carregarLojas(){
   for(const l of dados.lugares){
     if(l.f==='overture'&&(l.conf??0)<0.5) continue;
     if(NAO_LOJA.test(l.n)) continue;
+    if(ehComercio(l)) continue;                                   // comércio saiu: o espaço é terreno dos jogadores
     const [x,z]=toXZ(l.lat,l.lon);
     if(substituidoPorMarco(x,z,'loja',0)) continue;
     const ramo=ramoDe(l);

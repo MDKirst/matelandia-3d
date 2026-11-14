@@ -10,6 +10,7 @@ import { toXZ, toLL, D2R } from './geo.js';
 import { predios, bbox, ruas } from './cidade.js';
 import { DADOS_PREDIOS, TILE_URL, ZOOM_MAX } from './config.js';
 import { substituidoPorMarco } from './marcos.js';
+import { ehComercio, carregarLugares } from './comercio.js';
 import { acenderJanelas } from './ceu.js';
 
 const PAREDES = [0xf2ead9,0xe8dcc8,0xd9c7a8,0xcfd6da,0xe9c9a8,0xf0e6d6,0xc9d3b5,0xd8b08c,0xe6e1d3,0xbfcad3].map(c=>new THREE.Color(c));
@@ -172,6 +173,26 @@ export function atualizarTelhados(dt,px,pz){
   }
 }
 
+// prédios de comércio que saíram (pedido do Maicon, 14/11/2026): o espaço vira terreno (terrenos.js)
+export const comerciosRemovidos=[];   // {pts, bb}
+// qual prédio do Overture é de cada comércio: o que contém o ponto ou, se nenhum, o mais perto até 7 m
+async function predioDosComercios(dados, osm){
+  const lugares=(await carregarLugares()).filter(ehComercio).map(l=>toXZ(l.lat,l.lon)), cand=[], G=40, grade=new Map();
+  dados.predios.forEach((p,idx)=>{ const pts=p.c.map(([la,lo])=>toXZ(la,lo)), A=Math.abs(area(pts)); if(A<12) return;
+    const bb=bbox(pts), cx=(bb[0]+bb[2])/2, cz=(bb[1]+bb[3])/2;
+    if(substituidoPorMarco(cx,cz,'overture',A)||osm.some(o=>cx>=o.bb[0]&&cx<=o.bb[2]&&cz>=o.bb[1]&&cz<=o.bb[3]&&dentro(cx,cz,o.pts))) return;
+    const c={idx,pts,bb}; cand.push(c);
+    for(let i=Math.floor(bb[0]/G);i<=Math.floor(bb[2]/G);i++) for(let j=Math.floor(bb[1]/G);j<=Math.floor(bb[3]/G);j++){ const k=i+'_'+j; if(!grade.has(k)) grade.set(k,[]); grade.get(k).push(c); } });
+  const fora=new Set();
+  for(const [x,z] of lugares){ let melhor=null, md=7;
+    for(let i=Math.floor((x-8)/G);i<=Math.floor((x+8)/G);i++) for(let j=Math.floor((z-8)/G);j<=Math.floor((z+8)/G);j++) for(const c of grade.get(i+'_'+j)||[]){
+      const b=c.bb; if(x<b[0]-md||x>b[2]+md||z<b[1]-md||z>b[3]+md) continue;
+      if(dentro(x,z,c.pts)){ melhor=c; md=-1; break; }
+      for(let e=0;e<c.pts.length;e++){ const a=c.pts[e], d=c.pts[(e+1)%c.pts.length], vx=d[0]-a[0], vz=d[1]-a[1];
+        let t=((x-a[0])*vx+(z-a[1])*vz)/(vx*vx+vz*vz||1); t=Math.max(0,Math.min(1,t)); const dd=Math.hypot(x-a[0]-vx*t,z-a[1]-vz*t); if(dd<md){ md=dd; melhor=c; } } }
+    if(melhor) fora.add(melhor.idx); }
+  return fora;
+}
 export async function carregarPredios(){
   let dados;
   try{ const r=await fetch(DADOS_PREDIOS); if(!r.ok) throw new Error('HTTP '+r.status); dados=await r.json(); }
@@ -191,13 +212,15 @@ export async function carregarPredios(){
       if(/prefeitura/i.test(o.nome)) bandeiras(pts);
     }catch(e){}
   }
-  for(const p of dados.predios){
+  const fora=await predioDosComercios(dados, osm);
+  for(const [idx,p] of dados.predios.entries()){
     let pts=p.c.map(([la,lo])=>toXZ(la,lo));
     let A=area(pts); if(Math.abs(A)<12) continue;              // menor que 12 m²: ruído
     if(A<0){ pts=pts.reverse(); A=-A; }                       // sentido anti-horário visto de cima
     const bb=bbox(pts), cx=(bb[0]+bb[2])/2, cz=(bb[1]+bb[3])/2;
     if(substituidoPorMarco(cx,cz,'overture',A)) continue;      // marco feito à mão no lugar
     if(osm.some(o=>cx>=o.bb[0]&&cx<=o.bb[2]&&cz>=o.bb[1]&&cz<=o.bb[3]&&dentro(cx,cz,o.pts))) continue; // já veio do OSM
+    if(fora.has(idx)){ comerciosRemovidos.push({pts,bb}); continue; }                          // comércio: vira terreno
     const h=altura(p,pts,A,cx,cz), r=sorte(cx,cz,1);
     const quatro=pts.length===4 && A<900;
     const qd=quadra(cx,cz), i=qd.i, j=qd.j;

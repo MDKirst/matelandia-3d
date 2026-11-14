@@ -227,6 +227,7 @@ function flutuar(n,txt){
 
 /* ───────── caixa (renda acumulada) ───────── */
 const reg=l=>{ salvo.negocios ??= {}; return salvo.negocios[l.id] ??= { coleta:Date.now() }; };
+export const nomeDoNegocio=l=>l.negocio?nomeNeg(l):'';
 export function caixa(l){ const T=TIPOS[l.negocio]; if(!T||!meu(l)) return 0; const h=Math.min(MAX_HORAS,(Date.now()-reg(l).coleta)/3.6e6); return Math.floor(h*T.hora/10)*10; }
 
 /* ───────── interface: cardápio e painel ───────── */

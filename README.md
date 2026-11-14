@@ -12,6 +12,7 @@ Jogo de navegador em 3D da cidade de Matelândia-PR: ande, dirija, faça entrega
 - Nomes das lojas são fictícios.
 
 ## Como funciona
+- **Sem comércio pronto:** os prédios de loja da cidade saíram e viraram terreno à venda (194 terrenos; os 70 antigos continuam no mesmo lugar). Ficam os lugares públicos (escolas, igrejas, prefeitura, hospitais, praças). As entregas vão aos negócios dos jogadores e a endereços da cidade.
 - **Terrenos e construções** ficam num banco compartilhado (Firebase): todos veem o que os outros construíram, e só o dono mexe no próprio terreno. Cada jogador pode ter até 2 terrenos.
 - **Dia e noite:** um dia do jogo dura 48 minutos e é igual para todos os jogadores. Os pedestres seguem a rotina dos lugares de verdade: porta da escola cheia na entrada e na saída das aulas, padaria cedo, restaurante no almoço e na janta, igreja no culto, bar e praça à noite. À noite os postes, as janelas e os faróis acendem, aparecem estrelas e grilos, e a rua esvazia de madrugada. Para testar uma hora: `?hora=21` no endereço.
 - **Negócio próprio (V no seu terreno vazio):** escolha no cardápio (padaria, lanchonete, mercado, loja de roupas, farmácia ou oficina) e o comércio aparece pronto, com atendente; os clientes da cidade entram e compram. Todos veem o seu negócio. Fora do jogo o caixa junta até 8 h de renda; V recolhe.

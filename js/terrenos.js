@@ -10,6 +10,7 @@ import { scene, camera, cv, flat, $ } from './cena.js';
 import { ruas, predios } from './cidade.js';
 import { bloqueado, definirBloqueioExtra } from './mundo.js';
 import { substituidoPorMarco } from './marcos.js';
+import { comerciosRemovidos } from './predios.js';
 import { LX0, LZ0, LX1, LZ1 } from './geo.js';
 import { nuvem, conectarNuvem, aoTrocarConta, ouvirLotes, ouvirBlocos, tomarLote, LIMITE_TERRENOS, porBloco, tirarBloco, subirBlocos } from './nuvem.js';
 
@@ -90,18 +91,31 @@ function lotesVazios(){
     }
   }
   cand.sort((p,q)=>Math.hypot(p.cx,p.cz)-Math.hypot(q.cx,q.cz));     // primeiro os perto do centro
+  // prédios de comércio que saíram (predios.js): para refazer os 70 terrenos de antes IGUAIS (os ids
+  // são a posição e têm dono no banco), eles contam como prédio na primeira passada
+  const removido=(x,z)=>comerciosRemovidos.some(p=>{ const b=p.bb; return x>=b[0]&&x<=b[2]&&z>=b[1]&&z<=b[3]&&dentroPoly(x,z,p.pts); });
+  const livreCom=(c,bloq)=>{ for(let u=0.5;u<=W-0.5;u+=2.75) for(let v=0.5;v<=D-0.5;v+=2.9){
+      const x=c.A[0]+c.t[0]*u+c.n[0]*v, z=c.A[1]+c.t[1]*u+c.n[1]*v;
+      if(bloq(x,z)||substituidoPorMarco(x,z,'muro',0)||(v>1&&pertoDeRua(x,z,0.2))) return false; }
+    return true; };
+  const tocaRemovido=c=>{ for(let u=0.5;u<=W-0.5;u+=2.75) for(let v=0.5;v<=D-0.5;v+=2.9) if(removido(c.A[0]+c.t[0]*u+c.n[0]*v, c.A[1]+c.t[1]*u+c.n[1]*v)) return true; return false; };
   const ok=[];
   for(const c of cand){
     if(ok.length>=70) break;
     if(ok.some(o=>Math.hypot(o.cx-c.cx,o.cz-c.cz)<16)) continue;
-    let livre=true;
-    for(let u=0.5;u<=W-0.5&&livre;u+=2.75) for(let v=0.5;v<=D-0.5&&livre;v+=2.9){
-      const x=c.A[0]+c.t[0]*u+c.n[0]*v, z=c.A[1]+c.t[1]*u+c.n[1]*v;
-      if(bloqueado(x,z)||substituidoPorMarco(x,z,'muro',0)||(v>1&&pertoDeRua(x,z,0.2))) livre=false; }
-    if(livre) ok.push(c);
+    if(livreCom(c,(x,z)=>bloqueado(x,z)||removido(x,z))) ok.push(c);
   }
-  return ok;
+  // segunda passada: terrenos novos onde havia comércio (sem encostar nos de antes)
+  const novos=[];
+  for(const c of cand){
+    if(novos.length>=LIMITE_NOVOS) break;
+    if(ok.some(o=>Math.hypot(o.cx-c.cx,o.cz-c.cz)<16)||novos.some(o=>Math.hypot(o.cx-c.cx,o.cz-c.cz)<16)) continue;
+    if(tocaRemovido(c)&&livreCom(c,bloqueado)) novos.push(c);
+  }
+  return [...ok,...novos];
 }
+const LIMITE_NOVOS=200;
+function dentroPoly(x,z,pts){ let c=false; for(let i=0,j=pts.length-1;i<pts.length;j=i++){ const a=pts[i],b=pts[j]; if((a[1]>z)!==(b[1]>z)&&x<(b[0]-a[0])*(z-a[1])/(b[1]-a[1])+a[0]) c=!c; } return c; }
 
 /* ───────── placa ───────── */
 function placa(l1,l2,cor){

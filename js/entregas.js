@@ -1,11 +1,13 @@
 // Corridas de entrega: dentro de um veículo, N pega uma corrida (N de novo cancela).
-// 1) buscar a carga numa loja a 150–500 m; 2) levar até outra loja a 300–900 m, com tempo limite.
+// 1) buscar a carga a 150–500 m; 2) levar a 300–900 m, com tempo limite. Os pontos são os negócios abertos
+// pelos jogadores e, sem negócio por perto, endereços da cidade (rua e número).
 // Paga base + distância, bônus pelo tempo que sobrar, mais por veículo de carga; batida desconta;
 // tempo esgotado ou veículo quebrado = falha. O dinheiro vai para o saldo M$ (terrenos.js).
 import * as THREE from 'three';
 import { scene, camera, $ } from './cena.js';
-import { pontosLoja } from './lojas.js';
-import { ganhar, fmt } from './terrenos.js';
+import { ganhar, fmt, lotes } from './terrenos.js';
+import { nomeDoNegocio } from './negocios.js';
+import { ruas } from './cidade.js';
 import { somEntrega } from './som.js';
 
 const PAGA_VEICULO={ suv:1.0, picape:1.2, cavalo:1.6 };
@@ -19,8 +21,20 @@ const anel=new THREE.Mesh(new THREE.RingGeometry(5.2,6,40).rotateX(-Math.PI/2),n
 anel.position.y=0.08; anel.visible=false; scene.add(anel);
 
 function sortearLoja(x,z,dmin,dmax,evita){
-  const ok=pontosLoja.filter(p=>{ const d=Math.hypot(p.x-x,p.z-z); return d>=dmin&&d<=dmax&&p!==evita; });
-  return ok.length?ok[(Math.random()*ok.length)|0]:null;
+  // negócio de jogador na faixa de distância (na calçada em frente)
+  const negs=lotes.filter(l=>l.negocio).map(l=>({ id:l.id, x:l.A[0]+l.t[0]*6-l.n[0]*2, z:l.A[1]+l.t[1]*6-l.n[1]*2, nome:nomeDoNegocio(l) }))
+    .filter(p=>{ const d=Math.hypot(p.x-x,p.z-z); return d>=dmin&&d<=dmax&&p.id!==evita?.id; });
+  if(negs.length&&Math.random()<0.7) return negs[(Math.random()*negs.length)|0];
+  // endereço: ponto na beira de uma rua com nome, número pela posição
+  const vias=ruas.filter(r=>r.nome&&!r.pe&&r.tipo!=='motorway'&&r.pts.length>1);
+  for(let t=0;t<80&&vias.length;t++){
+    const r=vias[(Math.random()*vias.length)|0], i=(Math.random()*(r.pts.length-1))|0, a=r.pts[i], b=r.pts[i+1], s=Math.random();
+    const dx=b[0]-a[0], dz=b[1]-a[1], L=Math.hypot(dx,dz)||1, off=r.w/2+1.2, px=a[0]+dx*s-dz/L*off, pz=a[1]+dz*s+dx/L*off, d=Math.hypot(px-x,pz-z);
+    if(d<dmin||d>dmax) continue;
+    const num=10+Math.abs(Math.round(px*3.1+pz*7.3))%1900;
+    return { x:px, z:pz, nome:`${r.nome}, ${num}` };
+  }
+  return negs[0]||null;
 }
 function avisar(t,seg=3){ const a=$('aviso'); a.textContent=t; a.style.opacity=1; clearTimeout(avisar.t); avisar.t=setTimeout(()=>a.style.opacity=0,seg*1000); }
 function marcar(p){ coluna.position.x=anel.position.x=p.x; coluna.position.z=anel.position.z=p.z; coluna.visible=anel.visible=true; }
@@ -32,7 +46,7 @@ export function alternarCorrida(veiculo){
   if(!veiculo) return avisar('Entre num veículo para fazer entregas');
   if(veiculo.quebrado) return avisar('Veículo quebrado: pegue outro');
   const p=veiculo.obj.position, de=sortearLoja(p.x,p.z,150,500)||sortearLoja(p.x,p.z,60,900);
-  if(!de) return avisar('Nenhuma loja por perto');
+  if(!de) return avisar('Nenhum destino por perto');
   Object.assign(corrida,{etapa:'buscar', de, para:null, veiculo, dano0:veiculo.dano, prazo:0, dist:0});
   marcar(de); $('missao').style.display='block';
   avisar('Nova entrega: busque em '+de.nome);
