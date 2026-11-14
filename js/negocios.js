@@ -13,6 +13,7 @@ import { carregarModelo, PESSOAS } from './pedestres.js';
 import { horaJogo } from './ceu.js';
 import { perfil } from './rotina.js';
 import { sortearPersona } from './personas.js';
+import { musicaLoja } from './som.js';
 
 // curvas de movimento por hora (as mesmas ideias do rotina.js)
 const C_PADARIA=[[0,0],[5.5,0.05],[6.3,1],[9,0.5],[11,0.3],[15,0.5],[16.5,0.9],[18.5,0.6],[20,0.1],[24,0]];
@@ -28,6 +29,33 @@ export const TIPOS = {
   oficina:   { nome:'Oficina',    ic:'🔧', preco:10000, hora:1600, venda:[60,220], cor:0x334155, piso:'#9ca3af', prod:[0x111827,0x374151,0xb91c1c,0x1d4ed8], curva:C_LOJA, fala:'Meu carro tá fazendo um barulho…', oficina:true },
 };
 const MAX_HORAS=8;
+// o que aparece nos cartazes e no quadro de preços (desenhado aqui, com emoji)
+const MENU = {
+  padaria:   [['🥖','Pão francês','0,80'],['🥐','Croissant','6'],['🍰','Bolo de pote','12'],['☕','Cafezinho','4'],['🧀','Pão de queijo','5']],
+  lanchonete:[['🍔','X-Salada','18'],['🌭','Cachorro-quente','12'],['🍟','Batata frita','14'],['🥤','Refri lata','6'],['🍕','Pizza broto','22']],
+  mercado:   [['🍎','Frutas','5/kg'],['🥛','Leite','5'],['🍚','Arroz 5 kg','28'],['🫘','Feijão 1 kg','9'],['🍫','Chocolate','7']],
+  roupas:    [['👕','Camiseta','39'],['👖','Calça jeans','119'],['👟','Tênis','199'],['🧢','Boné','49'],['👗','Vestido','89']],
+  farmacia:  [['💊','Analgésico','9'],['🧴','Protetor solar','45'],['🩹','Curativos','7'],['🪥','Escova de dente','8'],['🧼','Sabonete','3']],
+  oficina:   [['🛞','Pneu aro 14','320'],['🛢️','Troca de óleo','150'],['🔧','Revisão','250'],['🔋','Bateria','480'],['🧽','Lavagem','40']],
+};
+function texCartaz([ic,nome,preco],cor){
+  const cv=document.createElement('canvas'); cv.width=256; cv.height=320; const k=cv.getContext('2d');
+  k.fillStyle='#fffaf0'; k.fillRect(0,0,256,320); k.fillStyle='#'+new THREE.Color(cor).getHexString(); k.fillRect(0,0,256,26); k.fillRect(0,294,256,26);
+  k.textAlign='center'; k.textBaseline='middle'; k.font='120px "Segoe UI Emoji","Apple Color Emoji","Noto Color Emoji",sans-serif'; k.fillText(ic,128,130);
+  k.fillStyle='#1c1917'; let fs=34; k.font=`900 ${fs}px system-ui,sans-serif`; while(k.measureText(nome).width>236&&fs>18){ fs-=2; k.font=`900 ${fs}px system-ui,sans-serif`; } k.fillText(nome,128,222);
+  k.fillStyle='#dc2626'; k.font='900 40px system-ui,sans-serif'; k.fillText('M$ '+preco,128,266);
+  const t=new THREE.CanvasTexture(cv); t.colorSpace=THREE.SRGBColorSpace; t.anisotropy=4; return t;
+}
+function texQuadro(itens,titulo){
+  const cv=document.createElement('canvas'); cv.width=1024; cv.height=384; const k=cv.getContext('2d');
+  k.fillStyle='#1f2a24'; k.fillRect(0,0,1024,384); k.strokeStyle='#8b5a2b'; k.lineWidth=18; k.strokeRect(9,9,1006,366);
+  k.fillStyle='#fef3c7'; k.textBaseline='middle'; k.textAlign='center'; k.font='900 54px system-ui,sans-serif'; k.fillText(titulo,512,58);
+  itens.slice(0,5).forEach(([ic,nome,preco],i)=>{ const y=118+i*54;
+    k.textAlign='left'; k.font='38px "Segoe UI Emoji","Apple Color Emoji","Noto Color Emoji",sans-serif'; k.fillText(ic,60,y);
+    k.fillStyle='#f5f5f4'; k.font='700 36px system-ui,sans-serif'; k.fillText(nome,120,y);
+    k.textAlign='right'; k.fillStyle='#fde047'; k.fillText('M$ '+preco,964,y); k.fillStyle='#fef3c7'; });
+  const t=new THREE.CanvasTexture(cv); t.colorSpace=THREE.SRGBColorSpace; t.anisotropy=4; return t;
+}
 const nomeNeg=l=>`${TIPOS[l.negocio].nome} de ${l.donoNome||'Visitante'}`;   // "de": serve para qualquer nome
 
 /* ───────── prédio pronto (coordenadas do lote: x = frente 0..12, z = fundo 0..24) ───────── */
@@ -69,7 +97,25 @@ function montarPredio(l){
   const franja=new THREE.Mesh(new THREE.BoxGeometry(X1-X0-0.4,0.25,0.04),lamb(0xffffff)); franja.position.set((X0+X1)/2,2.42,Z0-1.3); g.add(franja);
   // balcão e caixa registradora
   const bz=T.oficina?12:9;
-  cx3(g,MAT.balcao,3,9,0,1.0,bz,bz+0.8); cx3(g,cor,3,9,1.0,1.06,bz-0.05,bz+0.85); cx3(g,MAT.escuro,7.6,8.3,1.06,1.4,bz+0.2,bz+0.6);
+  cx3(g,MAT.balcao,3,9,0,1.0,bz,bz+0.8); cx3(g,cor,3,9,1.0,1.06,bz-0.05,bz+0.85);
+  cx3(g,MAT.metal,7.8,8.25,1.06,1.22,bz+0.3,bz+0.62); cx3(g,MAT.escuro,7.83,8.22,1.22,1.42,bz+0.52,bz+0.58);   // caixa registradora e tela
+  const itens=MENU[l.negocio]||[];
+  // estufa/expositor de vidro no balcão com produtos dentro
+  cx3(g,MAT.metal,3.3,5.9,1.06,1.1,bz+0.05,bz+0.75); cx3(g,MAT.vidro,3.3,5.9,1.1,1.6,bz+0.05,bz+0.75); cx3(g,MAT.metal,3.3,5.9,1.6,1.63,bz+0.05,bz+0.75);
+  { const geo=T.oficina?new THREE.CylinderGeometry(0.09,0.09,0.22,10):new THREE.SphereGeometry(0.09,10,8), m=new THREE.MeshLambertMaterial({color:0xffffff}),
+      im=new THREE.InstancedMesh(geo,m,24), M=new THREE.Matrix4(), c=new THREE.Color(); let i=0;
+    for(let a=0;a<2;a++) for(let x=0;x<12;x++){ im.setMatrixAt(i,M.makeTranslation(3.45+x*0.2,1.2+a*0.2,bz+0.25+a*0.2)); im.setColorAt(i,c.setHex(T.prod[(i*3+a)%T.prod.length])); i++; }
+    g.add(im); }
+  // copos/potes no balcão
+  for(let i=0;i<3;i++){ const cp=new THREE.Mesh(new THREE.CylinderGeometry(0.06,0.05,0.16,10),lamb(T.prod[i%T.prod.length])); cp.position.set(6.4+i*0.25,1.14,bz+0.4); g.add(cp); }
+  // quadro de preços na parede do fundo (atrás do atendente) e cartazes nas laterais
+  const quadro=new THREE.Mesh(new THREE.PlaneGeometry(4.6,1.72),new THREE.MeshBasicMaterial({map:texQuadro(itens,T.oficina?'SERVIÇOS':['padaria','lanchonete'].includes(l.negocio)?'CARDÁPIO':'OFERTAS')}));
+  quadro.position.set(6,2.75,Z1-0.22); quadro.rotation.y=Math.PI; g.add(quadro);
+  itens.forEach((it,i)=>{ if(i>=4) return; const esq=i<2, z=4.6+(i%2)*4.2;
+    const c=new THREE.Mesh(new THREE.PlaneGeometry(1.0,1.25),new THREE.MeshBasicMaterial({map:texCartaz(it,T.cor)}));
+    c.position.set(esq?X0+0.22:X1-0.22,3.0,z); c.rotation.y=esq?Math.PI/2:-Math.PI/2; g.add(c); });
+  // um cartaz na vitrine, virado para a rua
+  if(itens[0]&&!T.oficina){ const v=new THREE.Mesh(new THREE.PlaneGeometry(0.9,1.12),new THREE.MeshBasicMaterial({map:texCartaz(itens[0],T.cor)})); v.position.set(2.6,1.6,Z0+0.17); v.rotation.y=Math.PI; g.add(v); }
   // produtos: prateleiras nas laterais (ou araras, mesas, pneus)
   const prods=[], cores=T.prod;
   const prat=(x0,x1)=>{ cx3(g,MAT.madeira,x0,x1,0,2.1,4,bz-0.6).material=MAT.madeira;
@@ -227,15 +273,17 @@ export async function iniciarNegocios(){
   });
 }
 export function atualizarNegocios(dt, px, pz){
-  const h=horaJogo();
+  const h=horaJogo(); let dentro=null;
   for(const n of abertos.values()){
     const l=n.l, d=Math.hypot(l.cx-px,l.cz-pz);
     if(d>160){ for(const b of n.clientes) n.g.remove(b.obj); n.clientes.length=0; continue; }   // longe: sem clientes
     const T=TIPOS[l.negocio], mov=perfil(h,T.curva);
+    { const dx=px-l.A[0], dz=pz-l.A[1], u=dx*l.t[0]+dz*l.t[1], v=dx*l.n[0]+dz*l.n[1]; if(u>X0&&u<X1&&v>Z0&&v<Z1) dentro=l.negocio; }   // jogador dentro da loja
     n.prox-=dt;
     if(n.prox<=0&&moldes.length){ n.prox=(5+Math.random()*7)/Math.max(0.15,mov); if(mov>0.08&&n.clientes.length<3) novoCliente(n); }
     for(const b of [...n.clientes]){ andarCliente(n,b,dt,d<60); b.obj.position.y=b.pe; b.mixer.update(dt); }
     if(n.atendente) n.atendente.mixer.update(dt);
   }
+  musicaLoja(dentro);
   for(let i=flut.length-1;i>=0;i--){ const f=flut[i]; f.t-=dt; f.s.position.y+=dt*0.8; f.s.material.opacity=Math.min(1,f.t); if(f.t<=0){ f.n.g.remove(f.s); flut.splice(i,1); } }
 }

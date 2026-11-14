@@ -162,3 +162,30 @@ export async function gravarSom(nome, seg=2){
   const g=pico>0.98?0.98/pico:1; for(let i=0;i<n;i++) dv.setInt16(44+i*2,Math.max(-1,Math.min(1,d[i]*g))*32767,true);
   return { pico, wav:new Uint8Array(dv.buffer) };
 }
+
+// música ambiente baixinha dentro dos comércios: acordes suaves, baixo e arpejo (gerados na hora).
+// Cada tipo de loja tem andamento e tom próprios. tipo=null: some devagar e para de tocar.
+const PROG=[[60,64,67,71],[57,60,64,67],[62,65,69,72],[55,59,62,65]];      // Cmaj7 · Am7 · Dm7 · G7 (MIDI)
+const ESTILO={ padaria:[76,0], lanchonete:[92,2], mercado:[84,-3], roupas:[100,5], farmacia:[70,-5], oficina:[96,-2] };
+const hz=m=>440*2**((m-69)/12);
+let mus=null;
+function notaMus(f,t0,dur,tipo,vol,ataque){
+  const o=ctx.createOscillator(); o.type=tipo; o.frequency.value=f; const g=ctx.createGain();
+  g.gain.setValueAtTime(0.0001,t0); g.gain.linearRampToValueAtTime(vol,t0+ataque+0.005); g.gain.exponentialRampToValueAtTime(0.0001,t0+dur);
+  o.connect(g).connect(mus.f); o.start(t0); o.stop(t0+dur+0.05);
+}
+export function musicaLoja(tipo){
+  if(!ctx||ctx.state!=='running') return;
+  if(!mus){ mus={ g:ctx.createGain(), f:ctx.createBiquadFilter(), prox:0, passo:0, tipo:null, fora:-1e9 };
+    mus.g.gain.value=0; mus.f.type='lowpass'; mus.f.frequency.value=2000; mus.f.connect(mus.g).connect(mestre); }
+  const t=ctx.currentTime;
+  if(tipo){ if(mus.fora!==0){ mus.g.gain.setTargetAtTime(0.06,t,0.8); } mus.fora=0; mus.tipo=tipo; }
+  else { if(mus.fora===0) mus.g.gain.setTargetAtTime(0,t,0.5); if(mus.fora===0) mus.fora=t; if(t-mus.fora>3){ mus.prox=0; return; } }
+  const [bpm,tr]=ESTILO[mus.tipo]||[84,0], c=60/bpm/2;                     // c = colcheia
+  if(mus.prox<t) mus.prox=t+0.05;
+  while(mus.prox<t+0.4){ const s=mus.passo, ac=PROG[Math.floor(s/8)%4], tt=mus.prox;
+    if(s%8===0) for(const n of ac) notaMus(hz(n+tr),tt,c*8,'triangle',0.09,0.3);          // acorde
+    if(s%4===0) notaMus(hz(ac[0]+tr-24),tt,c*3,'sine',0.3,0.01);                         // baixo
+    if(Math.random()<0.8) notaMus(hz(ac[[0,2,1,3,2,1,3,2][s%8]]+tr+12),tt,c*0.9,'sine',0.11,0.005);   // arpejo
+    mus.passo++; mus.prox+=c; }
+}
