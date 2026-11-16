@@ -78,7 +78,7 @@ function aPe(dt){
   let iy=(tecla.KeyW||tecla.ArrowUp?1:0)-(tecla.KeyS||tecla.ArrowDown?1:0);
   let correndo=tecla.ShiftLeft||tecla.ShiftRight;
   if(toque.joy){ ix=toque.joy.x; iy=-toque.joy.y; if(Math.hypot(ix,iy)>0.92) correndo=true; }
-  if(vida.caido>0||golpe.tipo){ ix=0; iy=0; }                          // desmaiado ou no meio do golpe: parado
+  if(vida.caido>0||golpe.tipo||detido>0){ ix=0; iy=0; }                          // desmaiado ou no meio do golpe: parado
   const forca=Math.min(1,Math.hypot(ix,iy)); let estado='parado';
   const p=jogador.position;
   if(vida.empurra){ const [ex,ez]=vida.empurra; vida.empurra=null; if(!travado(p.x+ex,p.z+ez)){ p.x+=ex; p.z+=ez; } }
@@ -135,6 +135,15 @@ function prender(posto){
   if(veic.dirigindo){ sair(); jogador.visible=true; cam.dist=distAPe; $('velo').style.display='none'; }
   const [x,z]=pontoLivre(posto[0]+6,posto[1]+6); jogador.position.set(x,0,z);
   pagar(-500);                                                              // multa (o saldo não fica negativo)
+  detido=15; rumo=Math.atan2(x-posto[0],z-posto[1]);                       // fica detido na frente da delegacia, depois é liberado
+}
+let detido=0;
+function cumprirPena(dt){
+  if(detido<=0) return false;
+  detido-=dt; const a=$('aviso'); a.style.opacity=1;
+  a.textContent=detido>0?`🚔 Detido na delegacia: ${Math.ceil(detido)} s`:'Liberado! Comporte-se 😉';
+  if(detido<=0) setTimeout(()=>{ if(!(detido>0)) a.style.opacity=0; },2500);
+  return detido>0;
 }
 quandoAtropelar(()=>{ somPancada(); crime(1,'Atropelamento'); revolta(jogador.position.x,jogador.position.z); });
 // avacalhar: nocaute ou 2 pancadas em 20 s → a turma junta e bate (até desmaiar)
@@ -192,7 +201,8 @@ function quadro(){
   requestAnimationFrame(quadro);
   const dt=Math.min(relogio.getDelta(),0.05);
   if(home.aberta){ pedido.usar=false; jogador.visible=false; }          // tela inicial: ninguém se mexe
-  else { if(pedido.usar){ pedido.usar=false; if(!(vida.caido>0)) trocarVeiculo(); }
+  else { const preso=cumprirPena(dt); if(preso){ pedido.usar=false; pedido.golpe=null; pedido.casa=false; }
+    if(pedido.usar){ pedido.usar=false; if(!(vida.caido>0)) trocarVeiculo(); }
     if(pedido.entrega){ pedido.entrega=false; if(trabalho.tipo) avisarTerreno('Termine o trabalho atual antes da entrega (O cancela)'); else alternarCorrida(veic.dirigindo); }
     if(pedido.trabalho){ pedido.trabalho=false; abrirTrabalhos(!!alvoCorrida()); }
     if(pedido.comprar){ pedido.comprar=false; if(!veic.dirigindo) comprar(jogador.position.x,jogador.position.z); }
@@ -305,4 +315,4 @@ carregarCidade().then(async()=>{
   pronto(); });
 quadro();
 // gancho para testes no console
-window.__jogo={vida,golpe,golpear,jogador,ruas,predios,tecla,frota,veic,pedido,lim:[LX0,LZ0,LX1,LZ1],cam:(d,p,y)=>{cam.dist=d;cam.pitch=p;cam.yaw=y;}};
+window.__jogo={prender,detido:()=>detido,vida,golpe,golpear,jogador,ruas,predios,tecla,frota,veic,pedido,lim:[LX0,LZ0,LX1,LZ1],cam:(d,p,y)=>{cam.dist=d;cam.pitch=p;cam.yaw=y;}};
