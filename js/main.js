@@ -37,7 +37,7 @@ import { casas as todasCasas } from './casas.js';
 import { iniciarCasas, dicaCasa, comprarCasa, casa, cenaCasa, bloqueioCasa, entrarCasa, usarEmCasa, casasNoMapa } from './casas.js';
 import { construirCampos } from './campos.js';
 import { sentar, descer, girarRodas } from './moto.js';
-import { iniciarCeu, desenhar, horaJogo, relogioTxt, quantoNoite } from './ceu.js';
+import { iniciarCeu, desenhar, horaJogo, relogioTxt, quantoNoite, postes } from './ceu.js';
 import { ganhar as conquista, contar, colecionar } from './conquistas.js';
 import { pedirFoto, talvezFotografar } from './foto.js';
 import { policia } from './policia.js';
@@ -301,6 +301,12 @@ function quadro(){
     alvo.set(p.x,(veic.dirigindo?1.8:1.45)+altura(p.x,p.z),p.z);
     camera.position.set(p.x+dist*Math.sin(yaw)*Math.cos(pitch), alvo.y+dist*Math.sin(pitch), p.z+dist*Math.cos(yaw)*Math.cos(pitch));
     { const piso=altura(camera.position.x,camera.position.z)+1.2; if(camera.position.y<piso) camera.position.y=piso; }   // morro atrás: câmera não entra no chão
+    { const c=camera.position, ox=alvo.x, oy=alvo.y, oz=alvo.z;       // câmera não entra em prédio/casa (como no GTA): chega mais perto do jogador
+      for(let t=0.15;t<=1.001;t+=0.05){ const x=ox+(c.x-ox)*t, y=oy+(c.y-oy)*t, z=oz+(c.z-oz)*t;
+        if(y-altura(x,z)<14&&bloqueado(x,z)){ const u=Math.max(0.1,t-0.07); c.set(ox+(c.x-ox)*u, oy+(c.y-oy)*u, oz+(c.z-oz)*u); break; } } }
+    { const c=camera.position;                                          // câmera não entra no poste (tampava a tela toda)
+      for(let k=0;k<8;k++){ const bate=postes.some(q=>Math.abs(q[0]-c.x)<0.8&&Math.abs(q[1]-c.z)<0.8&&Math.hypot(q[0]-c.x,q[1]-c.z)<0.8);
+        if(!bate||c.y-altura(c.x,c.z)>8) break; c.lerp(alvo,0.12); } }
     camera.lookAt(alvo); }
   base.position.set(p.x,0,p.z);
   satelite.atualizar(p.x,p.z);
@@ -329,7 +335,7 @@ function quadro(){
 }
 
 status();
-carregarRelevo().then(m=>console.info('relevo: desnível',m,'m'));
+carregarRelevo(scene).then(m=>console.info('relevo: desnível',m,'m'));
 progresso('Carregando ruas…');
 carregarCidade().then(async()=>{
   progresso('Levantando os prédios…');

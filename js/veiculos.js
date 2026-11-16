@@ -1,4 +1,4 @@
-// Veículos dirigíveis (SUV, picape, cavalo mecânico): estacionados perto do início,
+// Veículos dirigíveis (SUV, picape, cavalo mecânico, hatch, sedã e motos): estacionados perto do início,
 // E (ou o botão no celular) entra e sai, direção simples estilo arcade.
 // Convenção dos modelos em assets/veiculos/: frente = -Z, chão em y = 0, medidas reais em metros.
 import * as THREE from 'three';
@@ -17,13 +17,18 @@ const TIPOS = [
   { id:'picape', nome:'Picape',          arq:'assets/veiculos/picape.glb', vmax:22, acel:5,  entre:3.1, cam:9.5 },
   { id:'cavalo', nome:'Cavalo mecânico', arq:'assets/veiculos/cavalo.glb', vmax:17, acel:2.8,entre:4.2, cam:13 },
   { id:'chopper', nome:'Moto custom',    arq:'assets/veiculos/chopper.glb', vmax:30, acel:7.5, entre:1.75, cam:6.5, moto:true },   // Bison Seca-Suvaco (Couro & Asfalto)
+  // do Couro & Asfalto (modelos de IA), pedido do Maicon em 16/11
+  { id:'hatch',  nome:'Hatch',           arq:'assets/veiculos/hatch.glb',  vmax:26, acel:6.5,entre:2.5, cam:8.5 },
+  { id:'sedan',  nome:'Sedã',            arq:'assets/veiculos/sedan.glb',  vmax:27, acel:6,  entre:2.7, cam:9  },
+  { id:'trail',  nome:'Moto trail',      arq:'assets/veiculos/trail.glb',  vmax:28, acel:8,  entre:1.5, cam:6, moto:true },
+  { id:'urbana', nome:'Moto urbana',     arq:'assets/veiculos/urbana.glb', vmax:25, acel:7.5,entre:1.4, cam:6, moto:true },
 ];
 const loader = new GLTFLoader(); loader.setMeshoptDecoder(MeshoptDecoder);
 
 // a moto do jogador fica na frente da oficina dele (negocios.js chama ao achar a oficina)
 let vagaMoto=null;
 export function estacionarMoto(x,z,h){
-  vagaMoto={x,z,h}; const c=frota.find(c=>c.tipo.moto); if(!c||c===dirigindo) return;
+  vagaMoto={x,z,h}; const c=frota.find(c=>c.tipo.id==='chopper'); if(!c||c===dirigindo) return;
   c.obj.position.set(x,0,z); c.h=h; c.obj.rotation.y=h; c.obj.rotation.z=0.12; c.v=0; c.dano=0; for(const [m,cor] of c.mats) m.color.copy(cor);
 }
 export const frota = [];   // {tipo, obj, h, v, comp, larg}
@@ -75,7 +80,7 @@ export async function iniciarVeiculos(){
     const mats=[]; obj.traverse(o=>{ if(o.isMesh){ o.material=o.material.clone(); mats.push([o.material,o.material.color.clone()]); } });
     const c={tipo, obj, h:L.h, v:0, comp:tam.z, larg:tam.x, alt:tam.y, dano:0, quebrado:false, acum:0, queima:0, mats};
     if(tipo.moto){ obj.userData={...obj.userData,...g.scene.userData}; Object.assign(c,prepararRodas(obj)); obj.rotation.z=0.12; c.larg=Math.min(c.larg,0.9);
-      if(vagaMoto){ obj.position.set(vagaMoto.x,0,vagaMoto.z); c.h=vagaMoto.h; obj.rotation.y=vagaMoto.h; } }   // moto: no descanso, meio deitada
+      if(vagaMoto&&tipo.id==='chopper'){ obj.position.set(vagaMoto.x,0,vagaMoto.z); c.h=vagaMoto.h; obj.rotation.y=vagaMoto.h; } }   // moto: no descanso, meio deitada
     frota.push(c); ok();
   }, undefined, e=>{ console.warn('veículo',tipo.arq,e); ok(); }))));
 }

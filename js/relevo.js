@@ -59,8 +59,20 @@ if(ligado){
 // para quem tem o próprio onBeforeCompile (texturas.js): chame isto dentro dele
 export const prepararShaderRelevo = sh=>{ if(!sh.vertexShader.includes('float alturaRelevo')) sh.vertexShader=sh.vertexShader.replace('#include <common>','#include <common>\n'+GLSL); Object.assign(sh.uniforms,U); };   // vale também com o relevo desligado (a função devolve 0)
 
-export async function carregarRelevo(){
-  if(!ligado) return 0;
+// As camadas do chão (satélite, ruas, calçadas) são desenhadas sem profundidade, umas por cima das outras.
+// Plano, tanto faz; com morro, o que está ATRÁS do morro (casas, postes) aparecia por cima da rua.
+// Esta malha invisível tem o formato do relevo (um vértice por ponto da grade) e só grava profundidade,
+// logo depois das camadas do chão: o morro passa a esconder o que está atrás dele. Fica 0,6 m abaixo
+// do chão para não cortar meio-fio, rodas e pés.
+function malhaProfundidade(){
+  const {x0,z0,passo,nx,nz}=grade, L=passo*(nx-1), P=passo*(nz-1);
+  const g=new THREE.PlaneGeometry(L,P,nx-1,nz-1).rotateX(-Math.PI/2).translate(x0+L/2,-0.6,z0+P/2);
+  const m=new THREE.Mesh(g,new THREE.MeshBasicMaterial({ colorWrite:false, depthWrite:true, depthTest:true }));
+  m.renderOrder=-1; m.frustumCulled=false; m.name='relevo-profundidade'; return m;
+}
+let cenaRelevo=null;
+export async function carregarRelevo(cena){
+  if(!ligado) return 0; cenaRelevo=cena||null;
   try{
     const d=await (await fetch('dados/relevo.json')).json();
     const h=new Float32Array(d.h.length); for(let i=0;i<h.length;i++) h[i]=d.h[i]*d.escala;
@@ -68,6 +80,7 @@ export async function carregarRelevo(){
     const tex=new THREE.DataTexture(h,d.nx,d.nz,THREE.RedFormat,THREE.FloatType);
     tex.magFilter=tex.minFilter=THREE.NearestFilter; tex.needsUpdate=true;
     U.tRelevo.value=tex; U.relevoInfo.value.set(d.x0,d.z0,d.passo,1); U.relevoTam.value.set(d.nx,d.nz);
+    if(cenaRelevo) cenaRelevo.add(malhaProfundidade());
     return Math.round(Math.max(...h));
   }catch(e){ console.warn('relevo: sem dados, cidade plana',e); return 0; }
 }

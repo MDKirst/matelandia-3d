@@ -14,3 +14,7 @@ caminhao-frango, cavalo-branco, reboque-bau, reboque-lona, bitrem-reboques.
 
 chopper.glb ("Bison Seca-Suvaco 1700", moto custom de guidao alto): copiado do Couro & Asfalto
 (public/modelos/moto-chopper.glb, imagem do Gemini -> 3D TRELLIS.2) em 14/11/2026, pedido do Maicon.
+
+trail.glb e urbana.glb (motos de IA: imagem do Gemini / TRELLIS -> 3D): copiadas do Couro & Asfalto
+(public/modelos/moto-trail.glb e moto-urbana.glb) em 16/11/2026, pedido do Maicon ("os veiculos tambem").
+A viatura da policia passou a ser a caminhonete-policia.glb (preta, do Couro & Asfalto) no lugar da suv2 tingida.

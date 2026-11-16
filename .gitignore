@@ -1,2 +1,5 @@
 __pycache__/
 tools/node_modules
+tools/teste/node_modules/
+tools/teste/fotos/
+tools/teste/package*.json

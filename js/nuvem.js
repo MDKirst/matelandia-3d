@@ -64,7 +64,7 @@ export async function entrarGoogle(confirmarTroca){
 export async function sairGoogle(){
   if(!A||!au) return; await A.signOut(au); const r=await A.signInAnonymously(au); marcarConta(r.user);
 }
-const ref=c=>F.ref(db,c);
+const ref=c=>c?F.ref(db,c):F.ref(db);   // ref('') = raiz (o Firebase recusa caminho vazio: a compra de terreno e casa dos jogadores falhava)
 // contador de visitas: uma marca por navegador por dia (visitas/AAAA-MM-DD/uid, dia no horário de Brasília).
 // Não guarda nome nem nada da pessoa; a regra só deixa gravar a própria marca, uma vez. Falha em silêncio.
 function contarVisita(){
@@ -130,3 +130,7 @@ export async function comprarCasaNuvem(id, nome){
     return 'ok';
   }catch(e){ console.warn('comprarCasa',e); return 'ocupado'; }
 }
+
+// dinheiro e caixa dos negócios na conta: jogadores/{uid} = { saldo, negocios:{lote:{coleta,vendas}}, t }
+export async function lerJogador(){ if(!nuvem.ok) return null; try{ return (await F.get(ref('jogadores/'+nuvem.uid))).val(); }catch(e){ console.warn('lerJogador',e); return null; } }
+export function gravarJogador(d){ if(!nuvem.ok) return; F.set(ref('jogadores/'+nuvem.uid),d).catch(e=>console.warn('gravarJogador',e)); }

@@ -117,6 +117,25 @@
         ".write": "auth != null && auth.uid === $uid && !data.exists()",
         ".validate": "newData.isString() && newData.parent().parent().child('casas').child(newData.val()).child('dono').val() === auth.uid"
       }
+    },
+    "jogadores": {
+      "$uid": {
+        ".read": "auth != null && auth.uid === $uid",
+        ".write": "auth != null && auth.uid === $uid",
+        ".validate": "newData.child('saldo').isNumber() && newData.child('saldo').val() >= 0 && newData.child('saldo').val() <= 100000000 && newData.child('t').isNumber()",
+        "saldo": {
+          ".validate": true
+        },
+        "t": {
+          ".validate": true
+        },
+        "negocios": {
+          ".validate": "newData.hasChildren() || !newData.exists()"
+        },
+        "$outro": {
+          ".validate": false
+        }
+      }
     }
   }
 }

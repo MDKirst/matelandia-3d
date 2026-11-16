@@ -14,6 +14,7 @@ import { comerciosRemovidos, prediosOcultos } from './predios.js';
 import { noCampo } from './campos.js';
 import { altura } from './relevo.js';
 import { LX0, LZ0, LX1, LZ1 } from './geo.js';
+import { lerJogador, gravarJogador } from './nuvem.js';
 import { nuvem, conectarNuvem, aoTrocarConta, ouvirLotes, ouvirBlocos, tomarLote, LIMITE_TERRENOS, porBloco, tirarBloco, subirBlocos } from './nuvem.js';
 
 const W=12, D=24, ALT=20;                          // largura (frente), fundo, altura máxima em blocos
@@ -56,7 +57,18 @@ const tipoDe=v=>v%100, giroDe=v=>v>=100?1:0;
 let salvo={ saldo:SALDO_INICIAL, terrenos:{} };   // terrenos: id → { blocos:[[i,j,k,tipo],...] }
 try{ const s=JSON.parse(localStorage.getItem(CHAVE)); if(s&&typeof s.saldo==='number') salvo=s; }catch(e){}
 let tSalvar=null;
-function salvar(){ clearTimeout(tSalvar); tSalvar=setTimeout(()=>{ try{ localStorage.setItem(CHAVE,JSON.stringify(salvo)); }catch(e){ console.warn('não salvou',e); } },400); }
+function salvar(){ clearTimeout(tSalvar); tSalvar=setTimeout(()=>{ try{ localStorage.setItem(CHAVE,JSON.stringify(salvo)); }catch(e){ console.warn('não salvou',e); } },400);
+  if(contaPronta){ clearTimeout(tConta); tConta=setTimeout(()=>gravarJogador(pacote()),1500); } }
+// dinheiro na CONTA (Firebase jogadores/{uid}): vale em qualquer aparelho com a mesma conta.
+// Conta sem nada salvo (primeira vez): sobe o que está neste navegador; conta com saldo: ela manda.
+let contaPronta=false, tConta=null;
+const pacote=()=>({ saldo:Math.max(0,Math.round(salvo.saldo)), negocios:salvo.negocios||{}, t:Date.now() });
+async function carregarConta(){
+  contaPronta=false; const d=await lerJogador(); if(!nuvem.ok) return;
+  if(d&&typeof d.saldo==='number'){ salvo.saldo=d.saldo; salvo.negocios=d.negocios||{}; try{ localStorage.setItem(CHAVE,JSON.stringify(salvo)); }catch(e){} hudSaldo(); }
+  else gravarJogador(pacote());
+  contaPronta=true;
+}
 const fmt=v=>'M$ '+v.toLocaleString('pt-BR');
 function hudSaldo(){ $('saldo').textContent='💰 '+fmt(salvo.saldo); }
 // dinheiro ganho fora daqui (entregas)
@@ -308,6 +320,7 @@ async function ligarNuvem(){
   // o que estava só neste navegador (antes do Firebase): guarda para subir se o terreno ainda estiver livre
   const locais=new Map(Object.entries(salvo.terrenos).map(([id,t])=>[id,new Map((t.blocos||[]).map(([i,j,k,tp])=>[i+','+j+','+k,tp]))]));
   if(!await conectarNuvem()){ console.info('mundo compartilhado indisponível: construções só neste navegador'); return; }
+  carregarConta();
   const porId=new Map(lotes.map(l=>[l.id,l]));
   let primeira=true;
   ouvirLotes(async donos=>{
@@ -325,7 +338,7 @@ async function ligarNuvem(){
   const valido=(k,v)=>{ if(!Number.isInteger(v)||v<0||tipoDe(v)>=BLOCOS.length||v>=100+BLOCOS.length) return false;
     const c=k.split(',').map(Number); return c.length===3&&c.every(Number.isInteger)&&c[0]>=0&&c[0]<W&&c[1]>=0&&c[1]<D&&c[2]>=0&&c[2]<ALT; };
   // entrou/saiu da conta Google: o dono muda de identidade → refaz placas e quem pode construir
-  aoTrocarConta((n,mudou)=>{ if(!mudou) return;
+  aoTrocarConta((n,mudou)=>{ if(!mudou) return; carregarConta();
     for(const l of lotes){ trocarPlaca(l); if(meu(l)&&!salvo.terrenos[l.id]) salvo.terrenos[l.id]={blocos:[]}; }
     if(obra.ativa&&!meu(obra.lote)) sairObra(); salvar(); });
   for(const l of lotes) ouvirBlocos(l.id, m=>{ for(const [k,v] of m) if(!valido(k,v)) m.delete(k); if(m.size>6000) return; l.blocos=m; refazer(l); });
