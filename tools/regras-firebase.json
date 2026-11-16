@@ -130,7 +130,18 @@
           ".validate": true
         },
         "negocios": {
-          ".validate": "newData.hasChildren() || !newData.exists()"
+          "$lote": {
+            ".validate": "$lote.matches(/^-?[0-9]{1,5}_-?[0-9]{1,5}$/) && newData.child('coleta').isNumber()",
+            "coleta": {
+              ".validate": "newData.isNumber()"
+            },
+            "vendas": {
+              ".validate": "newData.isNumber() && newData.val() >= 0"
+            },
+            "$x": {
+              ".validate": false
+            }
+          }
         },
         "$outro": {
           ".validate": false
