@@ -109,7 +109,7 @@ export function dirigir(dt, acel, giro, freio, obstaculo){
   const vmax=T.vmax*(1-0.55*Math.max(0,c.dano-50)/50);                          // muito batido perde força
   c.v = Math.max(-vmax*0.3, Math.min(vmax, c.v));
   // bicicleta: quanto mais rápido, menos esterço
-  const esterco = giro*0.6;
+  const esterco = giro*0.6/(1+Math.abs(c.v)/18);                                // em alta, menos esterço (estilo GTA)
   // giro do modelo de bicicleta, limitado pela aderência (~1,2 g): em alta não dá cavalo de pau
   let w = c.v/T.entre*Math.tan(esterco);
   const wMax = 12/Math.max(Math.abs(c.v),1); w = Math.max(-wMax, Math.min(wMax, w));

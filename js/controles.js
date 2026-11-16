@@ -34,7 +34,7 @@ addEventListener('keydown',e=>{
   if(e.code==='KeyP'&&!e.repeat) pedido.foto=true;
   if(e.code==='KeyV'&&!e.repeat) pedido.negocio=true;
   if(e.code==='KeyO'&&!e.repeat) pedido.trabalho=true;
-  if(e.code==='KeyR') av.giroExtra+=Math.PI/2;
+  if(e.code==='KeyQ'&&!e.repeat) alternarAtalhos();
   if(e.code==='KeyM'&&!e.repeat){ $('status').textContent=alternarSom()?'🔊 Som ligado (M)':'🔇 Som desligado (M)'; setTimeout(status,2500); }
   if(e.code==='BracketRight'||e.code==='BracketLeft'){
     const z=satelite.mudarZoom(e.code==='BracketRight'?1:-1);
@@ -72,9 +72,13 @@ $('casaBtn').addEventListener('click',e=>{ pedido.casa=true; e.currentTarget.blu
 $('fotoBtn').addEventListener('click',e=>{ pedido.foto=true; e.currentTarget.blur(); });
 $('trabBtn').addEventListener('click',e=>{ pedido.trabalho=true; e.currentTarget.blur(); });
 $('casaCtx').addEventListener('click',e=>{ pedido[e.currentTarget.dataset.acao||'usar']=true; e.currentTarget.blur(); });
+// atalho rápido (☰ / Q): os botões do painel ficam escondidos até pedir; ao escolher um, fecha
+export function alternarAtalhos(abrir){ const t=$('top'); const vai=abrir??t.classList.contains('fechado'); t.classList.toggle('fechado',!vai); $('atalhoBtn').setAttribute('aria-expanded',vai); }
+$('atalhoBtn').addEventListener('click',e=>{ alternarAtalhos(); e.currentTarget.blur(); });
+for(const b of document.querySelectorAll('#btns button')) b.addEventListener('click',()=>alternarAtalhos(false));
 $('entBtn').addEventListener('click',e=>{ pedido.entrega=true; e.currentTarget.blur(); });
 $('ajudaBtn').addEventListener('click',e=>{ const fora=document.body.classList.toggle('sem-ajuda'); try{ localStorage.setItem('matelandia3d.ajuda',fora?'0':'1'); }catch(_){} e.currentTarget.blur(); });
-try{ if(localStorage.getItem('matelandia3d.ajuda')==='0') document.body.classList.add('sem-ajuda'); }catch(_){}
+try{ if(localStorage.getItem('matelandia3d.ajuda')!=='1') document.body.classList.add('sem-ajuda'); }catch(_){ document.body.classList.add('sem-ajuda'); }
 $('terrBtn').addEventListener('click',e=>{ pedido[e.currentTarget.dataset.acao||'comprar']=true; e.currentTarget.blur(); });
 $('negBtn').addEventListener('click',e=>{ pedido.negocio=true; e.currentTarget.blur(); });
 for(const b of document.querySelectorAll('#acoes button')) b.addEventListener('click',e=>{ pedido.acao=b.dataset.acao; e.currentTarget.blur(); });

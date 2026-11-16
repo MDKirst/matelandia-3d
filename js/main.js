@@ -2,7 +2,7 @@
 import * as THREE from 'three';
 import { carregarRelevo, altura } from './relevo.js';   // primeiro: muda os shaders antes de qualquer desenho
 import { scene, camera, renderer, base, $ } from './cena.js';
-import { toLL, LX0, LZ0, LX1, LZ1 } from './geo.js';
+import { toLL, toXZ, LX0, LZ0, LX1, LZ1 } from './geo.js';
 import { ANDAR, CORRER } from './config.js';
 import { satelite } from './satelite.js';
 import { ruas, predios, carregarCidade, status } from './cidade.js';
@@ -25,7 +25,7 @@ import { ganhar as pagar, fmt } from './terrenos.js';
 import { iniciarTerrenos, comprar, alternarObra, dicaTerreno, obra, lotesMeus, terrenosNoMapa, avisarTerreno, sairObra } from './terrenos.js';
 import { alternarCorrida, atualizarCorrida, alvoCorrida } from './entregas.js';
 import { entrarOnline, sairOnline, enviarEstado, atualizarOnline, posicoesJogadores, golpearJogador, quandoApanhar } from './online.js';
-import { vida, golpe, golpear, atualizarLuta, levarPancada, poseGolpe, DUR, DANO } from './luta.js';
+import { vida, golpe, golpear, atualizarLuta, levarPancada, poseGolpe, DUR, DANO, quandoAcordar } from './luta.js';
 import { golpearPedestre } from './pedestres.js';
 addEventListener('matelandia:comecar',e=>{ if(!alvoCorrida()) comecar(e.detail, jogador.position.x, jogador.position.z); });
 addEventListener('matelandia:jogar',e=>{ const d=e.detail; if(d.online) entrarOnline(d.nome,d.personagem); else sairOnline(); setTimeout(()=>conquista('boas_vindas'),1500); });
@@ -107,12 +107,14 @@ function aPe(dt){
     q[0].rotation.x=s; q[1].rotation.x=-s; q[2].rotation.x=-s; q[3].rotation.x=s; }
 }
 
-let distAPe=cam.dist;
+let distAPe=cam.dist, volante=0;
 function aoVolante(dt){
   const c=veic.dirigindo;
   let acel=(tecla.KeyW||tecla.ArrowUp?1:0)-(tecla.KeyS||tecla.ArrowDown?1:0);
   let giro=(tecla.KeyA||tecla.ArrowLeft?1:0)-(tecla.KeyD||tecla.ArrowRight?1:0);
   if(toque.joy){ acel=-toque.joy.y; giro=-toque.joy.x; }
+  else { const d=giro-volante, k=(Math.sign(d)!==Math.sign(volante)&&volante!==0?7:3.2)*dt;   // teclado: o volante gira aos poucos e volta mais rápido
+    volante+=Math.max(-k,Math.min(k,d)); giro=volante; }
   const v0=Math.abs(c.v);
   if(dirigir(dt, acel, giro, tecla.Space, bateNoTransito) && v0>4){            // bateu: estraga o veículo
     const inteiro=!c.quebrado; danificar(c,v0); somBatida(v0); if(inteiro&&c.quebrado) somExplosao();
@@ -152,6 +154,14 @@ function cumprirPena(dt){
   if(detido<=0) setTimeout(()=>{ if(!(detido>0)) a.style.opacity=0; },2500);
   return detido>0;
 }
+// desmaiou: acorda no hospital mais perto e paga a conta (como no GTA)
+quandoAcordar(()=>{
+  if(veic.dirigindo||casa.dentro) return;
+  const hs=lugaresCache.filter(l=>/hospital/i.test((l.cat||'')+' '+l.n)).map(l=>toXZ(l.lat,l.lon)); if(!hs.length) return;
+  const p=jogador.position, h=hs.reduce((a,b)=>Math.hypot(a[0]-p.x,a[1]-p.z)<Math.hypot(b[0]-p.x,b[1]-p.z)?a:b);
+  const [x,z]=pontoLivre(h[0]+6,h[1]+6); p.set(x,0,z); pagar(-150);
+  avisarTerreno('🏥 Você acordou no hospital · conta de M$ 150');
+});
 quandoAtropelar(()=>{ somPancada(); crime(1,'Atropelamento'); revolta(jogador.position.x,jogador.position.z); });
 // avacalhar: nocaute ou 2 pancadas em 20 s → a turma junta e bate (até desmaiar)
 let pancadas=[];

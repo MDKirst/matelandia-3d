@@ -54,13 +54,15 @@ export function golpear(tipo){
   golpe.tipo=tipo; golpe.t=0; golpe.acertou=false; golpe.seq++; return true;
 }
 // onAcerto(tipo): chamado no meio do golpe (quando braço/perna está esticado)
+let aoAcordar=()=>{};
+export function quandoAcordar(f){ aoAcordar=f; }
 export function atualizarLuta(dt, onAcerto){
   if(golpe.tipo){ golpe.t+=dt;
     if(!golpe.acertou&&golpe.t>=DUR[golpe.tipo]*0.45){ golpe.acertou=true; onAcerto(golpe.tipo); }
     if(golpe.t>=DUR[golpe.tipo]) golpe.tipo=null; }
   vida.semApanhar+=dt;
   if(vida.caido>0){ vida.caido-=dt; vida.queda=Math.min(1,vida.queda+dt*3);
-    if(vida.caido<=0){ vida.e=100; vida.semApanhar=99; } }
+    if(vida.caido<=0){ vida.e=100; vida.semApanhar=99; aoAcordar(); } }
   else { vida.queda=Math.max(0,vida.queda-dt*1.5);
     if(vida.semApanhar>ESPERA_CURA&&vida.e<100) vida.e=Math.min(100,vida.e+CURA*dt); }
   hud();
