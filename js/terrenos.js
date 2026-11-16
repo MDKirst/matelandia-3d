@@ -12,6 +12,7 @@ import { bloqueado, definirBloqueioExtra } from './mundo.js';
 import { substituidoPorMarco } from './marcos.js';
 import { comerciosRemovidos, prediosOcultos } from './predios.js';
 import { noCampo } from './campos.js';
+import { altura } from './relevo.js';
 import { LX0, LZ0, LX1, LZ1 } from './geo.js';
 import { nuvem, conectarNuvem, aoTrocarConta, ouvirLotes, ouvirBlocos, tomarLote, LIMITE_TERRENOS, porBloco, tirarBloco, subirBlocos } from './nuvem.js';
 
@@ -138,7 +139,7 @@ function montarLote(c,idx){
   const id=Math.round(c.cx)+'_'+Math.round(c.cz);
   const grupo=new THREE.Group(); grupo.position.set(c.A[0],0,c.A[1]); grupo.rotation.y=Math.atan2(-c.t[1],c.t[0]);   // local +x = frente (t), +z = fundo (n)
   // chão do lote (também é o alvo do raio da construção)
-  const chao=new THREE.Mesh(new THREE.PlaneGeometry(W,D).rotateX(-Math.PI/2).translate(W/2,0,D/2),matChao); chao.renderOrder=-6.6; grupo.add(chao);
+  const chao=new THREE.Mesh(new THREE.PlaneGeometry(W,D,3,6).rotateX(-Math.PI/2).translate(W/2,0,D/2),matChao); chao.renderOrder=-6.6; grupo.add(chao);
   for(const [x,z] of [[0,0],[W,0],[0,D],[W,D]]){ const e=new THREE.Mesh(new THREE.BoxGeometry(0.12,0.9,0.12),matEstaca); e.position.set(x,0.45,z); grupo.add(e); }
   const l={id, A:c.A, t:c.t, n:c.n, preco:Math.round((W*D*(22+((idx*37)%17)))/500)*500, grupo, chao, placa:null, blocos:new Map(), ocupa:new Set(), inst:[]};
   l.cx=c.cx; l.cz=c.cz;
@@ -231,7 +232,7 @@ let alvo=null;   // {lote, por:[i,j,k] (onde colocar), tira:[i,j,k] (o que tirar
 function mirar(cx,cy){
   const l=obra.lote; if(!l) return;
   const r=cv.getBoundingClientRect(); ndc.set((cx-r.left)/r.width*2-1, -(cy-r.top)/r.height*2+1);
-  ray.setFromCamera(ndc,camera);
+  ray.setFromCamera(ndc,camera); ray.ray.origin.y-=altura(l.cx,l.cz);   // relevo: o terreno é testado plano, a câmera está no alto do morro
   const hit=ray.intersectObjects([...l.inst,l.chao],false)[0];
   alvo=null; fantasma.visible=false; if(!hit) return;
   let por, tira=null;

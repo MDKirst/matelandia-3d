@@ -87,7 +87,7 @@ function construirPostes(){
   const gp=new THREE.BufferGeometry(); gp.setAttribute('position',new THREE.BufferAttribute(cab,3));
   pontos=new THREE.Points(gp, aditivo(new THREE.PointsMaterial({ map:TEX_AMARELA, size:3.2, sizeAttenuation:true, color:0xffffff })));
   pontos.frustumCulled=false; luzes.add(pontos);
-  poças=new THREE.InstancedMesh(new THREE.PlaneGeometry(13,13).rotateX(-Math.PI/2), aditivo(new THREE.MeshBasicMaterial({ map:texBrilho(255,200,130,2.2), color:0x000000 })), lista.length);
+  poças=new THREE.InstancedMesh(new THREE.PlaneGeometry(13,13,4,4).rotateX(-Math.PI/2), aditivo(new THREE.MeshBasicMaterial({ map:texBrilho(255,200,130,2.2), color:0x000000 })), lista.length);
   lista.forEach((p,j)=>{ poças.setMatrixAt(j,M.compose(V.set(cab[j*3],0.06,cab[j*3+2]),Q.identity(),S)); });
   poças.computeBoundingSphere(); poças.frustumCulled=false; luzes.add(poças);
   return lista.length;

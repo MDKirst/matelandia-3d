@@ -1,5 +1,6 @@
 // Ponto de entrada: monta o mundo e roda o loop
 import * as THREE from 'three';
+import { carregarRelevo, altura } from './relevo.js';   // primeiro: muda os shaders antes de qualquer desenho
 import { scene, camera, renderer, base, $ } from './cena.js';
 import { toLL, LX0, LZ0, LX1, LZ1 } from './geo.js';
 import { ANDAR, CORRER } from './config.js';
@@ -116,6 +117,9 @@ function aoVolante(dt){
     const [fx,fz]=frente(c.h), q=c.obj.position, alvoT=baterNoCarro(q.x+fx*c.comp*0.6,q.z+fz*c.comp*0.6,v0);
     if(alvoT&&v0>9) crime(1,'Batida');
   }
+  { const [fx,fz]=frente(c.h), a=c.comp*0.45, q=c.obj.position;                      // ladeira: subida segura, descida embala
+    const inc=(altura(q.x+fx*a,q.z+fz*a)-altura(q.x-fx*a,q.z-fz*a))/(2*a);
+    if(!tecla.Space) c.v-=9.8*Math.max(-0.35,Math.min(0.35,inc))*dt*0.55; }
   const p=c.obj.position; jogador.position.set(p.x,0,p.z); rumo=c.h+Math.PI;
   if(c.tipo.moto){ girarRodas(c,dt);                                                    // moto: inclina na curva e o piloto vai junto
     c.obj.rotation.z=THREE.MathUtils.lerp(c.obj.rotation.z, giro*Math.min(1,Math.abs(c.v)/10)*0.32*Math.sign(c.v||1), Math.min(1,dt*5)); }
@@ -261,10 +265,11 @@ function quadro(){
       pessoas:posicoesPedestres().map(([x,z])=>d2(x,z)), noite:quantoNoite() }); }
 
   if(home.aberta){ orbita+=dt*0.04;                                    // sobrevoo lento da cidade atrás da tela inicial
-    alvo.set(p.x,0,p.z); camera.position.set(p.x+Math.sin(orbita)*170, 85, p.z+Math.cos(orbita)*170); camera.lookAt(alvo); }
+    const ah=altura(p.x,p.z); alvo.set(p.x,ah,p.z); camera.position.set(p.x+Math.sin(orbita)*170, ah+85, p.z+Math.cos(orbita)*170); camera.lookAt(alvo); }
   else { const {yaw,pitch,dist}=cam;
-    alvo.set(p.x,veic.dirigindo?1.8:1.45,p.z);
+    alvo.set(p.x,(veic.dirigindo?1.8:1.45)+altura(p.x,p.z),p.z);
     camera.position.set(p.x+dist*Math.sin(yaw)*Math.cos(pitch), alvo.y+dist*Math.sin(pitch), p.z+dist*Math.cos(yaw)*Math.cos(pitch));
+    { const piso=altura(camera.position.x,camera.position.z)+1.2; if(camera.position.y<piso) camera.position.y=piso; }   // morro atrás: câmera não entra no chão
     camera.lookAt(alvo); }
   base.position.set(p.x,0,p.z);
   satelite.atualizar(p.x,p.z);
@@ -292,6 +297,7 @@ function quadro(){
 }
 
 status();
+carregarRelevo().then(m=>console.info('relevo: desnível',m,'m'));
 progresso('Carregando ruas…');
 carregarCidade().then(async()=>{
   progresso('Levantando os prédios…');

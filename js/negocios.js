@@ -89,7 +89,7 @@ function montarPredio(l){
   const T=TIPOS[l.negocio], g=new THREE.Group(), cor=lamb(T.cor);
   const Z1=T.fundo||15;                                                        // fundo do prédio (o bar é mais comprido)
   // piso
-  const piso=new THREE.Mesh(new THREE.PlaneGeometry(X1-X0,Z1-Z0).rotateX(-Math.PI/2),new THREE.MeshLambertMaterial({map:texPiso(T.piso)}));
+  const piso=new THREE.Mesh(new THREE.PlaneGeometry(X1-X0,Z1-Z0,3,5).rotateX(-Math.PI/2),new THREE.MeshLambertMaterial({map:texPiso(T.piso)}));
   piso.position.set((X0+X1)/2,0.03,(Z0+Z1)/2); g.add(piso);
   // paredes: laterais e fundo inteiras; frente com vitrine dos dois lados da porta
   cx3(g,MAT.parede,X0,X0+0.2,0,H,Z0,Z1); cx3(g,MAT.parede,X1-0.2,X1,0,H,Z0,Z1); cx3(g,MAT.parede,X0,X1,0,H,Z1-0.2,Z1);

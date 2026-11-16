@@ -51,12 +51,14 @@ export function texDetalhe(){
 
 // Põe o grão no material do satélite: perto da câmera a cor ganha textura; some com a distância
 let detalhe=null;
+import { prepararShaderRelevo } from './relevo.js';
 export function detalharSatelite(mat){
   detalhe ??= texDetalhe();
   mat.onBeforeCompile=sh=>{
+    prepararShaderRelevo(sh);                                              // relevo: o satélite sobe com o chão
     sh.uniforms.tDetalhe={value:detalhe};
     sh.vertexShader=sh.vertexShader.replace('#include <common>','#include <common>\nvarying vec3 vMundo;')
-      .replace('#include <project_vertex>','#include <project_vertex>\nvMundo=(modelMatrix*vec4(transformed,1.0)).xyz;');
+      .replace('#include <project_vertex>','#include <project_vertex>\nvMundo=(modelMatrix*vec4(transformed,1.0)).xyz; vMundo.y+=alturaRelevo(vMundo.xz);');
     sh.fragmentShader=sh.fragmentShader.replace('#include <common>','#include <common>\nvarying vec3 vMundo;\nuniform sampler2D tDetalhe;')
       .replace('#include <map_fragment>',`#include <map_fragment>
         float dCam=distance(vMundo,cameraPosition);

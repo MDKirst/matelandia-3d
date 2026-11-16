@@ -29,7 +29,8 @@ class CamadaSatelite{
     const [x1,z1]=toXZ(tileLat(y+1,n), (x+1)/n*360-180);
     if(this.recorta){ const M=200; if(x1<LX0-M||x0>LX1+M||z1<LZ0-M||z0>LZ1+M) return; } // fora da cidade: não baixa
     const mat=detalharSatelite(new THREE.MeshBasicMaterial(flat({color:0xffffff})));
-    const mesh=new THREE.Mesh(new THREE.PlaneGeometry(x1-x0,z1-z0).rotateX(-Math.PI/2),mat);
+    const seg=Math.max(1,Math.min(64,Math.ceil(Math.max(x1-x0,z1-z0)/12)));   // em pedaços de ~12 m para acompanhar o relevo
+    const mesh=new THREE.Mesh(new THREE.PlaneGeometry(x1-x0,z1-z0,seg,seg).rotateX(-Math.PI/2),mat);
     mesh.position.set((x0+x1)/2,0,(z0+z1)/2); mesh.renderOrder=this.ordem; mesh.visible=false; scene.add(mesh);
     const t={x,y,mesh,vivo:true}; this.tiles.set(k,t);
     texLoader.load(TILE_URL(this.z,x,y), tex=>{

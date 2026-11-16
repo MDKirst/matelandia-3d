@@ -31,7 +31,13 @@ export const predios=[];  // {pts,bb}
 const vistos=new Set();
 let carregando=true, erroRede=false, fonte='OpenStreetMap ao vivo';
 
+// pontos a cada ~6 m (só no DESENHO): com o relevo, a fita acompanha o chão em vez de cortar o morro em linha reta
+function densa(pts,passo=6){ const q=[pts[0]];
+  for(let i=1;i<pts.length;i++){ const a=pts[i-1], b=pts[i], n=Math.floor(Math.hypot(b[0]-a[0],b[1]-a[1])/passo);
+    for(let k=1;k<=n;k++){ const t=k/(n+1); q.push([a[0]+(b[0]-a[0])*t,a[1]+(b[1]-a[1])*t]); } q.push(b); }
+  return q; }
 function fita(pts,w,out){
+  pts=densa(pts);
   const n=pts.length; if(n<2) return; const h=w/2, b=out.pos.length/3;
   for(let i=0;i<n;i++){
     const a=pts[Math.max(i-1,0)], c=pts[Math.min(i+1,n-1)];

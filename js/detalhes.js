@@ -20,7 +20,8 @@ const pecas=[];                      // geometrias com cor por vértice → uma 
 function pinta(g,c){ const k=new THREE.Color(c), n=g.attributes.position.count, a=new Float32Array(n*3); for(let i=0;i<n;i++){ a[i*3]=k.r; a[i*3+1]=k.g; a[i*3+2]=k.b; } g.setAttribute('color',new THREE.BufferAttribute(a,3)); if(g.index) g=g.toNonIndexed(); if(g.attributes.uv) g.deleteAttribute('uv'); pecas.push(g); return g; }
 const M=new THREE.Matrix4(), Q=new THREE.Quaternion(), E=new THREE.Euler(), V=new THREE.Vector3(), S=new THREE.Vector3(1,1,1);
 // caixa de comprimento L ao longo da direção (dx,dz), centro (x,y0+h/2,z)
-function viga(x,z,dx,dz,L,larg,h,y0,c){ const g=new THREE.BoxGeometry(larg,h,L); M.compose(V.set(x,y0+h/2,z),Q.setFromEuler(E.set(0,Math.atan2(dx,dz),0)),S); g.applyMatrix4(M); return pinta(g,c); }
+// viga dividida a cada ~4 m no comprimento: acompanha o relevo
+function viga(x,z,dx,dz,L,larg,h,y0,c){ const g=new THREE.BoxGeometry(larg,h,L,1,1,Math.max(1,Math.ceil(L/4))); M.compose(V.set(x,y0+h/2,z),Q.setFromEuler(E.set(0,Math.atan2(dx,dz),0)),S); g.applyMatrix4(M); return pinta(g,c); }
 
 function dentro(x,z,pts){ let c=false; for(let i=0,j=pts.length-1;i<pts.length;j=i++){ const a=pts[i],b=pts[j]; if((a[1]>z)!==(b[1]>z)&&x<(b[0]-a[0])*(z-a[1])/(b[1]-a[1])+a[0]) c=!c; } return c; }
 

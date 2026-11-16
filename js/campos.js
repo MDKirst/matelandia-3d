@@ -64,7 +64,7 @@ function trave(g, z, s){   // s=+1: rede para trás de quem olha do meio (fundo 
 export function construirCampos(){
   for(const f of CAMPOS){
     const g=new THREE.Group(); g.position.set(f.cx,0,f.cz); g.rotation.y=f.ang; scene.add(g);
-    const grama=new THREE.Mesh(new THREE.PlaneGeometry(f.larg,f.comp).rotateX(-Math.PI/2), new THREE.MeshBasicMaterial(flat({map:texGramado(f.larg,f.comp)})));
+    const grama=new THREE.Mesh(new THREE.PlaneGeometry(f.larg,f.comp,12,12).rotateX(-Math.PI/2), new THREE.MeshBasicMaterial(flat({map:texGramado(f.larg,f.comp)})));
     grama.renderOrder=-5; grama.rotation.y=Math.PI; g.add(grama);   // gira 180°: o desenho fica com o norte em −z local
     const mz=medidas(f.larg,f.comp)[1]/2; trave(g,-mz,-1); trave(g,mz,1);
     // alambrado (3 m), com portão no meio do lado leste
