@@ -1,6 +1,7 @@
 // Ponto de entrada: monta o mundo e roda o loop
 import * as THREE from 'three';
-import { carregarRelevo, altura } from './relevo.js';   // primeiro: muda os shaders antes de qualquer desenho
+import { carregarRelevo, altura } from './relevo.js';
+import { nuvem } from './nuvem.js';   // primeiro: muda os shaders antes de qualquer desenho
 import { scene, camera, renderer, base, $ } from './cena.js';
 import { toLL, toXZ, LX0, LZ0, LX1, LZ1 } from './geo.js';
 import { ANDAR, CORRER } from './config.js';
@@ -30,6 +31,9 @@ import { golpearPedestre } from './pedestres.js';
 addEventListener('matelandia:comecar',e=>{ if(!alvoCorrida()) comecar(e.detail, jogador.position.x, jogador.position.z); });
 addEventListener('matelandia:jogar',e=>{ const d=e.detail; if(d.online) entrarOnline(d.nome,d.personagem); else sairOnline(); setTimeout(()=>conquista('boas_vindas'),1500); });
 import { minimapa } from './minimapa.js';
+import { gps, atualizarGPS, fonteMapa, desenharMapa } from './mapa.js';
+import { pontosNegocios } from './negocios.js';
+import { casas as todasCasas } from './casas.js';
 import { iniciarCasas, dicaCasa, comprarCasa, casa, cenaCasa, bloqueioCasa, entrarCasa, usarEmCasa, casasNoMapa } from './casas.js';
 import { construirCampos } from './campos.js';
 import { sentar, descer, girarRodas } from './moto.js';
@@ -154,6 +158,12 @@ function cumprirPena(dt){
   if(detido<=0) setTimeout(()=>{ if(!(detido>0)) a.style.opacity=0; },2500);
   return detido>0;
 }
+// o que o mapa grande mostra (pontos fixos dos lugares públicos + negócios e casa dos jogadores)
+fonteMapa(()=>{ const pts=pontosNegocios();
+  for(const l of lugaresCache){ const t=(l.cat||'')+' '+l.n; const tipo=/hospital/i.test(t)?'hospital':/police|pol[ií]cia|\bPM\b/i.test(t)?'policia':null; if(!tipo) continue;
+    const [x,z]=toXZ(l.lat,l.lon); pts.push({x,z,ic:tipo==='hospital'?'🏥':'🚔',nome:l.n,tipo}); }
+  for(const c of todasCasas) if(c.dono&&c.dono===nuvem.uid) pts.push({x:(c.porta||[c.cx,c.cz])[0],z:(c.porta||[c.cx,c.cz])[1],ic:'🏡',nome:'Minha casa',tipo:'minhaCasa'});
+  return { jogador:[jogador.position.x,jogador.position.z], rumo, pontos:pts, terrenos:terrenosNoMapa(), casas:casasNoMapa() }; });
 // desmaiou: acorda no hospital mais perto e paga a conta (como no GTA)
 quandoAcordar(()=>{
   if(veic.dirigindo||casa.dentro) return;
@@ -274,6 +284,7 @@ function quadro(){
     if(acao&&tb.dataset.k!==acao+obra.ativa){ tb.dataset.k=acao+obra.ativa; tb.dataset.acao=acao; tb.textContent=obra.ativa?'✅ Sair da obra':acao==='comprar'?'💰 Comprar terreno':'🧱 Construir'; } }
   if(!home.aberta) atualizarCorrida(dt, veic.dirigindo);
   alvoTrab=!home.aberta?atualizarTrabalho(dt,p.x,p.z,!veic.dirigindo):null;
+  if(!home.aberta&&!casa.dentro) atualizarGPS(dt,p.x,p.z,camera.position.x,camera.position.z,avisarTerreno); else $('gps').style.display='none';
   // online: manda meu estado e move os outros jogadores
   if(!home.aberta){ const D2=veic.dirigindo; enviarEstado(dt,{x:p.x,z:p.z,r:rumo,a:D2?'parado':estadoAPe,vt:D2?D2.tipo.id:null,vh:D2?D2.h:null,e:vida.e,c:vida.caido>0,g:[golpe.seq,golpe.tipo||'']}); }
   atualizarOnline(dt);
@@ -297,7 +308,8 @@ function quadro(){
 
   tLento+=dt;
   if(tLento>0.12){ tLento=0;
-    minimapa(p.x,p.z,rumo, frota.filter(c=>c!==veic.dirigindo).map(c=>({x:c.obj.position.x,z:c.obj.position.z,h:c.h,comp:c.comp,larg:c.larg})), posicoesTransito(), alvoCorrida()||alvoTrab, posicoesJogadores(), {...terrenosNoMapa(), casas:casasNoMapa()});
+    minimapa(p.x,p.z,rumo, frota.filter(c=>c!==veic.dirigindo).map(c=>({x:c.obj.position.x,z:c.obj.position.z,h:c.h,comp:c.comp,larg:c.larg})), posicoesTransito(), alvoCorrida()||alvoTrab, posicoesJogadores(), {...terrenosNoMapa(), casas:casasNoMapa()}, gps.rota);
+    desenharMapa();
     atualizarGuia(p.x,p.z);
     const r=ruaMaisProxima(p.x,p.z), nome=r?r.nome:'';
     if(!home.aberta){ const h=horaJogo();                                      // conquistas que dependem do estado

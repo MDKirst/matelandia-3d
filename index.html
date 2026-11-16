@@ -164,6 +164,22 @@
   @media (max-width:700px){#help{display:none}#mini{width:130px;height:130px}#top{max-width:210px}}
   /* tela de toque: a ajuda é só de teclado */
   body.sem-ajuda #help{display:none}
+  #gps{position:fixed;top:58px;left:50%;transform:translateX(-50%);display:none;text-align:center;background:rgba(12,14,18,.75);border:1px solid rgba(168,85,247,.7);border-radius:12px;padding:6px 16px;pointer-events:none;z-index:2}
+  #gpsTxt{font-weight:800;font-size:14px} #gpsDist{color:#d8b4fe;font-size:13px;font-weight:700}
+  #gpsSeta{display:inline-block;font-size:26px;line-height:1;color:#a855f7;transition:transform .1s}
+  body.em-home #gps{display:none!important}
+  #missao~#gps{top:118px}
+  #mapa{position:fixed;inset:0;z-index:12;display:none;background:#1c2a20}
+  #mapa.on{display:block}
+  #mapaCv{position:absolute;inset:0;width:100%;height:100%;touch-action:none;cursor:crosshair}
+  #mapa .topo{position:absolute;top:10px;left:10px;right:10px;display:flex;align-items:center;gap:12px;background:rgba(12,14,18,.8);border-radius:12px;padding:8px 12px}
+  #mapa .topo span{flex:1;color:#cbd5e1;font-size:12.5px}
+  #mapa .lado{position:absolute;left:10px;top:64px;display:flex;flex-direction:column;gap:6px;max-width:200px}
+  #mapaAtalhos{display:flex;flex-direction:column;gap:6px}
+  #mapa .lado button{text-align:left;padding:8px 10px;font-size:13px}
+  #mapa .zoom{position:absolute;right:12px;bottom:20px;display:flex;flex-direction:column;gap:6px}
+  #mapa .zoom button{width:44px;height:44px;font-size:22px;padding:0}
+  @media (max-width:700px){#mapa .topo span{display:none} #mapa .lado{top:auto;bottom:16px;max-width:none;right:70px;flex-direction:row;flex-wrap:wrap} #mapaAtalhos{flex-direction:row;flex-wrap:wrap}}
   @media (max-width:700px){#trofeu{top:236px;left:12px;right:12px;min-width:0;max-width:none} #aviso{font-size:21px;width:calc(100vw - 40px)}}
   @media (pointer:coarse){#ajudaBtn,#help,#tp,#coord,#status{display:none} #top{padding:8px 10px} #btns{margin-top:6px;gap:5px} #btns button{padding:6px 9px}}
   /* celular deitado (tela baixa): painel enxuto e botões reposicionados para nada ficar um em cima do outro */
@@ -204,6 +220,7 @@
     <button id="menu" class="sec">☰ Menu (Esc)</button>
     <button id="chatBtn" class="sec">💬 Chat (Enter)</button>
     <button id="casaBtn" class="sec">🏠 Meu terreno (L)</button>
+    <button id="mapaBtn" class="sec">🗺️ Mapa (M)</button>
     <button id="fotoBtn" class="sec">📷 Foto (P)</button>
     <button id="trofeuBtn" class="sec">🏆</button>
     <button id="trabBtn" class="sec">💼 Trabalho (O)</button>
@@ -225,7 +242,7 @@
   <b>T</b> conversar · <b>G</b> cumprimentar · <b>H</b> seguir · <b>X</b> assustar<br>
   <b>J</b> soco · <b>K</b> chute<br>
   <b>N</b> entrega (no veículo) · <b>B</b> comprar terreno · <b>C</b> construir · <b>V</b> negócio · <b>O</b> trabalhos<br>
-  <b>M</b> som · <b>[ ]</b> detalhe do satélite · <b>P</b> foto · <b>L</b> meu terreno · <b>Esc</b> menu<br>
+  <b>M</b> mapa/GPS · <b>Y</b> som · <b>[ ]</b> detalhe do satélite · <b>P</b> foto · <b>L</b> meu terreno · <b>Esc</b> menu<br>
   <b>Enter</b> chat com os jogadores (online) · <b>Q</b> atalhos<br>
   Celular: esquerda anda, direita gira
 </div>
@@ -239,6 +256,12 @@
 <div id="missao"><div id="missaoTxt"></div><div id="missaoSeta">⬆</div><div id="missaoDist"></div></div>
 <div id="trabalho"><div id="trabalhoTxt"></div><div id="trabalhoSeta">⬆</div><div id="trabalhoDist"></div></div>
 <div id="manchete"></div>
+<div id="gps"><div id="gpsTxt"></div><div id="gpsSeta">⬆</div><div id="gpsDist"></div></div>
+<div id="mapa"><canvas id="mapaCv"></canvas>
+  <div class="topo"><b>🗺️ Mapa de Matelândia</b><span>Clique para marcar o destino · arraste para mover</span><button id="mapaFechar" class="sec" aria-label="Fechar o mapa">✕</button></div>
+  <div class="lado"><div id="mapaAtalhos"></div><button id="mapaLimpar" class="sec">Tirar destino</button></div>
+  <div class="zoom"><button id="mapaMais" class="sec" aria-label="Aproximar">＋</button><button id="mapaMenos" class="sec" aria-label="Afastar">－</button></div>
+</div>
 <div id="guia"><div id="guiaTxt">🏠 Seu terreno</div><div id="guiaSeta">⬆</div><div id="guiaDist"></div></div>
 <div id="aviso"></div>
 <div id="trofeu"></div>
@@ -267,7 +290,7 @@
       <b>T</b> conversar · <b>G</b> cumprimentar · <b>H</b> chamar para seguir · <b>X</b> assustar<br>
       <b>N</b> entregas · <b>O</b> trabalhos · <b>B</b> comprar terreno · <b>C</b> construir · <b>V</b> abrir negócio<br>
       <b>L</b> ir ao meu terreno · <b>P</b> foto · <b>J</b> soco · <b>K</b> chute<br>
-      <b>Mouse</b> girar a câmera · <b>Scroll</b> zoom · <b>M</b> som · <b>Esc</b> volta a esta tela<br>
+      <b>Mouse</b> girar a câmera · <b>Scroll</b> zoom · <b>M</b> mapa · <b>Y</b> som · <b>Esc</b> volta a esta tela<br>
       Celular: lado esquerdo anda, lado direito gira
     </div>
   </div>

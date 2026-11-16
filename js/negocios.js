@@ -315,6 +315,8 @@ export function comprarRemedio(vida){
   if(salvo.saldo<PRECO_REMEDIO){ avisar(`Saldo insuficiente para o remédio (${fmt(PRECO_REMEDIO)})`); return; }
   ganhar(-PRECO_REMEDIO); vida.e=100; avisar(`💊 Remédio tomado: energia cheia (−${fmt(PRECO_REMEDIO)})`);
 }
+// para o mapa grande: todos os negócios abertos, com ícone
+export const pontosNegocios=()=>lotes.filter(l=>l.negocio&&TIPOS[l.negocio]).map(l=>({ x:l.A[0]+l.t[0]*6-l.n[0]*2, z:l.A[1]+l.t[1]*6-l.n[1]*2, ic:TIPOS[l.negocio].ic, nome:nomeNeg(l), tipo:meu(l)?'meuNegocio':l.negocio==='farmacia'?'farmacia':'negocio' }));
 export const pertoDeNegocioMeu=(x,z)=>{ const l=loteEm(x,z,1); return !!(l&&meu(l)); };
 ganchos.dica=l=>{
   if(!l.negocio) return '';

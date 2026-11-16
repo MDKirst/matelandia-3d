@@ -5,6 +5,7 @@ import { av, jogador } from './avatar.js';
 import { satelite } from './satelite.js';
 import { status } from './cidade.js';
 import { alternarSom } from './som.js';
+import { alternarMapa, fecharMapa } from './mapa.js';
 
 export const tecla={};
 export const cam={ yaw:0.6, pitch:0.42, dist:9 };  // câmera orbital atrás do avatar
@@ -14,10 +15,10 @@ const dedos={};
 const digitando=()=>document.activeElement&&document.activeElement.tagName==='INPUT';
 
 // janela aberta (negócio, trabalhos, jornal, conquistas, foto): Esc fecha só ela; as outras teclas esperam
-const JANELAS='#negocio.on,#trabalhos.on,#jornal.on,#conquistas.on,#foto.on';
+const JANELAS='#negocio.on,#trabalhos.on,#jornal.on,#conquistas.on,#foto.on,#mapa.on';
 export const janelaAberta=()=>document.querySelector(JANELAS);
 addEventListener('keydown',e=>{ const j=janelaAberta(); if(!j) return;
-  e.stopImmediatePropagation(); if(e.code==='Escape') j.classList.remove('on');
+  e.stopImmediatePropagation(); if(e.code==='Escape'||(e.code==='KeyM'&&j.id==='mapa')) j.classList.remove('on');
   for(const k in tecla) tecla[k]=false; },true);
 addEventListener('keydown',e=>{
   if(digitando()) return;
@@ -35,7 +36,8 @@ addEventListener('keydown',e=>{
   if(e.code==='KeyV'&&!e.repeat) pedido.negocio=true;
   if(e.code==='KeyO'&&!e.repeat) pedido.trabalho=true;
   if(e.code==='KeyQ'&&!e.repeat) alternarAtalhos();
-  if(e.code==='KeyM'&&!e.repeat){ $('status').textContent=alternarSom()?'🔊 Som ligado (M)':'🔇 Som desligado (M)'; setTimeout(status,2500); }
+  if(e.code==='KeyY'&&!e.repeat){ $('status').textContent=alternarSom()?'🔊 Som ligado (Y)':'🔇 Som desligado (Y)'; setTimeout(status,2500); }
+  if(e.code==='KeyM'&&!e.repeat) alternarMapa();
   if(e.code==='BracketRight'||e.code==='BracketLeft'){
     const z=satelite.mudarZoom(e.code==='BracketRight'?1:-1);
     $('status').textContent='Detalhe do satélite: zoom '+z; setTimeout(status,2500);
@@ -74,6 +76,7 @@ $('trabBtn').addEventListener('click',e=>{ pedido.trabalho=true; e.currentTarget
 $('casaCtx').addEventListener('click',e=>{ pedido[e.currentTarget.dataset.acao||'usar']=true; e.currentTarget.blur(); });
 // atalho rápido (☰ / Q): os botões do painel ficam escondidos até pedir; ao escolher um, fecha
 export function alternarAtalhos(abrir){ const t=$('top'); const vai=abrir??t.classList.contains('fechado'); t.classList.toggle('fechado',!vai); $('atalhoBtn').setAttribute('aria-expanded',vai); }
+$('mapaBtn').addEventListener('click',e=>{ alternarMapa(); e.currentTarget.blur(); });
 $('atalhoBtn').addEventListener('click',e=>{ alternarAtalhos(); e.currentTarget.blur(); });
 for(const b of document.querySelectorAll('#btns button')) b.addEventListener('click',()=>alternarAtalhos(false));
 $('entBtn').addEventListener('click',e=>{ pedido.entrega=true; e.currentTarget.blur(); });

@@ -9,7 +9,7 @@ const mm=$('mini').getContext('2d'); const MMS=380, ESC=0.75; // px por metro
 // alvo: [x,z] da entrega (fica na borda do mapa se estiver longe)
 // jogadores: [[x,z]] dos outros jogadores online (pontos azuis)
 // terrenos: { meus, outros, livres } — os seus em laranja (com 🏠 na borda se longe), dos outros em cinza, à venda em verde
-export function minimapa(px,pz,rumo,veiculos=[],transito=[],alvo=null,jogadores=[],terrenos=null){
+export function minimapa(px,pz,rumo,veiculos=[],transito=[],alvo=null,jogadores=[],terrenos=null,rota=null){
   const alc=MMS/2/ESC;
   mm.fillStyle='#22352a'; mm.fillRect(0,0,MMS,MMS);
   mm.save(); mm.translate(MMS/2,MMS/2); mm.scale(ESC,ESC); mm.translate(-px,-pz);
@@ -26,6 +26,7 @@ export function minimapa(px,pz,rumo,veiculos=[],transito=[],alvo=null,jogadores=
   for(const r of ruas){ const b=r.bb; if(b[2]<px-alc||b[0]>px+alc||b[3]<pz-alc||b[1]>pz+alc) continue;
     mm.strokeStyle=r.pe?'#9aa58f':'#f1f5f9'; mm.lineWidth=Math.max(r.w,r.pe?2:5);
     mm.beginPath(); r.pts.forEach((q,i)=>i?mm.lineTo(q[0],q[1]):mm.moveTo(q[0],q[1])); mm.stroke(); }
+  if(rota&&rota.length>1){ mm.strokeStyle='#a855f7'; mm.lineWidth=6; mm.beginPath(); rota.forEach((q,i)=>i?mm.lineTo(q[0],q[1]):mm.moveTo(q[0],q[1])); mm.stroke(); }   // rota do GPS
   mm.fillStyle='#64748b';
   for(const [x,z] of transito){ mm.beginPath(); mm.arc(x,z,3.2,0,Math.PI*2); mm.fill(); }
   mm.fillStyle='#38bdf8'; mm.strokeStyle='#0c4a6e'; mm.lineWidth=1.5;
