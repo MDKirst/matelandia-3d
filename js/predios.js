@@ -11,6 +11,7 @@ import { predios, bbox, ruas } from './cidade.js';
 import { DADOS_PREDIOS, TILE_URL, ZOOM_MAX } from './config.js';
 import { substituidoPorMarco } from './marcos.js';
 import { ehComercio, carregarLugares } from './comercio.js';
+import { noCampo } from './campos.js';
 import { acenderJanelas } from './ceu.js';
 
 const PAREDES = [0xf2ead9,0xe8dcc8,0xd9c7a8,0xcfd6da,0xe9c9a8,0xf0e6d6,0xc9d3b5,0xd8b08c,0xe6e1d3,0xbfcad3].map(c=>new THREE.Color(c));
@@ -220,7 +221,8 @@ export async function carregarPredios(){
     const bb=bbox(pts), cx=(bb[0]+bb[2])/2, cz=(bb[1]+bb[3])/2;
     if(substituidoPorMarco(cx,cz,'overture',A)) continue;      // marco feito à mão no lugar
     if(osm.some(o=>cx>=o.bb[0]&&cx<=o.bb[2]&&cz>=o.bb[1]&&cz<=o.bb[3]&&dentro(cx,cz,o.pts))) continue; // já veio do OSM
-    if(fora.has(idx)){ comerciosRemovidos.push({pts,bb}); continue; }                          // comércio: vira terreno
+    if(fora.has(idx)){ comerciosRemovidos.push({pts,bb}); continue; }
+    if(noCampo(cx,cz)) continue;                                                              // no gramado de um campo de futebol                          // comércio: vira terreno
     const h=altura(p,pts,A,cx,cz), r=sorte(cx,cz,1);
     const quatro=pts.length===4 && A<900;
     const qd=quadra(cx,cz), i=qd.i, j=qd.j;

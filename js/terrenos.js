@@ -11,6 +11,7 @@ import { ruas, predios } from './cidade.js';
 import { bloqueado, definirBloqueioExtra } from './mundo.js';
 import { substituidoPorMarco } from './marcos.js';
 import { comerciosRemovidos } from './predios.js';
+import { noCampo } from './campos.js';
 import { LX0, LZ0, LX1, LZ1 } from './geo.js';
 import { nuvem, conectarNuvem, aoTrocarConta, ouvirLotes, ouvirBlocos, tomarLote, LIMITE_TERRENOS, porBloco, tirarBloco, subirBlocos } from './nuvem.js';
 
@@ -96,7 +97,7 @@ function lotesVazios(){
   const removido=(x,z)=>comerciosRemovidos.some(p=>{ const b=p.bb; return x>=b[0]&&x<=b[2]&&z>=b[1]&&z<=b[3]&&dentroPoly(x,z,p.pts); });
   const livreCom=(c,bloq)=>{ for(let u=0.5;u<=W-0.5;u+=2.75) for(let v=0.5;v<=D-0.5;v+=2.9){
       const x=c.A[0]+c.t[0]*u+c.n[0]*v, z=c.A[1]+c.t[1]*u+c.n[1]*v;
-      if(bloq(x,z)||substituidoPorMarco(x,z,'muro',0)||(v>1&&pertoDeRua(x,z,0.2))) return false; }
+      if(bloq(x,z)||noCampo(x,z,3)||substituidoPorMarco(x,z,'muro',0)||(v>1&&pertoDeRua(x,z,0.2))) return false; }
     return true; };
   const tocaRemovido=c=>{ for(let u=0.5;u<=W-0.5;u+=2.75) for(let v=0.5;v<=D-0.5;v+=2.9) if(removido(c.A[0]+c.t[0]*u+c.n[0]*v, c.A[1]+c.t[1]*u+c.n[1]*v)) return true; return false; };
   const ok=[];
