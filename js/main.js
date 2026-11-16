@@ -21,7 +21,7 @@ import { baterNoCarro } from './transito.js';
 import { quandoAtropelar, interagir, pedestrePerto, atualizarBaloes, quantosSeguem } from './pedestres.js';
 import { iniciarPolicia, atualizarPolicia, crime, posicoesPolicia } from './policia.js';
 import { somBatida, somExplosao, somPancada, somSirene, somMundo } from './som.js';
-import { ganhar as pagar } from './terrenos.js';
+import { ganhar as pagar, fmt } from './terrenos.js';
 import { iniciarTerrenos, comprar, alternarObra, dicaTerreno, obra, lotesMeus, terrenosNoMapa, avisarTerreno, sairObra } from './terrenos.js';
 import { alternarCorrida, atualizarCorrida, alvoCorrida } from './entregas.js';
 import { entrarOnline, sairOnline, enviarEstado, atualizarOnline, posicoesJogadores, golpearJogador, quandoApanhar } from './online.js';
@@ -40,6 +40,7 @@ import { policia } from './policia.js';
 import { trabalho, comecar, atualizarTrabalho, abrirTrabalhos } from './trabalhos.js';
 import { iniciarJornal, noticiar } from './jornal.js';
 import { revolta, quandoTurmaBater } from './pedestres.js';
+import { farmaciaAqui, comprarRemedio, PRECO_REMEDIO } from './negocios.js';
 import { iniciarNegocios, atualizarNegocios, acaoNegocio, pertoDeNegocioMeu } from './negocios.js';
 import { frota, iniciarVeiculos, veiculoPerto, entrar, sair, dirigir, dentroDeVeiculo, frente, esquerda } from './veiculos.js';
 import * as veic from './veiculos.js';
@@ -210,6 +211,7 @@ function quadro(){
   else { const preso=cumprirPena(dt); if(preso){ pedido.usar=false; pedido.golpe=null; pedido.casa=false; }
     if(pedido.usar){ pedido.usar=false;
       if(casa.dentro){ const r=usarEmCasa(jogador); if(r==='dormiu') vida.e=100; if(r==='saiu'){ cam.dist=camRua[0]; cam.pitch=camRua[1]; } }
+      else if(!veic.dirigindo&&farmaciaAqui(jogador.position.x,jogador.position.z)) comprarRemedio(vida);   // farmácia: remédio enche a energia
       else if(!veic.dirigindo&&!(policia.estrelas>0)&&entrarCasa(jogador,jogador.position.x,jogador.position.z)){ camRua=[cam.dist,cam.pitch]; cam.dist=7.5; cam.pitch=1.05; }
       else if(!(vida.caido>0)) trocarVeiculo(); }
     if(pedido.entrega){ pedido.entrega=false; if(trabalho.tipo) avisarTerreno('Termine o trabalho atual antes da entrega (O cancela)'); else alternarCorrida(veic.dirigindo); }
@@ -234,7 +236,8 @@ function quadro(){
   $('usar').style.display=(perto||veic.dirigindo)&&matchMedia('(pointer:coarse)').matches?'block':'none';
   $('usar').textContent=veic.dirigindo?'Sair':'Entrar';
   // pedestre perto (a pé): mostra as ações
-  const terr=!home.aberta&&!veic.dirigindo&&!perto?(casa.dentro?dicaCasa(p.x,p.z):dicaTerreno(p.x,p.z)||dicaCasa(p.x,p.z)):'';
+  const farm=!home.aberta&&!veic.dirigindo&&!casa.dentro&&farmaciaAqui(p.x,p.z);
+  const terr=!home.aberta&&!veic.dirigindo&&!perto?(casa.dentro?dicaCasa(p.x,p.z):farm?`E comprar remédio (${fmt(PRECO_REMEDIO)}): energia cheia`:dicaTerreno(p.x,p.z)||dicaCasa(p.x,p.z)):'';
   if(terr){ $('dica').style.display='block'; $('dica').textContent=TOQUE?terr.replace(/\b[BCV] (?=comprar|construir|abrir|caixa)/g,'').replace(/^./,c=>c.toUpperCase()):terr; }   // celular: sem as teclas
   const gente=!home.aberta&&!veic.dirigindo&&!perto&&!terr&&pedestrePerto(p.x,p.z);
   if(gente){ $('dica').style.display='block'; $('dica').textContent='T conversar · G cumprimentar · H '+(gente.modo==='seguir'?'dispensar':'chamar')+' · X assustar'+(quantosSeguem()?` · ${quantosSeguem()} seguindo`:''); }
@@ -250,9 +253,9 @@ function quadro(){
   efeitosVeiculos(dt); atualizarEfeitos(dt); atualizarBaloes(dt); atualizarNegocios(dt,p.x,p.z);
   // celular: sem teclado, os botões de terreno aparecem conforme o lugar (B comprar / C construir / V negócio)
   { const toqueTela=matchMedia('(pointer:coarse)').matches&&!home.aberta&&!veic.dirigindo, tb=$('terrBtn');
-    const dc=toqueTela?dicaCasa(p.x,p.z):'', cb=$('casaCtx'), ac=dc.startsWith('B ')?'comprar':dc.startsWith('E ')?'usar':null;   // casa: comprar, entrar, sair, dormir
+    const dc=toqueTela?(farm?'E remedio':dicaCasa(p.x,p.z)):'', cb=$('casaCtx'), ac=dc.startsWith('B ')?'comprar':dc.startsWith('E ')?'usar':null;   // casa: comprar, entrar, sair, dormir
     cb.style.display=ac&&!veic.dirigindo?'block':'none';
-    if(ac&&cb.dataset.k!==dc){ cb.dataset.k=dc; cb.dataset.acao=ac; cb.textContent=dc.includes('comprar')?'🏡 Comprar casa':dc.includes('entrar')?'🚪 Entrar em casa':dc.includes('sair')?'🚪 Sair de casa':'🛏️ Dormir'; }
+    if(ac&&cb.dataset.k!==dc){ cb.dataset.k=dc; cb.dataset.acao=ac; cb.textContent=dc==='E remedio'?'💊 Comprar remédio':dc.includes('comprar')?'🏡 Comprar casa':dc.includes('entrar')?'🚪 Entrar em casa':dc.includes('sair')?'🚪 Sair de casa':'🛏️ Dormir'; }
     const d=toqueTela&&!casa.dentro?dicaTerreno(p.x,p.z):'', acao=obra.ativa?'obra':d.startsWith('B comprar')?'comprar':d.startsWith('C construir')?'obra':null;
     $('negBtn').style.display=toqueTela&&!obra.ativa&&pertoDeNegocioMeu(p.x,p.z)?'block':'none';
     { const eb=$('entBtn'), dirige=TOQUE&&!home.aberta&&!!veic.dirigindo&&!trabalho.tipo, k=dirige?(alvoCorrida()?'c':'e'):'';   // entrega: só existia na tecla N

@@ -302,6 +302,19 @@ export function acaoNegocio(x,z){
   if(!meu(l)){ avisar(l.negocio?`${TIPOS[l.negocio].ic} ${nomeNeg(l)}`:l.dono?`Terreno de ${l.donoNome||'outro jogador'}`:'Compre o terreno primeiro (B)'); return; }
   if(l.negocio) abrirPainel(l); else abrirCardapio(l);
 }
+// jogador dentro de uma farmácia (de qualquer jogador): pode comprar remédio no balcão
+export const PRECO_REMEDIO=40;
+export function farmaciaAqui(x,z){
+  for(const n of abertos.values()){ const l=n.l; if(l.negocio!=='farmacia') continue;
+    const dx=x-l.A[0], dz=z-l.A[1], u=dx*l.t[0]+dz*l.t[1], v=dx*l.n[0]+dz*l.n[1];
+    if(u>X0&&u<X1&&v>Z0&&v<Z1) return n; }
+  return null;
+}
+export function comprarRemedio(vida){
+  if(vida.e>=99.5){ avisar('💊 Sua energia já está cheia'); return; }
+  if(salvo.saldo<PRECO_REMEDIO){ avisar(`Saldo insuficiente para o remédio (${fmt(PRECO_REMEDIO)})`); return; }
+  ganhar(-PRECO_REMEDIO); vida.e=100; avisar(`💊 Remédio tomado: energia cheia (−${fmt(PRECO_REMEDIO)})`);
+}
 export const pertoDeNegocioMeu=(x,z)=>{ const l=loteEm(x,z,1); return !!(l&&meu(l)); };
 ganchos.dica=l=>{
   if(!l.negocio) return '';
