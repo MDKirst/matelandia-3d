@@ -150,7 +150,10 @@ function montarPredio(l){
   for(let u=X0;u<X1;u++){ cel(u,Z1-1); if(u<Math.floor(porta[0])||u>=Math.ceil(porta[1])) cel(u,Z0); }
   for(let v=Z0;v<Z1;v++){ cel(X0,v); cel(X1-1,v); }
   for(let u=3;u<9;u++) cel(u,bz);
-  l.ocupaNeg=oc; l.balcao=bz; g.userData.letreiro=let1.material.map; g.userData.fundo=Z1;
+  // luminárias no teto (placas brancas; à noite acendem, ver abrirNaTela)
+  const lamps=[], matL=new THREE.MeshBasicMaterial({color:0xfff6e0});
+  for(let z=Z0+2.2;z<Z1-0.8;z+=3.4) for(const x of [3.6,8.4]){ const p=new THREE.Mesh(new THREE.BoxGeometry(1.3,0.06,0.32),matL); p.position.set(x,H-0.05,z); g.add(p); lamps.push([x,z]); }
+  l.ocupaNeg=oc; l.balcao=bz; g.userData.letreiro=let1.material.map; g.userData.fundo=Z1; g.userData.lamps=lamps; g.userData.porta=porta;
   return g;
 }
 
@@ -176,6 +179,14 @@ function abrirNaTela(l){
     const s=luzExtra(new THREE.PlaneGeometry(X1-X0,1.1),{map:g.userData.letreiro,forca:0.9}); s.position.set((X0+X1)/2,H-0.6,Z0-0.07); s.rotation.y=Math.PI; lg.add(s);
     const ch=luzExtra(new THREE.PlaneGeometry(X1-X0+3,F-Z0+3).rotateX(-Math.PI/2),{map:TEX_QUENTE,forca:0.55}); ch.position.set((X0+X1)/2,0.06,(Z0+F)/2); lg.add(ch);
     const cal=luzExtra(new THREE.PlaneGeometry(11,6).rotateX(-Math.PI/2),{map:TEX_QUENTE,forca:0.5}); cal.position.set((X0+X1)/2,0.07,Z0-1.5); lg.add(cal);
+    // luz de dentro: cada luminária brilha, as paredes e o teto ficam claros e a vitrine acende vista da rua
+    const dupla=m=>{ m.material.side=THREE.DoubleSide; return m; };
+    for(const [x,z] of g.userData.lamps){ const b=dupla(luzExtra(new THREE.PlaneGeometry(2.2,1.1).rotateX(Math.PI/2),{map:TEX_QUENTE,forca:1})); b.position.set(x,H-0.1,z); lg.add(b); }
+    for(const [x,r] of [[X0+0.22,Math.PI/2],[X1-0.22,-Math.PI/2]]){ const p=luzExtra(new THREE.PlaneGeometry(F-Z0,H-0.3),{map:TEX_QUENTE,forca:0.35}); p.position.set(x,(H-0.3)/2+0.15,(Z0+F)/2); p.rotation.y=r; lg.add(p); }
+    const fu=luzExtra(new THREE.PlaneGeometry(X1-X0,H-0.3),{map:TEX_QUENTE,forca:0.3}); fu.position.set((X0+X1)/2,(H-0.3)/2+0.15,F-0.22); fu.rotation.y=Math.PI; lg.add(fu);
+    const pt=g.userData.porta;
+    for(const [a,b] of [[X0,pt[0]],[pt[1],X1]]){ if(b-a<0.3) continue;
+      const v=luzExtra(new THREE.PlaneGeometry(b-a,2.3),{cor:0xffd9a0,forca:0.3}); v.position.set((a+b)/2,1.75,Z0-0.01); v.rotation.y=Math.PI; lg.add(v); }
     n.tiraLuz=porLuz(lg); }
   abertos.set(l.id,n);
   carregarMoldes().then(()=>{ if(abertos.get(l.id)!==n||n.atendente) return; const b=boneco(); if(!b) return;

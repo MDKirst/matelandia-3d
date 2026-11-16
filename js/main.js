@@ -303,7 +303,7 @@ function quadro(){
     { const piso=altura(camera.position.x,camera.position.z)+1.2; if(camera.position.y<piso) camera.position.y=piso; }   // morro atrás: câmera não entra no chão
     { const c=camera.position, ox=alvo.x, oy=alvo.y, oz=alvo.z;       // câmera não entra em prédio/casa (como no GTA): chega mais perto do jogador
       for(let t=0.15;t<=1.001;t+=0.05){ const x=ox+(c.x-ox)*t, y=oy+(c.y-oy)*t, z=oz+(c.z-oz)*t;
-        if(y-altura(x,z)<14&&bloqueado(x,z)){ const u=Math.max(0.1,t-0.07); c.set(ox+(c.x-ox)*u, oy+(c.y-oy)*u, oz+(c.z-oz)*u); break; } } }
+        if(y-altura(x,z)<14&&bloqueado(x,z)){ const u=Math.max(Math.min(1,1.6/Math.max(1,cam.dist)),t-0.07); c.set(ox+(c.x-ox)*u, oy+(c.y-oy)*u, oz+(c.z-oz)*u); break; } } }
     { const c=camera.position;                                          // câmera não entra no poste (tampava a tela toda)
       for(let k=0;k<8;k++){ const bate=postes.some(q=>Math.abs(q[0]-c.x)<0.8&&Math.abs(q[1]-c.z)<0.8&&Math.hypot(q[0]-c.x,q[1]-c.z)<0.8);
         if(!bate||c.y-altura(c.x,c.z)>8) break; c.lerp(alvo,0.12); } }
