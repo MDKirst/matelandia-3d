@@ -10,7 +10,7 @@ import { scene, camera, cv, flat, $ } from './cena.js';
 import { ruas, predios } from './cidade.js';
 import { bloqueado, definirBloqueioExtra } from './mundo.js';
 import { substituidoPorMarco } from './marcos.js';
-import { comerciosRemovidos } from './predios.js';
+import { comerciosRemovidos, prediosOcultos } from './predios.js';
 import { noCampo } from './campos.js';
 import { LX0, LZ0, LX1, LZ1 } from './geo.js';
 import { nuvem, conectarNuvem, aoTrocarConta, ouvirLotes, ouvirBlocos, tomarLote, LIMITE_TERRENOS, porBloco, tirarBloco, subirBlocos } from './nuvem.js';
@@ -95,6 +95,7 @@ function lotesVazios(){
   // prédios de comércio que saíram (predios.js): para refazer os 70 terrenos de antes IGUAIS (os ids
   // são a posição e têm dono no banco), eles contam como prédio na primeira passada
   const removido=(x,z)=>comerciosRemovidos.some(p=>{ const b=p.bb; return x>=b[0]&&x<=b[2]&&z>=b[1]&&z<=b[3]&&dentroPoly(x,z,p.pts); });
+  const oculto=(x,z)=>prediosOcultos.some(p=>{ const b=p.bb; return x>=b[0]&&x<=b[2]&&z>=b[1]&&z<=b[3]&&dentroPoly(x,z,p.pts); });   // saiu da tela, mas os terrenos contam como prédio
   const livreCom=(c,bloq)=>{ for(let u=0.5;u<=W-0.5;u+=2.75) for(let v=0.5;v<=D-0.5;v+=2.9){
       const x=c.A[0]+c.t[0]*u+c.n[0]*v, z=c.A[1]+c.t[1]*u+c.n[1]*v;
       if(bloq(x,z)||noCampo(x,z,3)||substituidoPorMarco(x,z,'muro',0)||(v>1&&pertoDeRua(x,z,0.2))) return false; }
@@ -104,14 +105,14 @@ function lotesVazios(){
   for(const c of cand){
     if(ok.length>=70) break;
     if(ok.some(o=>Math.hypot(o.cx-c.cx,o.cz-c.cz)<16)) continue;
-    if(livreCom(c,(x,z)=>bloqueado(x,z)||removido(x,z))) ok.push(c);
+    if(livreCom(c,(x,z)=>bloqueado(x,z)||removido(x,z)||oculto(x,z))) ok.push(c);
   }
   // segunda passada: terrenos novos onde havia comércio (sem encostar nos de antes)
   const novos=[];
   for(const c of cand){
     if(novos.length>=LIMITE_NOVOS) break;
     if(ok.some(o=>Math.hypot(o.cx-c.cx,o.cz-c.cz)<16)||novos.some(o=>Math.hypot(o.cx-c.cx,o.cz-c.cz)<16)) continue;
-    if(tocaRemovido(c)&&livreCom(c,bloqueado)) novos.push(c);
+    if(tocaRemovido(c)&&livreCom(c,(x,z)=>bloqueado(x,z)||oculto(x,z))) novos.push(c);
   }
   return [...ok,...novos];
 }

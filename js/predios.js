@@ -176,6 +176,10 @@ export function atualizarTelhados(dt,px,pz){
 
 // prédios de comércio que saíram (pedido do Maicon, 14/11/2026): o espaço vira terreno (terrenos.js)
 export const comerciosRemovidos=[];   // {pts, bb}
+// comércios dos prints do Maicon (15/11) cujo ponto ficava longe da parede: tira o prédio maior que 30 m² mais perto
+// (até 25 m). Os terrenos continuam enxergando esses prédios (prediosOcultos), para nenhum terreno mudar de lugar.
+const COMERCIOS_LONGE=[[-25.24331,-53.97509],[-25.24618,-53.97496],[-25.23906,-53.97906]];   // Hotel JL/Porão, R1 Autocenter, Pizzaria Nordestina
+export const prediosOcultos=[];
 // qual prédio do Overture é de cada comércio: o que contém o ponto ou, se nenhum, o mais perto até 7 m
 async function predioDosComercios(dados, osm){
   const lugares=(await carregarLugares()).filter(ehComercio).map(l=>toXZ(l.lat,l.lon)), cand=[], G=40, grade=new Map();
@@ -192,6 +196,13 @@ async function predioDosComercios(dados, osm){
       for(let e=0;e<c.pts.length;e++){ const a=c.pts[e], d=c.pts[(e+1)%c.pts.length], vx=d[0]-a[0], vz=d[1]-a[1];
         let t=((x-a[0])*vx+(z-a[1])*vz)/(vx*vx+vz*vz||1); t=Math.max(0,Math.min(1,t)); const dd=Math.hypot(x-a[0]-vx*t,z-a[1]-vz*t); if(dd<md){ md=dd; melhor=c; } } }
     if(melhor) fora.add(melhor.idx); }
+  const ocultos=new Set();
+  for(const [la,lo] of COMERCIOS_LONGE){ const [x,z]=toXZ(la,lo); let melhor=null, md=25;
+    for(const c of cand){ const b=c.bb; if(x<b[0]-md||x>b[2]+md||z<b[1]-md||z>b[3]+md||Math.abs(area(c.pts))<30) continue;
+      const d=dentro(x,z,c.pts)?0:Math.min(...c.pts.map((a,e)=>{ const q=c.pts[(e+1)%c.pts.length], vx=q[0]-a[0], vz=q[1]-a[1]; let t=((x-a[0])*vx+(z-a[1])*vz)/(vx*vx+vz*vz||1); t=Math.max(0,Math.min(1,t)); return Math.hypot(x-a[0]-vx*t,z-a[1]-vz*t); }));
+      if(d<md){ md=d; melhor=c; } }
+    if(melhor&&!fora.has(melhor.idx)) ocultos.add(melhor.idx); }
+  fora.ocultos=ocultos;
   return fora;
 }
 export async function carregarPredios(){
@@ -222,6 +233,7 @@ export async function carregarPredios(){
     if(substituidoPorMarco(cx,cz,'overture',A)) continue;      // marco feito à mão no lugar
     if(osm.some(o=>cx>=o.bb[0]&&cx<=o.bb[2]&&cz>=o.bb[1]&&cz<=o.bb[3]&&dentro(cx,cz,o.pts))) continue; // já veio do OSM
     if(fora.has(idx)){ comerciosRemovidos.push({pts,bb}); continue; }
+    if(fora.ocultos.has(idx)){ prediosOcultos.push({pts,bb}); continue; }
     if(noCampo(cx,cz)) continue;                                                              // no gramado de um campo de futebol                          // comércio: vira terreno
     const h=altura(p,pts,A,cx,cz), r=sorte(cx,cz,1);
     const quatro=pts.length===4 && A<900;
