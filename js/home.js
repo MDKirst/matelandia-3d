@@ -7,7 +7,7 @@ import { $ } from './cena.js';
 import { usarPersonagem } from './avatar.js';
 import { nuvem, conectarNuvem, aoTrocarConta, entrarGoogle, sairGoogle, souAdmin } from './nuvem.js';
 
-// Maicon + os 18 da Quaternius (assets/pessoas)
+// Maicon + os da Quaternius (assets/pessoas) + os pilotos do Couro & Asfalto
 export const PERSONAGENS = [
   { id:'maicon', nome:'Maicon', papel:'o criador', arq:'assets/maicon-animado.glb', admin:true },
   ...[['male-casual','Lucas','casual'],['female-casual','Ana','casual'],['male-shirt','Pedro','camisa'],['female-dress','Clara','vestido'],
@@ -15,6 +15,9 @@ export const PERSONAGENS = [
      ['male-casual-2-24','Rafa','casual'],['female-casual-2-24','Luana','casual'],['male-worker-24','Seu Antônio','trabalhador'],['female-worker-24','Dona Cida','trabalhadora'],
      ['male-farmer-24','Seu Valdir','agricultor'],['female-formal-24','Helena','social'],['male-casual-hoodie-24','Theo','moletom'],['female-suit-24','Marta','executiva'],
      ['male-beach-24','Kauã','praia'],['male-suit-24','Ricardo','executivo'],['male-punk-24','Dudu','punk'],['female-jeans','Paula','jeans']]
+    .map(([id,nome,papel])=>({ id, nome, papel, arq:`assets/pessoas/${id}.glb` })),
+  // pilotos do Couro & Asfalto (IA + Mixamo), pedido do Maicon em 16/11
+  ...[['piloto-estradeiro','Estradeiro','motociclista'],['piloto-gladius','Gladius','motociclista'],['piloto-ludwick','Ludwick','motociclista']]
     .map(([id,nome,papel])=>({ id, nome, papel, arq:`assets/pessoas/${id}.glb` })),
 ];
 
