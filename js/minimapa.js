@@ -19,6 +19,7 @@ export function minimapa(px,pz,rumo,veiculos=[],transito=[],alvo=null,jogadores=
     for(const l of terrenos.outros) lote(l,'rgba(148,163,184,.45)','#cbd5e1');
     for(const l of terrenos.meus) lote(l,'rgba(249,115,22,.75)','#fff7ed'); }
   mm.fillStyle='#8d8676';
+  const cs=terrenos?.casas; if(cs){ for(const [lista,cor] of [[cs.outras,'#94a3b8'],[cs.minhas,'#F97316']]) for(const pts of lista){ mm.fillStyle=cor; mm.beginPath(); pts.forEach((q,i)=>i?mm.lineTo(q[0],q[1]):mm.moveTo(q[0],q[1])); mm.closePath(); mm.fill(); } mm.fillStyle='#8d8676'; }
   for(const p of predios){ const b=p.bb; if(b[2]<px-alc||b[0]>px+alc||b[3]<pz-alc||b[1]>pz+alc) continue;
     mm.beginPath(); p.pts.forEach((q,i)=>i?mm.lineTo(q[0],q[1]):mm.moveTo(q[0],q[1])); mm.fill(); }
   mm.lineCap='round'; mm.lineJoin='round';

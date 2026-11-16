@@ -71,6 +71,7 @@ $('usar').addEventListener('click',e=>{ pedido.usar=true; e.currentTarget.blur()
 $('casaBtn').addEventListener('click',e=>{ pedido.casa=true; e.currentTarget.blur(); });
 $('fotoBtn').addEventListener('click',e=>{ pedido.foto=true; e.currentTarget.blur(); });
 $('trabBtn').addEventListener('click',e=>{ pedido.trabalho=true; e.currentTarget.blur(); });
+$('casaCtx').addEventListener('click',e=>{ pedido[e.currentTarget.dataset.acao||'usar']=true; e.currentTarget.blur(); });
 $('entBtn').addEventListener('click',e=>{ pedido.entrega=true; e.currentTarget.blur(); });
 $('ajudaBtn').addEventListener('click',e=>{ const fora=document.body.classList.toggle('sem-ajuda'); try{ localStorage.setItem('matelandia3d.ajuda',fora?'0':'1'); }catch(_){} e.currentTarget.blur(); });
 try{ if(localStorage.getItem('matelandia3d.ajuda')==='0') document.body.classList.add('sem-ajuda'); }catch(_){}

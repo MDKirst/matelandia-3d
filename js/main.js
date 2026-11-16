@@ -30,6 +30,7 @@ import { golpearPedestre } from './pedestres.js';
 addEventListener('matelandia:comecar',e=>{ if(!alvoCorrida()) comecar(e.detail, jogador.position.x, jogador.position.z); });
 addEventListener('matelandia:jogar',e=>{ const d=e.detail; if(d.online) entrarOnline(d.nome,d.personagem); else sairOnline(); setTimeout(()=>conquista('boas_vindas'),1500); });
 import { minimapa } from './minimapa.js';
+import { iniciarCasas, dicaCasa, comprarCasa, casa, cenaCasa, bloqueioCasa, entrarCasa, usarEmCasa, casasNoMapa } from './casas.js';
 import { construirCampos } from './campos.js';
 import { sentar, descer, girarRodas } from './moto.js';
 import { iniciarCeu, desenhar, horaJogo, relogioTxt, quantoNoite } from './ceu.js';
@@ -55,7 +56,7 @@ function dentroDoTransito(x,z){
     const fx=-Math.sin(ry), fz=-Math.cos(ry); if(Math.abs(dx*fx+dz*fz)<meio+0.3 && Math.abs(-dx*fz+dz*fx)<larg+0.3) return true; }
   return false;
 }
-const travado=(x,z)=>bloqueado(x,z)||dentroDeVeiculo(x,z)||dentroDoTransito(x,z);
+const travado=(x,z)=>casa.dentro?bloqueioCasa(x,z):bloqueado(x,z)||dentroDeVeiculo(x,z)||dentroDoTransito(x,z);   // em casa: só paredes e móveis
 
 // carro do trânsito na frente do veículo do jogador?
 // (se já estão encostados, deixa se afastar: senão o veículo travava para sempre)
@@ -70,7 +71,7 @@ function bateNoTransito(c,x,z,h){
   return false;
 }
 
-let lugaresCache=[], gesto=0, estadoAPe='parado';
+let lugaresCache=[], gesto=0, estadoAPe='parado', camRua=[9,0.42];
 const TOQUE=matchMedia('(pointer:coarse)').matches;
 // celular: os botões do painel sem as teclas do teclado ("Foto (P)" → "Foto")
 if(TOQUE) for(const b of document.querySelectorAll('#btns button')) b.textContent=b.textContent.replace(/\s*\([^)]*\)\s*$/,'');
@@ -207,10 +208,13 @@ function quadro(){
   const dt=Math.min(relogio.getDelta(),0.05);
   if(home.aberta){ pedido.usar=false; jogador.visible=false; }          // tela inicial: ninguém se mexe
   else { const preso=cumprirPena(dt); if(preso){ pedido.usar=false; pedido.golpe=null; pedido.casa=false; }
-    if(pedido.usar){ pedido.usar=false; if(!(vida.caido>0)) trocarVeiculo(); }
+    if(pedido.usar){ pedido.usar=false;
+      if(casa.dentro){ const r=usarEmCasa(jogador); if(r==='dormiu') vida.e=100; if(r==='saiu'){ cam.dist=camRua[0]; cam.pitch=camRua[1]; } }
+      else if(!veic.dirigindo&&!(policia.estrelas>0)&&entrarCasa(jogador,jogador.position.x,jogador.position.z)){ camRua=[cam.dist,cam.pitch]; cam.dist=7.5; cam.pitch=1.05; }
+      else if(!(vida.caido>0)) trocarVeiculo(); }
     if(pedido.entrega){ pedido.entrega=false; if(trabalho.tipo) avisarTerreno('Termine o trabalho atual antes da entrega (O cancela)'); else alternarCorrida(veic.dirigindo); }
     if(pedido.trabalho){ pedido.trabalho=false; abrirTrabalhos(!!alvoCorrida()); }
-    if(pedido.comprar){ pedido.comprar=false; if(!veic.dirigindo) comprar(jogador.position.x,jogador.position.z); }
+    if(pedido.comprar){ pedido.comprar=false; if(!veic.dirigindo&&!casa.dentro){ const {x,z}=jogador.position; comprar(x,z).then(ok=>{ if(!ok) comprarCasa(x,z); }); } }
     if(pedido.obra){ pedido.obra=false; if(!veic.dirigindo) alternarObra(jogador.position.x,jogador.position.z); }
     if(pedido.casa){ pedido.casa=false; irAoTerreno(); }
     if(pedido.negocio){ pedido.negocio=false; if(veic.dirigindo) avisarTerreno('Desça do veículo para cuidar do negócio'); else { if(obra.ativa) sairObra(); acaoNegocio(jogador.position.x,jogador.position.z); } }
@@ -224,13 +228,13 @@ function quadro(){
   const p=jogador.position;
 
   // dica de entrar / botão do celular
-  const perto=!veic.dirigindo&&veiculoPerto(p.x,p.z);
+  const perto=!veic.dirigindo&&!casa.dentro&&veiculoPerto(p.x,p.z);
   $('dica').style.display=perto?'block':'none'; if(perto) $('dica').textContent=`E · entrar ${perto.tipo.nome==='SUV'?'no':'na'} ${perto.tipo.nome}`;
   if(perto&&perto.tipo.id==='cavalo') $('dica').textContent='E · subir no cavalo mecânico';
   $('usar').style.display=(perto||veic.dirigindo)&&matchMedia('(pointer:coarse)').matches?'block':'none';
   $('usar').textContent=veic.dirigindo?'Sair':'Entrar';
   // pedestre perto (a pé): mostra as ações
-  const terr=!home.aberta&&!veic.dirigindo&&!perto?dicaTerreno(p.x,p.z):'';
+  const terr=!home.aberta&&!veic.dirigindo&&!perto?(casa.dentro?dicaCasa(p.x,p.z):dicaTerreno(p.x,p.z)||dicaCasa(p.x,p.z)):'';
   if(terr){ $('dica').style.display='block'; $('dica').textContent=TOQUE?terr.replace(/\b[BCV] (?=comprar|construir|abrir|caixa)/g,'').replace(/^./,c=>c.toUpperCase()):terr; }   // celular: sem as teclas
   const gente=!home.aberta&&!veic.dirigindo&&!perto&&!terr&&pedestrePerto(p.x,p.z);
   if(gente){ $('dica').style.display='block'; $('dica').textContent='T conversar · G cumprimentar · H '+(gente.modo==='seguir'?'dispensar':'chamar')+' · X assustar'+(quantosSeguem()?` · ${quantosSeguem()} seguindo`:''); }
@@ -246,7 +250,10 @@ function quadro(){
   efeitosVeiculos(dt); atualizarEfeitos(dt); atualizarBaloes(dt); atualizarNegocios(dt,p.x,p.z);
   // celular: sem teclado, os botões de terreno aparecem conforme o lugar (B comprar / C construir / V negócio)
   { const toqueTela=matchMedia('(pointer:coarse)').matches&&!home.aberta&&!veic.dirigindo, tb=$('terrBtn');
-    const d=toqueTela?dicaTerreno(p.x,p.z):'', acao=obra.ativa?'obra':d.startsWith('B comprar')?'comprar':d.startsWith('C construir')?'obra':null;
+    const dc=toqueTela?dicaCasa(p.x,p.z):'', cb=$('casaCtx'), ac=dc.startsWith('B ')?'comprar':dc.startsWith('E ')?'usar':null;   // casa: comprar, entrar, sair, dormir
+    cb.style.display=ac&&!veic.dirigindo?'block':'none';
+    if(ac&&cb.dataset.k!==dc){ cb.dataset.k=dc; cb.dataset.acao=ac; cb.textContent=dc.includes('comprar')?'🏡 Comprar casa':dc.includes('entrar')?'🚪 Entrar em casa':dc.includes('sair')?'🚪 Sair de casa':'🛏️ Dormir'; }
+    const d=toqueTela&&!casa.dentro?dicaTerreno(p.x,p.z):'', acao=obra.ativa?'obra':d.startsWith('B comprar')?'comprar':d.startsWith('C construir')?'obra':null;
     $('negBtn').style.display=toqueTela&&!obra.ativa&&pertoDeNegocioMeu(p.x,p.z)?'block':'none';
     { const eb=$('entBtn'), dirige=TOQUE&&!home.aberta&&!!veic.dirigindo&&!trabalho.tipo, k=dirige?(alvoCorrida()?'c':'e'):'';   // entrega: só existia na tecla N
       eb.style.display=dirige?'block':'none'; if(k&&eb.dataset.k!==k){ eb.dataset.k=k; eb.textContent=k==='c'?'✖ Cancelar entrega':'🚚 Entrega'; } }
@@ -277,7 +284,7 @@ function quadro(){
 
   tLento+=dt;
   if(tLento>0.12){ tLento=0;
-    minimapa(p.x,p.z,rumo, frota.filter(c=>c!==veic.dirigindo).map(c=>({x:c.obj.position.x,z:c.obj.position.z,h:c.h,comp:c.comp,larg:c.larg})), posicoesTransito(), alvoCorrida()||alvoTrab, posicoesJogadores(), terrenosNoMapa());
+    minimapa(p.x,p.z,rumo, frota.filter(c=>c!==veic.dirigindo).map(c=>({x:c.obj.position.x,z:c.obj.position.z,h:c.h,comp:c.comp,larg:c.larg})), posicoesTransito(), alvoCorrida()||alvoTrab, posicoesJogadores(), {...terrenosNoMapa(), casas:casasNoMapa()});
     atualizarGuia(p.x,p.z);
     const r=ruaMaisProxima(p.x,p.z), nome=r?r.nome:'';
     if(!home.aberta){ const h=horaJogo();                                      // conquistas que dependem do estado
@@ -293,7 +300,7 @@ function quadro(){
   }
   { const D4=veic.dirigindo, vs=posicoesTransito().concat(posicoesPolicia());          // faróis: trânsito, polícia e o seu
     if(D4) vs.push([D4.obj.position.x,D4.obj.position.z,D4.h,D4.comp/2,D4.larg/2]);
-    desenhar(vs, home.aberta?[]:[jogador, D4&&D4.obj]); if(talvezFotografar(renderer.domElement)) conquista('fotografo'); }
+    if(casa.dentro) renderer.render(cenaCasa,camera); else desenhar(vs, home.aberta?[]:[jogador, D4&&D4.obj]); if(talvezFotografar(renderer.domElement)) conquista('fotografo'); }
 }
 
 status();
@@ -313,6 +320,7 @@ carregarCidade().then(async()=>{
   const p=jogador.position, [x,z]=pontoLivre(p.x,p.z); p.set(x,0,z);   // não nascer dentro de uma casa
   progresso('Demarcando terrenos…');
   console.info('terrenos', iniciarTerrenos());
+  console.info('casas à venda', iniciarCasas());
   iniciarNegocios().catch(e=>console.warn('negócios',e));
   iniciarJornal().catch(e=>console.warn('jornal',e));
   console.info('postes', iniciarCeu());

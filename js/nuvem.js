@@ -117,3 +117,16 @@ export async function fecharNegocioNuvem(id){ if(!nuvem.ok) return true; try{ aw
 export function ouvirJornal(cb){ if(!nuvem.ok) return;
   F.onValue(F.query(ref('jornal'),F.orderByChild('t'),F.limitToLast(25)),s=>{ const l=[]; s.forEach(c=>{ l.push(c.val()); }); cb(l); },e=>console.warn('jornal',e)); }
 export function postarJornal(ev){ if(!nuvem.ok) return; F.push(ref('jornal'),{ ...ev, uid:nuvem.uid, t:Date.now() }).catch(e=>console.warn('jornal',e)); }
+
+// casas prontas: casas/{id} = { dono, nome }; donosCasa/{uid} = id (uma por jogador; o admin pode mais)
+export function ouvirCasas(cb){ if(!nuvem.ok) return; F.onValue(ref('casas'),s=>cb(s.val()||{}),e=>console.warn('casas',e)); }
+export async function comprarCasaNuvem(id, nome){
+  if(!nuvem.ok) return 'ocupado';
+  try{
+    const dado={ dono:nuvem.uid, nome:(nome||'Visitante').slice(0,16) };
+    if(souAdmin()){ await F.set(ref('casas/'+id),dado); return 'ok'; }
+    if((await F.get(ref('donosCasa/'+nuvem.uid))).exists()) return 'limite';
+    await F.update(ref(''),{ ['casas/'+id]:dado, ['donosCasa/'+nuvem.uid]:id });
+    return 'ok';
+  }catch(e){ console.warn('comprarCasa',e); return 'ocupado'; }
+}
