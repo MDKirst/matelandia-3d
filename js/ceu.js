@@ -8,6 +8,7 @@
 // (prédio na frente esconde a luz de trás). Custa um retângulo e poucas chamadas de desenho.
 import * as THREE from 'three';
 import { scene, renderer, camera } from './cena.js';
+import { semRelevo } from './relevo.js';
 import { ruas } from './cidade.js';
 
 const CICLO_MIN = 48;
@@ -39,7 +40,7 @@ export const fatorCarros  = h=>curva(h,[[0,0.25],[5,0.2],[6.5,0.7],[7.5,1],[19,1
 const camTela = new THREE.OrthographicCamera(-1,1,1,-1,0,1), telaCena = new THREE.Scene();
 const matTela = new THREE.MeshBasicMaterial({ color:0xffffff, depthTest:false, depthWrite:false, transparent:true,
   blending:THREE.CustomBlending, blendEquation:THREE.AddEquation, blendSrc:THREE.ZeroFactor, blendDst:THREE.SrcColorFactor });
-telaCena.add(new THREE.Mesh(new THREE.PlaneGeometry(2,2), matTela));
+semRelevo(matTela); { const q=new THREE.Mesh(new THREE.PlaneGeometry(2,2), matTela); q.frustumCulled=false; telaCena.add(q); }   // retângulo da tela: fora do relevo
 
 /* ───────── cena das luzes ───────── */
 const luzes = new THREE.Scene();
@@ -118,7 +119,7 @@ const estrelas = (()=>{ const n=900, p=new Float32Array(n*3);
     p[i*3]=Math.cos(az)*Math.cos(el)*r; p[i*3+1]=Math.sin(el)*r; p[i*3+2]=Math.sin(az)*Math.cos(el)*r; }
   const g=new THREE.BufferGeometry(); g.setAttribute('position',new THREE.BufferAttribute(p,3));
   const o=new THREE.Points(g, aditivo(new THREE.PointsMaterial({ color:0x000000, size:2.2, sizeAttenuation:false })));
-  o.frustumCulled=false; luzes.add(o); return o; })();
+  semRelevo(o.material); o.frustumCulled=false; luzes.add(o); return o; })();   // estrelas: no céu, fora do relevo
 
 // faróis: 2 brancos na frente + 2 vermelhos atrás por veículo, e o facho no chão
 const MAXV=32;

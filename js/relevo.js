@@ -29,7 +29,10 @@ vec4 mvPosition = vec4( transformed, 1.0 );
 #ifdef USE_INSTANCING
   mvPosition = instanceMatrix * mvPosition;
 #endif
-vec4 rMundo = modelMatrix * mvPosition; rMundo.y += alturaRelevo( rMundo.xz );
+vec4 rMundo = modelMatrix * mvPosition;
+#ifndef SEM_RELEVO
+  rMundo.y += alturaRelevo( rMundo.xz );
+#endif
 mvPosition = viewMatrix * rMundo;
 gl_Position = projectionMatrix * mvPosition;`;
 
@@ -78,3 +81,5 @@ export function altura(x,z){
   return (h[k]*(1-fx)+h[k+1]*fx)*(1-fz)+(h[k+nx]*(1-fx)+h[k+nx+1]*fx)*fz;
 }
 export const relevoLigado = ()=>!!grade;
+// material que NÃO deve subir com o chão (filtro da tela, céu, estrelas)
+export const semRelevo = m=>{ m.defines={...(m.defines||{}),SEM_RELEVO:''}; return m; };
