@@ -8,13 +8,14 @@ const mm=$('mini').getContext('2d'); const MMS=380, ESC=0.75; // px por metro
 // transito: [[x,z],...]
 // alvo: [x,z] da entrega (fica na borda do mapa se estiver longe)
 // jogadores: [[x,z]] dos outros jogadores online (pontos azuis)
-// terrenos: { meus:[{cantos,centro}], outros:[...] } — os seus em laranja (com 🏠 na borda se longe), dos outros em cinza
+// terrenos: { meus, outros, livres } — os seus em laranja (com 🏠 na borda se longe), dos outros em cinza, à venda em verde
 export function minimapa(px,pz,rumo,veiculos=[],transito=[],alvo=null,jogadores=[],terrenos=null){
   const alc=MMS/2/ESC;
   mm.fillStyle='#22352a'; mm.fillRect(0,0,MMS,MMS);
   mm.save(); mm.translate(MMS/2,MMS/2); mm.scale(ESC,ESC); mm.translate(-px,-pz);
   if(terrenos){ const lote=(l,fill,stroke)=>{ const [x,z]=l.centro; if(Math.abs(x-px)>alc+20||Math.abs(z-pz)>alc+20) return;
       mm.beginPath(); l.cantos.forEach((q,i)=>i?mm.lineTo(q[0],q[1]):mm.moveTo(q[0],q[1])); mm.closePath(); mm.fillStyle=fill; mm.fill(); mm.strokeStyle=stroke; mm.lineWidth=2.5; mm.stroke(); };
+    for(const l of terrenos.livres||[]) lote(l,'rgba(34,197,94,.55)','#bbf7d0');                   // à venda: verde (cor da placa VENDE-SE)
     for(const l of terrenos.outros) lote(l,'rgba(148,163,184,.45)','#cbd5e1');
     for(const l of terrenos.meus) lote(l,'rgba(249,115,22,.75)','#fff7ed'); }
   mm.fillStyle='#8d8676';
