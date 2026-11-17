@@ -41,6 +41,8 @@ import { sentar, descer, girarRodas } from './moto.js';
 import { iniciarCeu, desenhar, horaJogo, relogioTxt, quantoNoite, postes, posteEm } from './ceu.js';
 import { iniciarCriancas, atualizarCriancas, bateNaCrianca, posicoesCriancas } from './criancas.js';
 import { iniciarEspeciais, atualizarEspeciais, pontosEspeciais } from './especiais.js';
+import { iniciarPublicos } from './publicos.js';
+import { lotes as todosLotes } from './terrenos.js';
 import { ganhar as conquista, contar, colecionar } from './conquistas.js';
 import { pedirFoto, talvezFotografar } from './foto.js';
 import { policia } from './policia.js';
@@ -393,7 +395,7 @@ carregarCidade().then(async()=>{
   try{ const l=lugaresCache=(await (await fetch('dados/lugares.json')).json()).lugares; await iniciarPedestres(l, jogador.position.x, jogador.position.z); iniciarGangues().catch(e=>console.warn('gangues',e)); iniciarCriancas().catch(e=>console.warn('crianças',e)); }catch(e){ console.warn('pedestres',e); }
   const p=jogador.position, [x,z]=pontoLivre(p.x,p.z); p.set(x,0,z);   // não nascer dentro de uma casa
   progresso('Demarcando terrenos…');
-  console.info('terrenos', iniciarTerrenos()); console.info('postos/balada', iniciarEspeciais());
+  console.info('terrenos', iniciarTerrenos()); console.info('postos/balada', iniciarEspeciais()); console.info('bancos/polícias/parque', iniciarPublicos(todosLotes));
   console.info('casas à venda', iniciarCasas());
   iniciarNegocios().catch(e=>console.warn('negócios',e));
   iniciarJornal().catch(e=>console.warn('jornal',e));
