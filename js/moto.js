@@ -23,7 +23,7 @@ export function girarRodas(c,dt){ if(!c.rodas) return; for(const p of c.rodas) p
 /* ───────── piloto ───────── */
 const lado=(n,s)=>s<0?/left|\.?l$/i.test(n):/right|\.?r$/i.test(n);   // o three tira o "." do nome (UpperLeg.L → UpperLegL)
 const filhoOsso=o=>o&&o.children.find(c=>c.isBone);
-function membros(raiz){
+export function membros(raiz){
   const b=[]; raiz.traverse(o=>{ if(o.isBone) b.push(o); });
   const acha=(re,s)=>b.find(o=>re.test(o.name)&&lado(o.name,s));
   const r={};
@@ -36,7 +36,7 @@ function membros(raiz){
 }
 const qa=new THREE.Quaternion(), qb=new THREE.Quaternion(), qc=new THREE.Quaternion(), va=new THREE.Vector3(), vb=new THREE.Vector3(), vt=new THREE.Vector3();
 // gira o osso para que a direção osso→filho aponte para o alvo (mundo)
-function mirar(osso, filho, alvo){
+export function mirar(osso, filho, alvo){
   if(!osso||!filho) return;
   osso.getWorldPosition(va); filho.getWorldPosition(vb);
   const d=vb.sub(va).normalize(), t=vt.copy(alvo).sub(va).normalize(); if(d.lengthSq()<1e-6) return;

@@ -360,7 +360,7 @@ export function atualizarNegocios(dt, px, pz){
     if(n.atendente) n.atendente.mixer.update(dt);
     if(n.mecanico){ const m=n.mecanico; m.t+=dt; animar(m, m.t%9<6.5?'mexer':'parado'); m.mixer.update(dt); }
   }
-  musicaLoja(dentro);
+  musicaLoja(dentro||ganchos.musicaEspecial?.()||null);                 // a balada (especiais.js) também toca
   for(let i=flut.length-1;i>=0;i--){ const f=flut[i]; f.t-=dt; f.s.position.y+=dt*0.8; f.s.material.opacity=Math.min(1,f.t); if(f.t<=0){ f.n.g.remove(f.s); flut.splice(i,1); } }
 }
 
