@@ -79,7 +79,7 @@ function montarBalada(l){
   const PX0=7, PX1=23, PZ0=7.5, PZ1=17.5;                                          // pista
   const ladrilhos=new THREE.InstancedMesh(new THREE.BoxGeometry(1.9,0.06,1.9),new THREE.MeshBasicMaterial({color:0xffffff}),40);
   { const M=new THREE.Matrix4(); let k=0; for(let i=0;i<8;i++) for(let j=0;j<5;j++){ M.makeTranslation(PX0+1+i*2,0.07,PZ0+1+j*2); ladrilhos.setMatrixAt(k,M); ladrilhos.setColorAt(k,new THREE.Color(0x222222)); k++; } }
-  g.add(ladrilhos);
+  g.add(ladrilhos); ladrilhos.layers.enable(1);                                    // a pista acesa não escurece à noite
   cx3(g,grafite,9,21,0,1.0,19,22.7); cx3(g,lamb(0xd946ef),9,21,1.0,1.06,19,19.1);   // palco + borda de neon
   cx3(g,lamb(0x111827),13,17,1.0,2.15,19.5,20.3); cx3(g,lamb(0x22d3ee),13,17,2.15,2.2,19.5,20.3);   // cabine do DJ
   for(const x of [13.6,16.4]){ cx3(g,lamb(0x374151),x-0.35,x+0.35,2.2,2.24,19.6,20.2); }            // pratos
@@ -98,7 +98,7 @@ function montarBalada(l){
   // sofás na parede da direita
   for(const z of [7,11.5,16]){ cx3(g,lamb(0x7c3aed),25.4,27.6,0,0.5,z-1.6,z+1.6); cx3(g,lamb(0x6d28d9),27.0,27.7,0.5,1.2,z-1.6,z+1.6); cx3(g,lamb(0x111827),24.2,25.0,0,0.45,z-0.5,z+0.5); }
   // globo espelhado e feixes de luz
-  const globo=new THREE.Mesh(new THREE.IcosahedronGeometry(0.55,1),new THREE.MeshLambertMaterial({color:0xe5e7eb,flatShading:true,emissive:0x333333})); globo.position.set(15,H-1.3,12.5); g.add(globo);
+  const globo=new THREE.Mesh(new THREE.IcosahedronGeometry(0.55,1),new THREE.MeshLambertMaterial({color:0xe5e7eb,flatShading:true,emissive:0x333333})); globo.position.set(15,H-1.3,12.5); g.add(globo); globo.layers.enable(1);
   cx3(g,lamb(0x9ca3af),14.98,15.02,H-0.75,H-0.2,12.48,12.52);
   const feixes=[]; [[5,5.5],[25,5.5],[5,19.5],[25,19.5]].forEach(([x,z],i)=>{ const m=new THREE.MeshBasicMaterial({color:[0xd946ef,0x22d3ee,0xfacc15,0x22c55e][i],transparent:true,opacity:0.22,depthWrite:false,blending:THREE.AdditiveBlending,side:THREE.DoubleSide});
     const f=new THREE.Mesh(new THREE.ConeGeometry(1.4,H-1,16,1,true).translate(0,-(H-1)/2,0),m); const p=new THREE.Group(); p.position.set(x,H-0.4,z); p.add(f); g.add(p); feixes.push(p); });
@@ -179,7 +179,7 @@ async function encherBalada(p){
     if(papel==='bar'){ d.x=3.0; d.z=12.5; d.y=0; d.rumo=Math.PI/2; tocar(d,'mexer'); }
     if(papel==='palco'){ d.x=k===2?10.6:19.4; d.z=20.8; d.y=1.35; d.rumo=Math.PI; tocar(d,'parado'); d.tipo='quat'; d.r=membros(d.obj); d.estilo=3; d.ph=k; }
     d.papel=papel; gente.push(d); });
-  for(const d of gente){ d.corpo.position.set(d.x,d.y,d.z); d.corpo.rotation.y=d.rumo; }
+  for(const d of gente){ d.corpo.position.set(d.x,d.y,d.z); d.corpo.rotation.y=d.rumo; d.corpo.traverse(o=>o.layers.enable(1)); }   // camada 1: à noite são redesenhados claros (ceu.realcar), como o jogador
   // ninguém atravessa quem está dançando
   const antes=p.l.ocupaEsp; p.l.ocupaEsp=(u,v)=>antes(u,v)||gente.some(d=>d.papel!=='bar'&&d.papel!=='dj'&&d.papel!=='palco'&&Math.abs(u-d.x)<0.35&&Math.abs(v-d.z)<0.35);
   p.gente=gente;
