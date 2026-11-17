@@ -13,10 +13,10 @@ export const golpe={ tipo:null, t:0, seq:0, acertou:false };
 
 /* ───────── pose do golpe ───────── */
 const OSSOS={
-  braco:/^(mixamorig)?RightArm$|^UpperArm\.R$|^upperarm_r$/i,
-  antebraco:/^(mixamorig)?RightForeArm$|^LowerArm\.R$|^lowerarm_r$/i,
-  coxa:/^(mixamorig)?RightUpLeg$|^UpperLeg\.R$|^thigh_r$/i,
-  canela:/^(mixamorig)?RightLeg$|^LowerLeg\.R$|^calf_r$/i,
+  braco:/^(mixamorig)?RightArm$|^UpperArm.?R$|^upperarm_r$/i,
+  antebraco:/^(mixamorig)?RightForeArm$|^LowerArm.?R$|^lowerarm_r$/i,
+  coxa:/^(mixamorig)?RightUpLeg$|^UpperLeg.?R$|^thigh_r$/i,
+  canela:/^(mixamorig)?RightLeg$|^LowerLeg.?R$|^calf_r$/i,
 };
 function ossos(raiz){
   if(raiz.userData.ossos&&raiz.userData.ossosDe===raiz.children[0]) return raiz.userData.ossos;

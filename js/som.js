@@ -42,6 +42,10 @@ export function somExplosao(){
   if(!ctx) return; const t=ctx.currentTime;
   baque(t,90,22,1.4,0.75); rajada(t,1.6,0.6,'lowpass',700); rajada(t,0.6,0.3,'bandpass',1800,0.8);
 }
+export function somTiro(dist=10){                                      // estampido seco, mais baixo de longe
+  if(!ctx) return; const t=ctx.currentTime, k=Math.max(0.12,1-dist/90);
+  baque(t,170,55,0.14,0.85*k); rajada(t,0.2,0.75*k,'highpass',1100); rajada(t+0.02,0.35,0.25*k,'lowpass',500);
+}
 export function somPancada(){
   if(!ctx) return; const t=ctx.currentTime; baque(t,95,45,0.22,0.8); rajada(t,0.12,0.35,'lowpass',600);
 }

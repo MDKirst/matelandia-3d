@@ -15,6 +15,7 @@ import { construirMarcos } from './marcos.js';
 import { carregarLojas } from './lojas.js';
 import { construirDetalhes, alturaLombada } from './detalhes.js';
 import { iniciarPedestres, atualizarPedestres, posicoesPedestres } from './pedestres.js';
+import { iniciarGangues, atualizarGangues, golpearGangue } from './gangues.js';
 import { home, pronto, progresso } from './home.js';
 import { atualizarEfeitos } from './efeitos.js';
 import { danificar, efeitosVeiculos } from './veiculos.js';
@@ -181,8 +182,8 @@ quandoTurmaBater((dano,fx,fz)=>{ if(veic.dirigindo) return false; if(levarPancad
 // soco/chute no meio do golpe: acerta pedestre ou outro jogador logo à frente
 function acertar(tipo){
   const p=jogador.position, fx=Math.sin(rumo), fz=Math.cos(rumo);
-  const ped=golpearPedestre(p.x,p.z,fx,fz,tipo), jog=golpearJogador(p.x,p.z,fx,fz,tipo,DANO[tipo]);
-  if(ped||jog) somPancada();
+  const ped=golpearPedestre(p.x,p.z,fx,fz,tipo), jog=golpearJogador(p.x,p.z,fx,fz,tipo,DANO[tipo]), gan=golpearGangue(p.x,p.z,fx,fz,tipo);
+  if(ped||jog||gan) somPancada();
   if(ped==='nocaute') crime(1,'Agressão');
   if(ped){ const t=performance.now(); pancadas=pancadas.filter(x=>t-x<20000); pancadas.push(t);
     if(ped==='nocaute'||pancadas.length>=2){ pancadas=[]; revolta(p.x,p.z); } }
@@ -270,6 +271,8 @@ function quadro(){
   atualizarPedestres(dt,{x:p.x,z:p.z,dirigindo:!!D,v:D?D.v:0, veic:D?{x:D.obj.position.x,z:D.obj.position.z,h:D.h,meio:D.comp/2,larg:D.larg/2,v:D.v}:null},
     [...frota.filter(c=>c!==D).map(c=>[c.obj.position.x,c.obj.position.z,c.h,c.comp/2,c.larg/2]), ...posicoesTransito(), ...posicoesPolicia()]);   // pedestre não atravessa veículo
   if(!home.aberta) atualizarPolicia(dt,{x:p.x,z:p.z,dirigindo:!!D,v:D?D.v:0},prender);
+  if(!home.aberta&&!casa.dentro) atualizarGangues(dt,{x:p.x,z:p.z,y:altura(p.x,p.z),dirigindo:!!D,caido:vida.caido>0||detido>0},
+    (dano,fx,fz)=>{ if(levarPancada(dano,fx,fz)) somPancada(); return vida.caido>0; }, avisarTerreno);
   efeitosVeiculos(dt); atualizarEfeitos(dt); atualizarBaloes(dt); atualizarNegocios(dt,p.x,p.z);
   // celular: sem teclado, os botões de terreno aparecem conforme o lugar (B comprar / C construir / V negócio)
   { const toqueTela=matchMedia('(pointer:coarse)').matches&&!home.aberta&&!veic.dirigindo, tb=$('terrBtn');
@@ -347,7 +350,7 @@ carregarCidade().then(async()=>{
   console.info('lojas', await carregarLojas());
   console.info('detalhes', await construirDetalhes());
   progresso('Chamando o povo para a rua…');
-  try{ const l=lugaresCache=(await (await fetch('dados/lugares.json')).json()).lugares; await iniciarPedestres(l, jogador.position.x, jogador.position.z); }catch(e){ console.warn('pedestres',e); }
+  try{ const l=lugaresCache=(await (await fetch('dados/lugares.json')).json()).lugares; await iniciarPedestres(l, jogador.position.x, jogador.position.z); iniciarGangues().catch(e=>console.warn('gangues',e)); }catch(e){ console.warn('pedestres',e); }
   const p=jogador.position, [x,z]=pontoLivre(p.x,p.z); p.set(x,0,z);   // não nascer dentro de uma casa
   progresso('Demarcando terrenos…');
   console.info('terrenos', iniciarTerrenos());

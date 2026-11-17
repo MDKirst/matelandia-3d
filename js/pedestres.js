@@ -283,7 +283,7 @@ const FALAS={
 const sorteia=l=>l[(Math.random()*l.length)|0];
 // balões de fala: sprites com texto, presos acima da cabeça
 const baloes=[];
-function falar(p,txt,seg=3.5){
+export function falar(p,txt,seg=3.5){
   let b=baloes.find(b=>b.p===p)||baloes.find(b=>b.t<=0);
   if(!b){ const cv=document.createElement('canvas'); cv.width=512; cv.height=150; const tex=new THREE.CanvasTexture(cv); tex.colorSpace=THREE.SRGBColorSpace;
     const sp=new THREE.Sprite(new THREE.SpriteMaterial({map:tex,depthTest:false,transparent:true})); sp.renderOrder=20; scene.add(sp); b={sp,cv,tex,t:0,p:null}; baloes.push(b); }
