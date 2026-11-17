@@ -19,7 +19,8 @@ const MODELOS = [
   {partes:[{arq:'suv'}], peso:3}, {partes:[{arq:'suv2'}], peso:3},
   {partes:[{arq:'picape'}], peso:3, tinta:true}, {partes:[{arq:'picape2'}], peso:3, tinta:true},
   {partes:[{arq:'onibus'}], peso:1}, {partes:[{arq:'ambulancia'}], peso:1},
-  {partes:[{arq:'caminhonete-policia'}], peso:1, claro:1.8},
+  {partes:[{arq:'caminhonete-policia'}], peso:0, claro:1.8, policia:true},          // viaturas: só nas vagas da patrulha (PATRULHA)
+  {partes:[{arq:'viatura-suv'}], peso:0, policia:true},
   {partes:[{arq:'cavalo'}], peso:1, so:BR},
   {partes:[{arq:'cavalinho',z:-5.5},{arq:'reboque-graneleiro',z:2.2}], peso:2, so:BR},   // carreta graneleira
 ];
@@ -27,6 +28,9 @@ const MODELOS = [
 const TINTAS = [0xffffff,0xffffff,0xd9443b,0x3b6fd9,0xb9bec4,0x3a3f45,0x2f8f5b,0xe0b54a];
 import { horaJogo, fatorCarros } from './ceu.js';
 const QTD = 18, RAIO_NASCE = [90, 320], RAIO_SOME = 420;
+// patrulha (pedido do Maicon em 16/11): as primeiras vagas do trânsito são sempre viaturas do Couro & Asfalto,
+// rodando devagar pela cidade com o giroflex piscando; continuam de madrugada (o limite da hora nunca corta essas)
+const PATRULHA = ['viatura-suv','caminhonete-policia','viatura-suv'];
 const TIPOS_OK = new Set(['motorway','motorway_link','trunk','trunk_link','primary','primary_link','secondary','secondary_link',
   'tertiary','tertiary_link','residential','unclassified','living_street']);
 
@@ -91,21 +95,26 @@ export async function iniciarTransito(px,pz){
     moldes[i]={cena:grupo, meio:tam.z/2, larg:tam.x/2, m};
   });
   const sorteio=Object.keys(moldes).flatMap(i=>Array(moldes[i].m.peso).fill(i)); if(!sorteio.length) return;
+  const civis=Object.keys(moldes).filter(i=>!moldes[i].m.policia), dePolicia=a=>Object.keys(moldes).find(i=>moldes[i].m.partes[0].arq===a);
   // passo sem divisor comum com o tamanho da lista: percorre todos os modelos antes de repetir
   const mdc=(a,b)=>b?mdc(b,a%b):a; let passo=7; while(mdc(passo,sorteio.length)!==1) passo++;
   for(let k=0;k<QTD;k++){
-    const chaves=Object.keys(moldes), md=moldes[k<chaves.length?chaves[k]:sorteio[(k*passo+3)%sorteio.length]], obj=md.cena.clone(); obj.rotation.order='YXZ'; // um de cada, depois pelo peso
+    const kc=k-PATRULHA.length, pol=k<PATRULHA.length?dePolicia(PATRULHA[k]):null;
+    const md=moldes[pol??(kc<civis.length?civis[kc]:sorteio[(kc*passo+3)%sorteio.length])], obj=md.cena.clone(); obj.rotation.order='YXZ'; // patrulha, um de cada civil, depois pelo peso
     const tinta=TINTAS[k%TINTAS.length];
     if(md.m.tinta&&tinta!==0xffffff) obj.traverse(o=>{ if(o.isMesh){ o.material=o.material.clone(); o.material.color.setHex(tinta); } });
     scene.add(obj);
     const c={obj, r:null, i:0, dir:1, s:0, v:0, vAlvo:0, vCruz:7+Math.random()*5, meio:md.meio, larg:md.larg, so:md.m.so};
+    if(md.m.policia){ c.vCruz=6+Math.random()*2; const b=new THREE.Box3().setFromObject(obj);   // giroflex no teto (pisca no atualizarTransito)
+      c.giro=[0xff2a2a,0x2a5bff].map((cor,i)=>{ const m=new THREE.Mesh(new THREE.BoxGeometry(0.42,0.15,0.28),new THREE.MeshBasicMaterial({color:cor})); m.position.set(i?0.3:-0.3,b.max.y+0.05,0.15); obj.add(m); return m; }); }
     colocar(c,px,pz); carros.push(c);
   }
 }
 
 // outros: [[x,z,rf,rl]] obstáculos que o carro respeita (jogador, veículos estacionados); também desvia dos outros carros
 export function atualizarTransito(dt, px, pz, outros){
-  const limite=Math.round(QTD*fatorCarros(horaJogo()));        // menos carro de madrugada
+  const limite=Math.max(PATRULHA.length,Math.round(QTD*fatorCarros(horaJogo())));        // menos carro de madrugada (a patrulha fica)
+  { const t=performance.now()/1000, f=Math.floor(t*4)%2; for(const c of carros) if(c.giro){ c.giro[0].visible=f===0||Math.floor(t*8)%4===1; c.giro[1].visible=f===1||Math.floor(t*8)%4===3; } }
   for(const [k,c] of carros.entries()){
     if(!c.r || Math.hypot(c.obj.position.x-px,c.obj.position.z-pz)>RAIO_SOME){
       if(k>=limite){ c.r=null; c.obj.visible=false; continue; }   // sobra: só volta quando a hora pedir

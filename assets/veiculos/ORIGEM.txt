@@ -18,3 +18,6 @@ chopper.glb ("Bison Seca-Suvaco 1700", moto custom de guidao alto): copiado do C
 trail.glb e urbana.glb (motos de IA: imagem do Gemini / TRELLIS -> 3D): copiadas do Couro & Asfalto
 (public/modelos/moto-trail.glb e moto-urbana.glb) em 16/11/2026, pedido do Maicon ("os veiculos tambem").
 A viatura da policia passou a ser a caminhonete-policia.glb (preta, do Couro & Asfalto) no lugar da suv2 tingida.
+
+viatura-suv.glb: SUV da policia (PRF) feita por IA (FLUX -> TRELLIS.2) no Couro & Asfalto (commits 734b6de/6528ae0);
+saiu de la em 04/11 (e266bbd) e foi recuperada do historico em 16/11/2026 a pedido do Maicon, para patrulhar a cidade.

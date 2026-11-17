@@ -13,7 +13,7 @@ import { bloqueado } from './mundo.js';
 import { carregarModelo } from './pedestres.js';
 
 const loader=new GLTFLoader(); loader.setMeshoptDecoder(MeshoptDecoder);
-let molde=null, moldeGuarda=null, posto=[0,0];
+let molde=null, moldeSuv=null, moldeGuarda=null, posto=[0,0];
 export const policia={ estrelas:0, carros:[] };
 let semVer=0, aviso=0, espera=0;
 
@@ -21,6 +21,7 @@ export async function iniciarPolicia(lugares){
   const pm=lugares.find(l=>/police|pol[ií]cia|\bPM\b/i.test((l.cat||'')+' '+l.n)); if(pm) posto=toXZ(pm.lat,pm.lon);
   // viatura = a caminhonete preta da polícia do Couro & Asfalto (modelo de IA), pedido do Maicon em 16/11
   await new Promise(ok=>loader.load('assets/veiculos/caminhonete-policia.glb',g=>{ molde=g.scene; ok(); },undefined,()=>ok()));
+  await new Promise(ok=>loader.load('assets/veiculos/viatura-suv.glb',g=>{ moldeSuv=g.scene; ok(); },undefined,()=>ok()));   // SUV da polícia: metade das viaturas
   moldeGuarda=await carregarModelo('male-suit-24');
 }
 
@@ -44,8 +45,8 @@ function novaViatura(px,pz){
       for(let s=0;s<L;s+=10){ const q=[a[0]+(c[0]-a[0])*s/L, a[1]+(c[1]-a[1])*s/L], d=Math.hypot(q[0]-px,q[1]-pz); if(d>=90&&d<=150) cand.push(q); } } }
   for(let t=0;t<1&&cand.length;t++){
     const q=cand[(Math.random()*cand.length)|0];
-    const obj=molde.clone(); obj.rotation.order='YXZ';
-    obj.traverse(o=>{ if(o.isMesh){ o.material=o.material.clone(); o.material.color.multiplyScalar(1.8); } });   // preta: clareia um pouco (como no trânsito)
+    const suv=moldeSuv&&Math.random()<0.5, obj=(suv?moldeSuv:molde).clone(); obj.rotation.order='YXZ';
+    if(!suv) obj.traverse(o=>{ if(o.isMesh){ o.material=o.material.clone(); o.material.color.multiplyScalar(1.8); } });   // preta: clareia um pouco (como no trânsito)
     const box=new THREE.Box3().setFromObject(obj), tam=box.getSize(new THREE.Vector3());
     // giroflex: vermelho e azul no teto e no para-choque da frente (como no Couro & Asfalto)
     const luz=[0xff2a2a,0x2a5bff].map((c,i)=>{ const m=new THREE.Mesh(new THREE.BoxGeometry(0.45,0.16,0.3),new THREE.MeshBasicMaterial({color:c})); m.position.set(i?0.32:-0.32,tam.y+0.06,0.1); obj.add(m);
