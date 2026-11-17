@@ -24,6 +24,11 @@ const TIPOS = [
   { id:'trail',  nome:'Moto trail',      arq:'assets/veiculos/trail.glb',  vmax:28, acel:8,  entre:1.5, cam:6, moto:true },
   { id:'urbana', nome:'Moto urbana',     arq:'assets/veiculos/urbana.glb', vmax:25, acel:7.5,entre:1.4, cam:6, moto:true },
 ];
+// 17/11 (pedido do Maicon: "os carros têm que pegar mais velocidade"): velocidade máxima +45% e arrancada +70%
+// para todo veículo dirigível (aplicado nos dados, então velocímetro e som do motor acompanham)
+const MAIS_VELOCIDADE=1.45, MAIS_ARRANCADA=1.7;
+const turbinar=lista=>{ for(const T of lista){ T.vmax=+(T.vmax*MAIS_VELOCIDADE).toFixed(1); T.acel=+(T.acel*MAIS_ARRANCADA).toFixed(2); } };
+turbinar(TIPOS);
 const loader = new GLTFLoader(); loader.setMeshoptDecoder(MeshoptDecoder);
 
 // a moto do jogador fica na frente da oficina dele (negocios.js chama ao achar a oficina)
@@ -181,6 +186,7 @@ const DO_TRANSITO={
   'caminhonete-policia':{nome:'Viatura',vmax:29,acel:7,entre:3,cam:9.5}, 'viatura-suv':{nome:'Viatura',vmax:29,acel:7,entre:2.9,cam:9.5},
   cavalo:{nome:'Cavalo mecânico',vmax:17,acel:2.8,entre:4.2,cam:13}, cavalinho:{nome:'Carreta',vmax:16,acel:2.2,entre:7,cam:17},
 };
+turbinar(Object.values(DO_TRANSITO));
 const ID_PAGA={ suv2:'suv', picape2:'picape', 'caminhonete-policia':'viatura', 'viatura-suv':'viatura', cavalinho:'carreta' };
 export function adotar({obj, arq, x, z, h}){
   const base=DO_TRANSITO[arq]||DO_TRANSITO.sedan, tipo={ id:ID_PAGA[arq]||arq, ...base };
