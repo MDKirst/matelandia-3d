@@ -132,6 +132,8 @@
   #home .jogar:disabled{opacity:.5;cursor:wait}
   #home .ctrl{margin-top:22px;font-size:12.5px;color:#94a3b8;line-height:1.7}
   #home .ctrl b{color:#e2e8f0}
+  #home .manual{display:inline-block;margin-top:12px;color:#fcd34d;font-weight:700;font-size:14px;text-decoration:none}
+  #home .manual:hover{text-decoration:underline}
   #home .jogador{margin:0 0 14px;display:flex;flex-direction:column;gap:8px;max-width:320px}
   #home .jogador input[type=text],#nomeJog{background:#0b0d11;border:1px solid #334155;color:#e2e8f0;border-radius:9px;padding:10px 12px;font-size:15px}
   #home .jogador label{font-size:13px;color:#cbd5e1;display:flex;gap:8px;align-items:center}
@@ -244,7 +246,7 @@
   <b>N</b> entrega (no veículo) · <b>B</b> comprar terreno · <b>C</b> construir · <b>V</b> negócio · <b>O</b> trabalhos<br>
   <b>M</b> mapa/GPS · <b>Y</b> som · <b>[ ]</b> detalhe do satélite · <b>P</b> foto · <b>L</b> meu terreno · <b>Esc</b> menu<br>
   <b>Enter</b> chat com os jogadores (online) · <b>Q</b> atalhos<br>
-  Celular: esquerda anda, direita gira
+  Celular: esquerda anda, direita gira · <a href="manual.html" target="_blank" rel="noopener" style="color:#fcd34d">📖 Manual</a>
 </div>
 
 <canvas id="mini" width="380" height="380"></canvas>
@@ -285,6 +287,7 @@
       <div id="conta"></div></div>
     <button id="jogar" class="jogar" disabled>Carregando…</button>
     <div class="carrega" id="carrega"></div>
+    <a class="manual" href="manual.html" target="_blank" rel="noopener">📖 Manual do jogador</a>
     <div class="ctrl">
       <b>WASD</b> andar · <b>Shift</b> correr · <b>E</b> entrar no veículo<br>
       <b>T</b> conversar · <b>G</b> cumprimentar · <b>H</b> chamar para seguir · <b>X</b> assustar<br>

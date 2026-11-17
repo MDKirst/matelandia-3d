@@ -1,0 +1,320 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Manual do Jogador · Matelândia 3D</title>
+<meta name="description" content="Como jogar Matelândia 3D: controles, dinheiro, veículos, terrenos, negócios, polícia, gangues e modo online.">
+<style>
+:root{
+  --fundo:#0f172a; --cartao:#1e293b; --borda:#334155; --texto:#e2e8f0; --fraco:#94a3b8;
+  --laranja:#f97316; --amarelo:#fcd34d; --verde:#22c55e; --vermelho:#ef4444; --azul:#38bdf8;
+}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{margin:0;background:var(--fundo);color:var(--texto);font:16px/1.6 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
+a{color:var(--azul)}
+header{padding:40px 16px 28px;text-align:center;background:linear-gradient(180deg,#1e293b,#0f172a);border-bottom:1px solid var(--borda)}
+header h1{margin:0;font-size:clamp(28px,7vw,46px);font-weight:900;letter-spacing:-.5px}
+header h1 span{color:var(--laranja)}
+header p{margin:8px auto 18px;max-width:560px;color:var(--fraco)}
+.jogar{display:inline-block;background:var(--laranja);color:#111;font-weight:900;text-decoration:none;padding:12px 26px;border-radius:12px;font-size:18px}
+.jogar:hover{filter:brightness(1.1)}
+nav{position:sticky;top:0;z-index:2;background:rgba(15,23,42,.95);backdrop-filter:blur(6px);border-bottom:1px solid var(--borda);overflow-x:auto;white-space:nowrap;padding:8px 12px}
+nav{scrollbar-width:none}
+nav::-webkit-scrollbar{display:none}
+nav a{display:inline-block;color:var(--texto);text-decoration:none;font-size:14px;padding:6px 10px;border-radius:8px}
+nav a:hover{background:var(--cartao)}
+main{max-width:860px;margin:0 auto;padding:8px 16px 60px}
+section{margin-top:34px;scroll-margin-top:60px}
+h2{font-size:24px;margin:0 0 12px;display:flex;gap:10px;align-items:center}
+h3{font-size:17px;margin:18px 0 6px;color:var(--amarelo)}
+.cartao{background:var(--cartao);border:1px solid var(--borda);border-radius:14px;padding:16px 18px;margin:12px 0}
+.dica{border-left:4px solid var(--verde)}
+.atencao{border-left:4px solid var(--vermelho)}
+kbd{display:inline-block;min-width:26px;text-align:center;background:#0b1220;border:1px solid #475569;border-bottom-width:3px;border-radius:6px;padding:1px 7px;font:700 14px/1.5 ui-monospace,Consolas,monospace;color:#fff}
+table{width:100%;border-collapse:collapse;font-size:15px}
+th,td{text-align:left;padding:8px 10px;border-bottom:1px solid var(--borda);vertical-align:top}
+th{color:var(--fraco);font-weight:600;font-size:13px;text-transform:uppercase;letter-spacing:.5px}
+td:first-child{white-space:nowrap}
+.tabela{overflow-x:auto}
+ul,ol{padding-left:22px;margin:8px 0}
+li{margin:4px 0}
+.grade{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:12px}
+.grade .cartao{margin:0}
+.grade b{display:block;font-size:17px;margin-bottom:4px}
+.passos{counter-reset:p;list-style:none;padding:0}
+.passos li{counter-increment:p;position:relative;padding-left:42px;margin:12px 0}
+.passos li::before{content:counter(p);position:absolute;left:0;top:0;width:30px;height:30px;border-radius:50%;background:var(--laranja);color:#111;font-weight:900;display:grid;place-items:center}
+footer{text-align:center;color:var(--fraco);font-size:13px;padding:24px 16px;border-top:1px solid var(--borda)}
+@media print{
+  nav,.jogar{display:none}
+  body{background:#fff;color:#000}
+  .cartao{background:#fff;border-color:#ccc}
+  kbd{background:#eee;color:#000}
+  header{background:#fff}
+}
+</style>
+</head>
+<body>
+
+<header>
+  <h1>Matelândia <span>3D</span></h1>
+  <p>Manual do jogador: tudo o que dá para fazer na cidade, das primeiras voltas até o seu próprio negócio.</p>
+  <a class="jogar" href="./">▶ JOGAR</a>
+</header>
+
+<nav>
+  <a href="#comecar">Começar</a>
+  <a href="#controles">Controles</a>
+  <a href="#celular">Celular</a>
+  <a href="#dinheiro">Dinheiro</a>
+  <a href="#veiculos">Veículos</a>
+  <a href="#trabalhos">Entregas e trabalhos</a>
+  <a href="#terreno">Terreno e obra</a>
+  <a href="#casa">Casa</a>
+  <a href="#negocio">Negócio</a>
+  <a href="#energia">Energia</a>
+  <a href="#policia">Polícia</a>
+  <a href="#gangues">Gangues</a>
+  <a href="#pessoas">Pessoas</a>
+  <a href="#online">Online</a>
+  <a href="#extras">Mapa, foto e mais</a>
+  <a href="#problemas">Problemas</a>
+</nav>
+
+<main>
+
+<section id="comecar">
+  <h2>🏁 Começar a jogar</h2>
+  <ol class="passos">
+    <li>Abra <a href="./">mdkirst.github.io/matelandia-3d</a> no computador ou no celular. Não precisa instalar nada nem fazer cadastro.</li>
+    <li>Espere carregar: enquanto isso a câmera sobrevoa o centro da cidade. O botão muda de <b>Carregando…</b> para <b>JOGAR</b>.</li>
+    <li>Escreva o <b>seu nome no jogo</b> (até 16 letras). É ele que os outros jogadores veem.</li>
+    <li>Escolha o <b>personagem</b> nas setas <kbd>‹</kbd> <kbd>›</kbd>: pedestres, pilotos de moto, o Seu Valdir, o policial e outros.</li>
+    <li>Deixe marcado <b>Jogar online</b> se quiser ver os amigos na mesma cidade.</li>
+    <li>Clique em <b>JOGAR</b>. Para voltar a essa tela a qualquer momento, aperte <kbd>Esc</kbd> ou <b>☰ Menu</b>.</li>
+  </ol>
+  <div class="cartao dica">💡 A cidade é a Matelândia de verdade: ruas, prédios, relevo e imagem de satélite reais. Dá para ir até a sua rua!</div>
+</section>
+
+<section id="controles">
+  <h2>⌨️ Controles no computador</h2>
+  <div class="tabela"><table>
+    <tr><th>Tecla</th><th>O que faz</th></tr>
+    <tr><td><kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> ou setas</td><td>Andar / dirigir</td></tr>
+    <tr><td><kbd>Shift</kbd></td><td>Correr</td></tr>
+    <tr><td>Arrastar o mouse</td><td>Girar a câmera</td></tr>
+    <tr><td>Rodinha do mouse</td><td>Aproximar ou afastar a câmera</td></tr>
+    <tr><td><kbd>E</kbd> ou <kbd>F</kbd></td><td>Entrar e sair do veículo; entrar e sair de casa</td></tr>
+    <tr><td><kbd>Espaço</kbd></td><td>Freio de mão</td></tr>
+    <tr><td><kbd>T</kbd> <kbd>G</kbd> <kbd>H</kbd> <kbd>X</kbd></td><td>Com um pedestre perto: conversar, cumprimentar, chamar para seguir, assustar</td></tr>
+    <tr><td><kbd>J</kbd> / <kbd>K</kbd></td><td>Soco / chute</td></tr>
+    <tr><td><kbd>N</kbd></td><td>Começar (ou cancelar) uma entrega, dentro de um veículo</td></tr>
+    <tr><td><kbd>O</kbd></td><td>Trabalhos (gari e panfletagem)</td></tr>
+    <tr><td><kbd>B</kbd></td><td>Comprar o terreno ou a casa onde você está</td></tr>
+    <tr><td><kbd>C</kbd></td><td>Construir no seu terreno</td></tr>
+    <tr><td><kbd>V</kbd></td><td>Abrir ou cuidar do seu negócio</td></tr>
+    <tr><td><kbd>L</kbd></td><td>Mostrar o caminho até o seu terreno</td></tr>
+    <tr><td><kbd>M</kbd></td><td>Mapa da cidade com GPS</td></tr>
+    <tr><td><kbd>P</kbd></td><td>Tirar foto</td></tr>
+    <tr><td><kbd>Enter</kbd></td><td>Chat com os outros jogadores (online)</td></tr>
+    <tr><td><kbd>Y</kbd></td><td>Ligar ou desligar o som</td></tr>
+    <tr><td><kbd>Q</kbd></td><td>Mostrar ou esconder os botões de atalho</td></tr>
+    <tr><td><kbd>[</kbd> <kbd>]</kbd></td><td>Menos ou mais detalhe na imagem de satélite</td></tr>
+    <tr><td><kbd>Esc</kbd></td><td>Fecha a janela aberta; sem janela, volta ao menu</td></tr>
+  </table></div>
+  <div class="cartao dica">💡 O botão <b>⌨ Teclas</b> no painel mostra essa lista na tela enquanto você joga.</div>
+</section>
+
+<section id="celular">
+  <h2>📱 Jogando no celular</h2>
+  <ul>
+    <li><b>Lado esquerdo da tela:</b> encoste o dedo e arraste para andar (é um joystick invisível).</li>
+    <li><b>Lado direito:</b> arraste para girar a câmera.</li>
+    <li>Os comandos aparecem como <b>botões</b> quando fazem sentido: <b>Entrar</b> perto de um veículo, 👊 🦶 para lutar, 💬 👋 🚶 😱 perto de um pedestre, 🚚 Entrega, 💰 Comprar terreno, 🏪 Negócio, 🏡 Casa.</li>
+    <li>O botão <b>☰</b> no canto abre os atalhos: Menu, Chat, Meu terreno, Mapa, Foto, Conquistas, Trabalho e Jornal.</li>
+    <li>Funciona com o celular em pé ou deitado. Deitado se vê mais da cidade.</li>
+  </ul>
+</section>
+
+<section id="dinheiro">
+  <h2>💰 Dinheiro (M$)</h2>
+  <p>Quem começa agora recebe <b>M$ 5.000</b>. O saldo aparece no painel (💰).</p>
+  <div class="grade">
+    <div class="cartao"><b>Para ganhar</b>Entregas de veículo, trabalhos de gari e panfletagem, e a renda do seu negócio.</div>
+    <div class="cartao"><b>Para gastar</b>Terrenos, casa, abrir negócio, remédio na farmácia.</div>
+    <div class="cartao"><b>Para perder</b>Ser preso (multa de M$ 500) e desmaiar (conta do hospital de M$ 150).</div>
+  </div>
+</section>
+
+<section id="veiculos">
+  <h2>🚗 Veículos</h2>
+  <p>Há veículos estacionados pela cidade. Chegue perto e aperte <kbd>E</kbd> (ou o botão <b>Entrar</b>). <kbd>E</kbd> de novo para descer.</p>
+  <div class="tabela"><table>
+    <tr><th>Veículo</th><th>Jeito</th></tr>
+    <tr><td>Hatch e Sedã</td><td>Carros rápidos e fáceis de guiar</td></tr>
+    <tr><td>SUV e Picape</td><td>Mais pesados, bons de subida</td></tr>
+    <tr><td>Moto custom, trail e urbana</td><td>As mais ágeis; a custom é a mais veloz</td></tr>
+    <tr><td>Cavalo mecânico</td><td>Caminhão: lento, mas paga mais nas entregas</td></tr>
+  </table></div>
+  <ul>
+    <li>As ruas sobem e descem como na cidade de verdade: o veículo perde força na subida e embala na descida.</li>
+    <li>Batidas fortes <b>quebram</b> o veículo. Aí é descer e pegar outro.</li>
+    <li>Bater em outros carros ou atropelar alguém chama a polícia (veja <a href="#policia">Polícia</a>).</li>
+  </ul>
+</section>
+
+<section id="trabalhos">
+  <h2>📦 Entregas e trabalhos</h2>
+  <h3>🚚 Entregas (N)</h3>
+  <ol>
+    <li>Entre num veículo e aperte <kbd>N</kbd>.</li>
+    <li>Siga a seta até o lugar de <b>buscar</b> a carga.</li>
+    <li>Depois leve até o endereço de <b>entrega</b> antes de o tempo acabar.</li>
+  </ol>
+  <p>Batida durante a entrega dá desconto no pagamento. Se o tempo acabar ou o veículo quebrar, a entrega é perdida. <kbd>N</kbd> de novo cancela.</p>
+  <h3>💼 Trabalhos (O)</h3>
+  <div class="grade">
+    <div class="cartao"><b>🧹 Gari</b>Recolha 8 sacos de lixo nas calçadas em até 3 minutos.</div>
+    <div class="cartao"><b>📄 Panfletagem</b>Entregue panfleto para 6 pessoas em até 2 min e meio. Nem todo mundo aceita!</div>
+  </div>
+  <p>O gari ganha M$ 90 por saco e o panfleteiro M$ 70 por panfleto. Terminar tudo dentro do tempo dá bônus (M$ 300 e M$ 250).
+</section>
+
+<section id="terreno">
+  <h2>🧱 Terreno e construção</h2>
+  <p>Os terrenos à venda têm placa verde <b>VENDE-SE</b> com o preço. O mapa (<kbd>M</kbd>) mostra todos.</p>
+  <ol>
+    <li>Entre no terreno e aperte <kbd>B</kbd> para comprar. Cada jogador pode ter <b>até 2 terrenos</b>.</li>
+    <li>Aperte <kbd>C</kbd> para entrar no modo de obra. Aparece a barra de blocos embaixo.</li>
+    <li>Escolha o material com os números <kbd>1</kbd> a <kbd>8</kbd> (tijolo, reboco, madeira, telha, vidro, concreto, pedra, grama). <kbd>9</kbd> é porta, <kbd>0</kbd> é janela e <kbd>P</kbd> é piso.</li>
+    <li><b>Clique</b> para colocar um bloco. <b>Botão direito</b> (ou o botão <b>Tirar</b>) remove.</li>
+    <li><kbd>Esc</kbd> sai do modo de obra.</li>
+  </ol>
+  <div class="cartao dica">💡 A porta precisa de 2 blocos de altura livres. Todos os jogadores veem o que você constrói, e só você mexe no seu terreno.</div>
+  <div class="cartao">Se aparecer <b>“Alguém comprou antes de você!”</b>, outro jogador fechou a compra primeiro. Procure outro terreno.</div>
+</section>
+
+<section id="casa">
+  <h2>🏡 Casa própria</h2>
+  <ul>
+    <li>Qualquer casa da cidade pode ser comprada: vá até a porta e aperte <kbd>B</kbd>. Cada jogador pode ter <b>uma casa</b>.</li>
+    <li>Na porta, <kbd>E</kbd> entra e sai.</li>
+    <li>Dentro tem sala com TV, cozinha e quarto. <b>Deitar na cama enche a energia.</b></li>
+    <li>Precisa de internet para comprar.</li>
+  </ul>
+</section>
+
+<section id="negocio">
+  <h2>🏪 Seu próprio negócio</h2>
+  <p>No seu terreno <b>vazio</b>, aperte <kbd>V</kbd> e escolha o tipo. O comércio aparece pronto, com atendente, e os clientes da cidade entram e compram.</p>
+  <div class="tabela"><table>
+    <tr><th>Negócio</th><th>Custa</th><th>Rende por hora</th></tr>
+    <tr><td>🥖 Padaria</td><td>M$ 6.000</td><td>M$ 900</td></tr>
+    <tr><td>🍔 Lanchonete</td><td>M$ 7.000</td><td>M$ 1.100</td></tr>
+    <tr><td>👕 Loja de Roupas</td><td>M$ 8.000</td><td>M$ 1.200</td></tr>
+    <tr><td>💊 Farmácia</td><td>M$ 8.500</td><td>M$ 1.300</td></tr>
+    <tr><td>🛒 Mercado</td><td>M$ 9.000</td><td>M$ 1.400</td></tr>
+    <tr><td>🔧 Oficina</td><td>M$ 10.000</td><td>M$ 1.600</td></tr>
+    <tr><td>🍻 Bar</td><td>M$ 15.000</td><td>M$ 2.200</td></tr>
+  </table></div>
+  <ul>
+    <li>O caixa vai enchendo mesmo com o jogo fechado (até 8 horas de renda). Volte e aperte <kbd>V</kbd> para <b>recolher</b>.</li>
+    <li>À noite as luzes da loja acendem e a vitrine fica iluminada.</li>
+    <li>Todos os jogadores veem o seu negócio, e ele aparece no jornal da cidade.</li>
+  </ul>
+</section>
+
+<section id="energia">
+  <h2>❤️ Energia, hospital e farmácia</h2>
+  <ul>
+    <li>A barra de energia (❤️) cai quando você apanha, leva tiro ou é atropelado.</li>
+    <li>Se ela zerar, você <b>desmaia</b> e acorda no hospital mais perto, com uma conta de <b>M$ 150</b>.</li>
+    <li>Para recuperar: dormir na cama da sua casa ou comprar <b>remédio</b> numa farmácia (M$ 40, energia cheia).</li>
+  </ul>
+</section>
+
+<section id="policia">
+  <h2>🚔 Polícia</h2>
+  <p>Viaturas fazem patrulha pela cidade o dia todo, com o giroflex piscando.</p>
+  <ul>
+    <li><b>Batida, atropelamento e agressão</b> dão estrelas de procurado (★, até 3).</li>
+    <li>Com estrela, a viatura vem atrás de você; com 3 estrelas vêm duas.</li>
+    <li>Se o policial te alcançar parado ou a pé: <b>PRESO</b>, multa de M$ 500.</li>
+    <li>Fique longe e fora de vista por um tempo para <b>despistar</b> e limpar as estrelas.</li>
+  </ul>
+</section>
+
+<section id="gangues">
+  <h2>🌙 Gangues da noite</h2>
+  <p>Das <b>19h às 5h</b> (horário do jogo), duas gangues rivais saem às ruas: os <b>🐦‍⬛ Corvos</b> (lenço vermelho), na Vila Nova, e os <b>🦈 Tubarões</b> (lenço azul), na Vila Pasa. Eles andam armados.</p>
+  <p>Se você entrar a pé no bairro deles, o chefe vem perguntar quem é você. Responda com as teclas <kbd>1</kbd> a <kbd>4</kbd>:</p>
+  <div class="tabela"><table>
+    <tr><th>Resposta</th><th>O que costuma acontecer</th></tr>
+    <tr><td><kbd>1</kbd> Moro aqui</td><td>Se você tem casa no bairro, passa direto. Se não tem, pode colar… ou não.</td></tr>
+    <tr><td><kbd>2</kbd> Só de passagem</td><td>Você ganha 20 segundos para sair do bairro.</td></tr>
+    <tr><td><kbd>3</kbd> Sou da gangue rival</td><td>Briga na hora.</td></tr>
+    <tr><td><kbd>4</kbd> Não te devo satisfação</td><td>Briga na hora.</td></tr>
+  </table></div>
+  <p>Fugir no meio da conversa ou demorar para responder também irrita a gangue. Quando eles ficam bravos, atiram. Dá para revidar no soco e no chute, mas o mais seguro é sair correndo ou passar de carro.</p>
+  <div class="cartao dica">💡 Durante o dia esses bairros são tranquilos como qualquer outro.</div>
+</section>
+
+<section id="pessoas">
+  <h2>🚶 Pessoas da cidade</h2>
+  <ul>
+    <li>Os pedestres seguem uma rotina: escola cheia na entrada e na saída das aulas, padaria cedo, restaurante no almoço, igreja no culto, bar e praça à noite. De madrugada a rua esvazia.</li>
+    <li>Cada um tem um jeito: apressado, econômico, curioso, sociável, desconfiado ou esportista.</li>
+    <li>Perto de um pedestre: <kbd>T</kbd> conversar, <kbd>G</kbd> cumprimentar, <kbd>H</kbd> chamar para te seguir, <kbd>X</kbd> assustar.</li>
+  </ul>
+  <div class="cartao atencao">⚠️ <b>Quem avacalha apanha:</b> atropelar, nocautear ou bater duas vezes em pedestres faz a turma se juntar e ir atrás de você até a sua energia acabar.</div>
+</section>
+
+<section id="online">
+  <h2>🌐 Jogar com os amigos</h2>
+  <ul>
+    <li>Com <b>Jogar online</b> marcado, você entra numa sala e vê os outros jogadores com o nome em cima da cabeça.</li>
+    <li><kbd>Enter</kbd> abre o chat; <kbd>Enter</kbd> envia; <kbd>Esc</kbd> fecha. A mensagem aparece num balão sobre o seu boneco.</li>
+    <li>Terrenos, casas, construções e negócios são de todo mundo ver, mesmo jogando sozinho.</li>
+  </ul>
+  <h3>🔐 Entrar com Google (opcional)</h3>
+  <p>Sem conta, o seu progresso fica <b>só neste navegador</b>. Entrando com Google, os seus terrenos e o dinheiro vão junto para qualquer aparelho. O jogo mostra só o seu nome e não guarda e-mail nem foto.</p>
+  <div class="cartao atencao">⚠️ Seja legal no chat. Nada de xingar, expor colega ou passar dados pessoais (telefone, endereço, senha).</div>
+</section>
+
+<section id="extras">
+  <h2>🗺️ Mapa, foto, jornal e conquistas</h2>
+  <div class="grade">
+    <div class="cartao"><b>🗺️ Mapa e GPS (M)</b>A cidade inteira com terrenos, casas, negócios, hospitais e delegacia. Clique num lugar e o GPS traça a rota: linha roxa no minimapa e seta com a distância. Também tem o campo <i>Ir para</i> no painel, que aceita latitude e longitude.</div>
+    <div class="cartao"><b>📷 Foto (P)</b>Tira um print do jogo sem os painéis, com a marca Matelândia 3D. Salve ou compartilhe.</div>
+    <div class="cartao"><b>📰 Jornal</b>Manchetes do que os jogadores fazem: negócio aberto, alguém preso, quem despistou a polícia.</div>
+    <div class="cartao"><b>🏆 Conquistas</b>22 desafios: primeira entrega, passar de 100 km/h, explorar 25 ruas, andar de madrugada, despistar a polícia e mais.</div>
+  </div>
+  <h3>☀️ Dia e noite</h3>
+  <p>Um dia no jogo dura <b>48 minutos</b> e é o mesmo para todos. À noite acendem os postes, as janelas, os faróis e as lojas, aparecem as estrelas e os grilos… e as gangues.</p>
+</section>
+
+<section id="problemas">
+  <h2>🛠️ Algum problema?</h2>
+  <div class="tabela"><table>
+    <tr><th>Problema</th><th>O que fazer</th></tr>
+    <tr><td>Jogo lento ou travando</td><td>Feche outras abas, diminua o detalhe do satélite com <kbd>[</kbd> e afaste menos a câmera.</td></tr>
+    <tr><td>Ficou preso num canto</td><td>Volte ao menu (<kbd>Esc</kbd>) e clique em JOGAR de novo, ou use o mapa e o campo <i>Ir para</i>.</td></tr>
+    <tr><td>Não consigo comprar o terreno</td><td>Veja se tem saldo, se já não tem 2 terrenos e se está com internet. Se outro jogador comprou antes, escolha outro.</td></tr>
+    <tr><td>Sumiu o meu dinheiro</td><td>Sem entrar com Google, ele fica só no navegador onde você jogou. Trocar de aparelho ou limpar os dados do navegador começa do zero.</td></tr>
+    <tr><td>Sem som</td><td>Aperte <kbd>Y</kbd> e clique uma vez na tela (o navegador só libera o som depois de um clique).</td></tr>
+    <tr><td>As teclas não respondem</td><td>Clique na cena do jogo: se o cursor estiver no chat ou no campo de nome, as teclas vão para lá.</td></tr>
+  </table></div>
+  <p>Achou um bug? Conte ao professor Maicon, de preferência com uma foto (<kbd>P</kbd>) ou print da tela.</p>
+</section>
+
+</main>
+
+<footer>
+  Matelândia 3D · jogo feito em Matelândia - PR · Nomes das lojas são fictícios.<br>
+  Imagens © Esri, Maxar, Earthstar Geographics · Ruas e prédios © colaboradores do OpenStreetMap e Overture Maps Foundation · Pedestres Quaternius (CC0)
+</footer>
+
+</body>
+</html>
