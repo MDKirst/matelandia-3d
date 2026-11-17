@@ -54,7 +54,8 @@ const distSeg=(x,z,a,b)=>{ const vx=b[0]-a[0], vz=b[1]-a[1]; let t=((x-a[0])*vx+
 const distPoli=(x,z,pts)=>dentro(x,z,pts)?0:Math.min(...pts.map((a,i)=>distSeg(x,z,a,pts[(i+1)%pts.length])));
 const distRua=(x,z)=>{ let m=1e9; for(const r of ruas){ if(r.pe) continue; const b=r.bb; if(x<b[0]-40||x>b[2]+40||z<b[1]-40||z>b[3]+40) continue; for(let i=0;i<r.pts.length-1;i++) m=Math.min(m,distSeg(x,z,r.pts[i],r.pts[i+1])-r.w/2); } return m; };
 // o terreno (lote 12×24 ou especial) encosta no contorno?
-const tocaLote=(pts,lotes)=>lotes.some(l=>{ const w=l.w||12, d=l.d||24; for(let u=0;u<=w;u+=1.5) for(let v=0;v<=d;v+=1.5){ const x=l.A[0]+l.t[0]*u+l.n[0]*v, z=l.A[1]+l.t[1]*u+l.n[1]*v; if(dentro(x,z,pts)) return true; } return false; });
+const tocaLote=(pts,lotes)=>{ const x0=Math.min(...pts.map(p=>p[0]))-40, x1=Math.max(...pts.map(p=>p[0]))+40, z0=Math.min(...pts.map(p=>p[1]))-40, z1=Math.max(...pts.map(p=>p[1]))+40;   // só os terrenos por perto
+  return lotes.some(l=>{ if(l.cx<x0||l.cx>x1||l.cz<z0||l.cz>z1) return false; const w=l.w||12, d=l.d||24; for(let u=0;u<=w;u+=1.5) for(let v=0;v<=d;v+=1.5){ const x=l.A[0]+l.t[0]*u+l.n[0]*v, z=l.A[1]+l.t[1]*u+l.n[1]*v; if(dentro(x,z,pts)) return true; } return false; }); };
 
 function predioDe(x,z){
   let m=null, md=9;

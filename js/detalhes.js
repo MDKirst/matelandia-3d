@@ -82,8 +82,12 @@ function montarCruz(){
   const cont=new Map(), k=p=>Math.round(p[0]*10)+'_'+Math.round(p[1]*10);
   for(const r of ruas){ if(r.pe) continue; const vis=new Set(); for(const p of r.pts){ const c=k(p); if(vis.has(c)) continue; vis.add(c); cont.set(c,(cont.get(c)||0)+1); } }
   for(const r of ruas) if(!r.pe) for(const p of r.pts) if(cont.get(k(p))>1) cruz.push(p);
+  indexarCruz();
 }
-const pertoCruz=(x,z,r)=>cruz.some(p=>Math.abs(p[0]-x)<r&&Math.abs(p[1]-z)<r&&Math.hypot(p[0]-x,p[1]-z)<r);
+// grade de 20 m (17/11): antes varria todos os cruzamentos a cada metro de calçada e o carregamento levava ~3 s só nisso
+const GC=20, gradeCruz=new Map();
+function indexarCruz(){ gradeCruz.clear(); for(const p of cruz){ const k=Math.floor(p[0]/GC)+'_'+Math.floor(p[1]/GC); if(!gradeCruz.has(k)) gradeCruz.set(k,[]); gradeCruz.get(k).push(p); } }
+const pertoCruz=(x,z,r)=>{ for(let i=Math.floor((x-r)/GC);i<=Math.floor((x+r)/GC);i++) for(let j=Math.floor((z-r)/GC);j<=Math.floor((z+r)/GC);j++){ const l=gradeCruz.get(i+'_'+j); if(l) for(const p of l) if(Math.abs(p[0]-x)<r&&Math.abs(p[1]-z)<r&&Math.hypot(p[0]-x,p[1]-z)<r) return true; } return false; };
 
 /* ───────── meio-fio 3D ───────── */
 function meioFio(){
@@ -115,6 +119,9 @@ function outraRuaPerto(x,z,eu){
 }
 function muros(lojas){
   const PASSO=1.0;
+  // lojas numa grade de 28 m (antes: a lista toda a cada metro de calçada)
+  const GL=28, gl=new Map(); for(const l of lojas){ const k=Math.floor(l[0]/GL)+'_'+Math.floor(l[1]/GL); if(!gl.has(k)) gl.set(k,[]); gl.get(k).push(l); }
+  const lojaPerto=(x,z)=>{ for(let i=Math.floor((x-14)/GL);i<=Math.floor((x+14)/GL);i++) for(let j=Math.floor((z-14)/GL);j<=Math.floor((z+14)/GL);j++){ const a=gl.get(i+'_'+j); if(a) for(const l of a) if(Math.abs(l[0]-x)<14&&Math.abs(l[1]-z)<14) return true; } return false; };
   for(const r of ruas){ if(r.pe||!COM_CALCADA.has(r.tipo)) continue;
     for(const lado of [1,-1]){ const off=lado*(r.w/2+GUIA+CALCADA+0.12), q=paralela(r.pts,off);
       let lote=0, lim=10+sorte(off,r.w,1)*6, n=0;
@@ -134,7 +141,7 @@ function muros(lojas){
           || substituidoPorMarco(x,z,'muro',0)
           || outraRuaPerto(x+nx*3,z+nz*3,r)                                // canteiro central / entre duas ruas
           || ocupado(x,z)||ocupado(x+nx*0.6,z+nz*0.6)                      // prédio colado na calçada
-          || lojas.some(l=>Math.abs(l[0]-x)<14&&Math.abs(l[1]-z)<14)       // frente de comércio fica aberta
+          || lojaPerto(x,z)                                                 // frente de comércio fica aberta
           || !perto(x+nx*10,z+nz*10,14).some(p=>Math.hypot((p.bb[0]+p.bb[2])/2-x-nx*10,(p.bb[1]+p.bb[3])/2-z-nz*10)<14); // terreno vazio: sem muro
         if(livre) t.fecha(); else t.add(x,z,dx,dz,n);
       }); t.fecha(); } }

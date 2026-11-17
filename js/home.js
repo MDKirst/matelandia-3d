@@ -5,6 +5,7 @@ import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { MeshoptDecoder } from 'three/addons/libs/meshopt_decoder.module.js';
 import { $ } from './cena.js';
 import { usarPersonagem } from './avatar.js';
+import { semRelevo } from './relevo.js';
 import { nuvem, conectarNuvem, aoTrocarConta, entrarGoogle, sairGoogle, souAdmin } from './nuvem.js';
 
 // Maicon + os da Quaternius (assets/pessoas) + os pilotos do Couro & Asfalto
@@ -58,7 +59,7 @@ const cv=$('prev'), r=new THREE.WebGLRenderer({canvas:cv, antialias:true, alpha:
 r.setPixelRatio(Math.min(devicePixelRatio,2)); r.outputColorSpace=THREE.SRGBColorSpace;
 const cena=new THREE.Scene(), cam=new THREE.PerspectiveCamera(30,cv.width/cv.height,0.1,50);
 cena.add(new THREE.HemisphereLight(0xffffff,0x445566,2.2)); const sol=new THREE.DirectionalLight(0xfff1dd,2); sol.position.set(2,4,3); cena.add(sol);
-const chao=new THREE.Mesh(new THREE.CircleGeometry(0.75,48).rotateX(-Math.PI/2),new THREE.MeshBasicMaterial({color:0xF97316,transparent:true,opacity:.25})); cena.add(chao);
+const chao=new THREE.Mesh(new THREE.CircleGeometry(0.75,48).rotateX(-Math.PI/2),semRelevo(new THREE.MeshBasicMaterial({color:0xF97316,transparent:true,opacity:.25}))); chao.frustumCulled=false; cena.add(chao);
 cam.position.set(0,1.05,4.6); cam.lookAt(0,0.9,0);
 const loader=new GLTFLoader(); loader.setMeshoptDecoder(MeshoptDecoder);
 const cache={}, arquivos={}; let atual=null, mixer=null, giro=0, pedido=0;
@@ -69,6 +70,7 @@ function mostrar(){
     if(meu!==pedido) return;
     if(atual) cena.remove(atual);
     atual=g.scene; atual.updateMatrixWorld(true);
+    atual.traverse(m=>{ m.frustumCulled=false; if(m.material) for(const x of [].concat(m.material)){ semRelevo(x); x.needsUpdate=true; } });   // a prévia fica fora do relevo (o relevo subia o boneco e o teste de câmera o descartava)
     const b=new THREE.Box3().setFromObject(atual,true), e=1.8/((b.max.y-b.min.y)||1.8);
     atual.scale.setScalar(atual.scale.x*e); atual.updateMatrixWorld(true);
     const b2=new THREE.Box3().setFromObject(atual,true), c=b2.getCenter(new THREE.Vector3());
