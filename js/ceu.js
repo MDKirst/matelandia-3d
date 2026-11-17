@@ -57,6 +57,14 @@ const TEX_AMARELA = texBrilho(255,214,150), TEX_BRANCA = texBrilho(255,250,235),
 // postes: um a cada ~32 m nas ruas com calçada, alternando o lado; o poste existe de dia também
 const COM_CALCADA = new Set(['primary','secondary','tertiary','residential','unclassified','living_street','primary_link','secondary_link','tertiary_link']);
 export const postes = [];   // [x,z]
+// 17/11 (pedido do Maicon): o poste é sólido. Grade de 20 m para achar os postes perto de um ponto sem varrer os ~4300
+const GP=20, gradePostes=new Map(), kp=(i,j)=>i+'_'+j;
+export function postesPerto(x,z,R){
+  const out=[]; for(let i=Math.floor((x-R)/GP);i<=Math.floor((x+R)/GP);i++) for(let j=Math.floor((z-R)/GP);j<=Math.floor((z+R)/GP);j++){
+    const l=gradePostes.get(kp(i,j)); if(l) for(const q of l) if(Math.abs(q[0]-x)<=R&&Math.abs(q[1]-z)<=R) out.push(q); }
+  return out;
+}
+export const posteEm=(x,z,r=0.35)=>postesPerto(x,z,r).some(q=>Math.hypot(q[0]-x,q[1]-z)<r);
 // o ponto cai no asfalto de alguma rua (com 0,3 m de folga)?
 function naPista(x,z){
   for(const r of ruas){ if(r.pe) continue; const b=r.bb, m=r.w/2+0.3; if(x<b[0]-m||x>b[2]+m||z<b[1]-m||z>b[3]+m) continue;
@@ -84,6 +92,7 @@ function montarPostes(){
 let pontos, poças, ALTURA=7.2;
 function construirPostes(){
   const lista=montarPostes(); postes.push(...lista.map(p=>[p[0],p[1]]));
+  for(const q of postes){ const c=kp(Math.floor(q[0]/GP),Math.floor(q[1]/GP)); if(!gradePostes.has(c)) gradePostes.set(c,[]); gradePostes.get(c).push(q); }
   // malha do poste (concreto + braço + luminária) instanciada: 1 chamada de desenho para todos
   const geo=[new THREE.CylinderGeometry(0.09,0.14,ALTURA,6).translate(0,ALTURA/2,0),
     new THREE.BoxGeometry(1.6,0.08,0.08).translate(0.8,ALTURA-0.15,0),

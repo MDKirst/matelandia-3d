@@ -7,6 +7,8 @@ import * as THREE from 'three';
 // medidas do modelo (motos-ia.ts do Couro & Asfalto): altura do banco, guidão [altura, z],
 // meia largura das manoplas, z do banco e da pedaleira (frente = −Z)
 export const CHOPPER = { banco:0.74, guidao:[1.49,-0.32], manopla:0.47, selim:0.26, pe:-0.42 };
+// moto urbana (urbana.glb, medida pelo perfil do modelo em 17/11): banco mais alto, guidão baixo e à frente
+export const URBANA = { banco:0.86, guidao:[1.05,-0.38], manopla:0.33, selim:0.32, pe:-0.22 };
 
 // pivôs nos eixos para as rodas girarem no lugar (o nó da roda vem com a origem fora do centro)
 export function prepararRodas(obj){
@@ -19,7 +21,7 @@ export function prepararRodas(obj){
 export function girarRodas(c,dt){ if(!c.rodas) return; for(const p of c.rodas) p.rotation.x-=c.v*dt/c.raio; }
 
 /* ───────── piloto ───────── */
-const lado=(n,s)=>s<0?/left|\.l$/i.test(n):/right|\.r$/i.test(n);
+const lado=(n,s)=>s<0?/left|\.?l$/i.test(n):/right|\.?r$/i.test(n);   // o three tira o "." do nome (UpperLeg.L → UpperLegL)
 const filhoOsso=o=>o&&o.children.find(c=>c.isBone);
 function membros(raiz){
   const b=[]; raiz.traverse(o=>{ if(o.isBone) b.push(o); });
@@ -45,8 +47,7 @@ const ponto=(moto,x,y,z)=>moto.localToWorld(new THREE.Vector3(x,y,z));
 
 // põe o jogador (Group com o boneco) sentado na moto. Chamado a cada quadro enquanto pilota
 // (a moto inclina e anda; o boneco vai junto). Os ossos são apontados só quando montar=true.
-export function sentar(jogador, moto, montar){
-  const M=CHOPPER;
+export function sentar(jogador, moto, montar, M=CHOPPER){
   moto.updateMatrixWorld(true);
   const banco=ponto(moto,0,M.banco,M.selim);
   if(montar){ jogador.userData.altQuadril=quadril(jogador); }

@@ -38,7 +38,8 @@ import { casas as todasCasas } from './casas.js';
 import { iniciarCasas, dicaCasa, comprarCasa, casa, cenaCasa, bloqueioCasa, entrarCasa, usarEmCasa, casasNoMapa } from './casas.js';
 import { construirCampos } from './campos.js';
 import { sentar, descer, girarRodas } from './moto.js';
-import { iniciarCeu, desenhar, horaJogo, relogioTxt, quantoNoite, postes } from './ceu.js';
+import { iniciarCeu, desenhar, horaJogo, relogioTxt, quantoNoite, postes, posteEm } from './ceu.js';
+import { iniciarCriancas, atualizarCriancas, bateNaCrianca, posicoesCriancas } from './criancas.js';
 import { ganhar as conquista, contar, colecionar } from './conquistas.js';
 import { pedirFoto, talvezFotografar } from './foto.js';
 import { policia } from './policia.js';
@@ -64,7 +65,7 @@ function dentroDoTransito(x,z){
     const fx=-Math.sin(ry), fz=-Math.cos(ry); if(Math.abs(dx*fx+dz*fz)<meio+0.3 && Math.abs(-dx*fz+dz*fx)<larg+0.3) return true; }
   return false;
 }
-const travado=(x,z)=>casa.dentro?bloqueioCasa(x,z):bloqueado(x,z)||dentroDeVeiculo(x,z)||dentroDoTransito(x,z);   // em casa: só paredes e móveis
+const travado=(x,z)=>casa.dentro?bloqueioCasa(x,z):bloqueado(x,z)||posteEm(x,z)||dentroDeVeiculo(x,z)||dentroDoTransito(x,z);   // em casa: só paredes e móveis
 
 // carro do trânsito na frente do veículo do jogador?
 // (se já estão encostados, deixa se afastar: senão o veículo travava para sempre)
@@ -123,7 +124,9 @@ function aoVolante(dt){
   else { const d=giro-volante, k=(Math.sign(d)!==Math.sign(volante)&&volante!==0?7:3.2)*dt;   // teclado: o volante gira aos poucos e volta mais rápido
     volante+=Math.max(-k,Math.min(k,d)); giro=volante; }
   const v0=Math.abs(c.v);
-  if(dirigir(dt, acel, giro, tecla.Space, bateNoTransito) && v0>4){            // bateu: estraga o veículo
+  let crianca=null;
+  if(dirigir(dt, acel, giro, tecla.Space, (c,x,z,h)=>bateNoTransito(c,x,z,h)||!!(crianca=bateNaCrianca(c,x,z,h))) && v0>4){            // bateu: estraga o veículo
+    if(crianca&&v0>6) crime(1,'Atropelamento');
     const inteiro=!c.quebrado; danificar(c,v0); somBatida(v0); if(inteiro&&c.quebrado) somExplosao();
     const [fx,fz]=frente(c.h), q=c.obj.position, alvoT=baterNoCarro(q.x+fx*c.comp*0.6,q.z+fz*c.comp*0.6,v0);
     if(alvoT&&v0>9) crime(1,'Batida');
@@ -295,7 +298,9 @@ function quadro(){
 
   const D=veic.dirigindo, outros=[[p.x,p.z,D?D.comp/2:0.5,D?D.larg/2:0.5], ...frota.filter(c=>c!==D).map(c=>[c.obj.position.x,c.obj.position.z,c.comp/2,c.larg/2])];
   for(const [x,z] of posicoesPedestres()) outros.push([x,z,0.3,0.3]);   // o trânsito para para pedestre na pista
+  for(const [x,z] of posicoesCriancas()) outros.push([x,z,0.8,0.4]);    // e para a criança de bike que cruzou na frente
   atualizarTransito(dt,p.x,p.z,outros);
+  if(!casa.dentro) atualizarCriancas(dt,{x:p.x,z:p.z,dirigindo:!!D,v:D?D.v:0});
   atualizarPedestres(dt,{x:p.x,z:p.z,dirigindo:!!D,v:D?D.v:0, veic:D?{x:D.obj.position.x,z:D.obj.position.z,h:D.h,meio:D.comp/2,larg:D.larg/2,v:D.v}:null},
     [...frota.filter(c=>c!==D).map(c=>[c.obj.position.x,c.obj.position.z,c.h,c.comp/2,c.larg/2]), ...posicoesTransito(), ...posicoesPolicia()]);   // pedestre não atravessa veículo
   if(!home.aberta) atualizarPolicia(dt,{x:p.x,z:p.z,dirigindo:!!D,v:D?D.v:0},prender);
@@ -379,7 +384,7 @@ carregarCidade().then(async()=>{
   console.info('lojas', await carregarLojas());
   console.info('detalhes', await construirDetalhes());
   progresso('Chamando o povo para a rua…');
-  try{ const l=lugaresCache=(await (await fetch('dados/lugares.json')).json()).lugares; await iniciarPedestres(l, jogador.position.x, jogador.position.z); iniciarGangues().catch(e=>console.warn('gangues',e)); }catch(e){ console.warn('pedestres',e); }
+  try{ const l=lugaresCache=(await (await fetch('dados/lugares.json')).json()).lugares; await iniciarPedestres(l, jogador.position.x, jogador.position.z); iniciarGangues().catch(e=>console.warn('gangues',e)); iniciarCriancas().catch(e=>console.warn('crianças',e)); }catch(e){ console.warn('pedestres',e); }
   const p=jogador.position, [x,z]=pontoLivre(p.x,p.z); p.set(x,0,z);   // não nascer dentro de uma casa
   progresso('Demarcando terrenos…');
   console.info('terrenos', iniciarTerrenos());

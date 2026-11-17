@@ -10,6 +10,7 @@ import { bloqueado } from './mundo.js';
 import { LX0, LZ0, LX1, LZ1 } from './geo.js';
 import { fumaca, fogo, explosao } from './efeitos.js';
 import { prepararRodas } from './moto.js';
+import { postesPerto } from './ceu.js';
 
 // vmax em m/s, acel em m/s², entre = distância entre-eixos (raio de curva), cam = distância da câmera
 const TIPOS = [
@@ -123,7 +124,11 @@ export function dirigir(dt, acel, giro, freio, obstaculo){
   const [fx,fz]=frente(nh), p=c.obj.position, nx=p.x+fx*c.v*dt, nz=p.z+fz*c.v*dt;
   const parede=(x0,z0,h0)=>contorno(c,x0,z0,h0).some(([x,z])=>bloqueado(x,z)||x<LX0+2||x>LX1-2||z<LZ0+2||z>LZ1-2);
   // já encostado num prédio/muro (nasceu ou foi parar em cima): deixa se mexer para sair
-  const bate = (parede(nx,nz,nh)&&!parede(p.x,p.z,c.h)) || dentroDeOutro(c,nx,nz,nh) || obstaculo?.(c,nx,nz,nh);
+  // poste: o tronco (raio ~0,15 m) dentro do retângulo do veículo
+  const poste=(x0,z0,h0)=>{ const [fx,fz]=frente(h0), [ex,ez]=esquerda(h0);
+    return postesPerto(x0,z0,Math.max(c.comp,c.larg)/2+0.3).some(([qx,qz])=>{ const dx=qx-x0, dz=qz-z0;
+      return Math.abs(dx*fx+dz*fz)<c.comp/2+0.15 && Math.abs(dx*ex+dz*ez)<c.larg/2+0.15; }); };
+  const bate = (parede(nx,nz,nh)&&!parede(p.x,p.z,c.h)) || (poste(nx,nz,nh)&&!poste(p.x,p.z,c.h)) || dentroDeOutro(c,nx,nz,nh) || obstaculo?.(c,nx,nz,nh);
   if(bate){ c.v *= -0.25; return true; }
   p.set(nx,p.y,nz); c.h=nh; c.obj.rotation.y=nh;
   // leve inclinação na curva e no freio, só para dar vida
