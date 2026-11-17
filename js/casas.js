@@ -19,7 +19,7 @@ function distRua(x,z){ let d=1e9;
   for(const r of ruas){ if(r.pe) continue; const b=r.bb; if(x<b[0]-60||x>b[2]+60||z<b[1]-60||z>b[3]+60) continue;
     for(let k=0;k<r.pts.length-1;k++){ const u=r.pts[k], v=r.pts[k+1], vx=v[0]-u[0], vz=v[1]-u[1]; let t=((x-u[0])*vx+(z-u[1])*vz)/(vx*vx+vz*vz||1); t=Math.max(0,Math.min(1,t)); d=Math.min(d,Math.hypot(x-u[0]-vx*t,z-u[1]-vz*t)-r.w/2); } }
   return d; }
-function acharPorta(p){
+export function acharPorta(p){
   let melhor=null, nota=1e9;
   for(let i=0;i<p.pts.length;i++){ const a=p.pts[i], b=p.pts[(i+1)%p.pts.length], L=Math.hypot(b[0]-a[0],b[1]-a[1]); if(L<2.5) continue;
     const m=[(a[0]+b[0])/2,(a[1]+b[1])/2]; let n=[(b[1]-a[1])/L,-(b[0]-a[0])/L]; if(dentroP(m[0]+n[0]*0.5,m[1]+n[1]*0.5,p.pts)) n=[-n[0],-n[1]];

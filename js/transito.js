@@ -104,7 +104,7 @@ export async function iniciarTransito(px,pz){
     const tinta=TINTAS[k%TINTAS.length];
     if(md.m.tinta&&tinta!==0xffffff) obj.traverse(o=>{ if(o.isMesh){ o.material=o.material.clone(); o.material.color.setHex(tinta); } });
     scene.add(obj);
-    const c={obj, r:null, i:0, dir:1, s:0, v:0, vAlvo:0, vCruz:7+Math.random()*5, meio:md.meio, larg:md.larg, so:md.m.so};
+    const c={obj, r:null, i:0, dir:1, s:0, v:0, vAlvo:0, vCruz:7+Math.random()*5, meio:md.meio, larg:md.larg, so:md.m.so, arq:md.m.partes[0].arq, policia:!!md.m.policia};
     if(md.m.policia){ c.vCruz=6+Math.random()*2; const b=new THREE.Box3().setFromObject(obj);   // giroflex no teto (pisca no atualizarTransito)
       c.giro=[0xff2a2a,0x2a5bff].map((cor,i)=>{ const m=new THREE.Mesh(new THREE.BoxGeometry(0.42,0.15,0.28),new THREE.MeshBasicMaterial({color:cor})); m.position.set(i?0.3:-0.3,b.max.y+0.05,0.15); obj.add(m); return m; }); }
     colocar(c,px,pz); carros.push(c);
@@ -168,3 +168,17 @@ export function baterNoCarro(x,z,impacto){
 
 // para o minimapa e para a colisão do veículo do jogador
 export function posicoesTransito(){ return carros.filter(c=>c.r&&c.obj.visible).map(c=>[c.obj.position.x,c.obj.position.z,c.obj.rotation.y,c.meio,c.larg]); }
+
+// E perto de um carro da rua: o carro mais perto ao alcance (andando devagar ou parado), para o jogador pegar
+export function carroDaRuaPerto(x,z){
+  let m=null, md=1e9;
+  for(const c of carros){ if(!c.r||!c.obj.visible||c.quebrado||c.v>8) continue;
+    const d=Math.hypot(c.obj.position.x-x,c.obj.position.z-z)-Math.max(c.meio,c.larg); if(d<md){ md=d; m=c; } }
+  return md<2.4?m:null;
+}
+// tira o carro da fila do trânsito e entrega uma cópia dele (o lugar dele na fila renasce longe)
+export function tirarDoTransito(c){
+  const obj=c.obj.clone(), r={ obj, arq:c.arq, policia:c.policia, x:c.obj.position.x, z:c.obj.position.z, h:c.obj.rotation.y };
+  if(c.giro) obj.children.filter(o=>o.isMesh&&o.geometry.type==='BoxGeometry'&&o.material.isMeshBasicMaterial).forEach(o=>o.visible=true);
+  c.r=null; c.obj.visible=false; c.v=0; return r;
+}

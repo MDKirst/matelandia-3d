@@ -20,7 +20,10 @@ Jogo de navegador em 3D da cidade de Matelândia-PR: ande, dirija, faça entrega
 - **🗺️ Mapa com GPS (M):** a cidade inteira com terrenos, casas, negócios, hospital e delegacia; clique marca o destino e o GPS traça a rota pelas ruas (linha roxa no minimapa e seta com a distância). Som passou para a tecla Y.
 - **Casa própria (B na porta de uma casa):** qualquer casa da cidade pode ser comprada (uma por jogador). Dentro tem sala com TV, cozinha e quarto; a cama enche a energia. E na porta entra e sai.
 - **Negócio próprio (V no seu terreno vazio):** escolha no cardápio (padaria, lanchonete, mercado, loja de roupas, farmácia ou oficina) e o comércio aparece pronto, com atendente; os clientes da cidade entram e compram. Todos veem o seu negócio. Fora do jogo o caixa junta até 8 h de renda; V recolhe.
-- **Trabalhos (O ou 💼):** gari (recolher sacos de lixo) e panfletagem, para juntar dinheiro; e as entregas de veículo (N).
+- **Trabalhos (O ou 💼):** gari, panfletagem, jardineiro, leiturista de luz e motorista de app, para juntar dinheiro; e as entregas de veículo (N).
+- **Qualquer carro:** E na frente de um carro da rua e ele é seu (viatura dá 2 estrelas).
+- **Balcão das lojas (E dentro de um negócio):** comida enche a energia, tênis e café fazem correr mais, roupa nova despista a polícia, oficina conserta e põe turbo. A energia cai devagar (fome) e o descanso só recupera até 50%.
+- **Manual do jogador:** [manual.html](https://mdkirst.github.io/matelandia-3d/manual.html).
 - **Bots com jeito próprio:** cada pedestre e cliente tem uma persona (apressado, econômico, curioso, sociável, desconfiado, esportista) que muda o que ele faz, quanto compra e se aceita panfleto.
 - **Quem avacalha apanha:** atropelar, nocautear ou bater duas vezes em pedestres faz a turma juntar e ir atrás, até a sua energia acabar.
 - **📰 Jornal da cidade:** manchetes do que os jogadores fazem (negócio aberto, preso, despistou a polícia, apanhou da turma). O texto é montado pelo jogo; no banco vão só o tipo do fato, o nome no jogo e a rua.

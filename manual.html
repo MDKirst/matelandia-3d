@@ -74,6 +74,7 @@ footer{text-align:center;color:var(--fraco);font-size:13px;padding:24px 16px;bor
   <a href="#terreno">Terreno e obra</a>
   <a href="#casa">Casa</a>
   <a href="#negocio">Negócio</a>
+  <a href="#lojas">Comprar nas lojas</a>
   <a href="#energia">Energia</a>
   <a href="#policia">Polícia</a>
   <a href="#gangues">Gangues</a>
@@ -106,12 +107,12 @@ footer{text-align:center;color:var(--fraco);font-size:13px;padding:24px 16px;bor
     <tr><td><kbd>Shift</kbd></td><td>Correr</td></tr>
     <tr><td>Arrastar o mouse</td><td>Girar a câmera</td></tr>
     <tr><td>Rodinha do mouse</td><td>Aproximar ou afastar a câmera</td></tr>
-    <tr><td><kbd>E</kbd> ou <kbd>F</kbd></td><td>Entrar e sair do veículo; entrar e sair de casa</td></tr>
+    <tr><td><kbd>E</kbd> ou <kbd>F</kbd></td><td>Entrar e sair do veículo (inclusive os carros da rua); entrar e sair de casa; abrir o balcão dentro de uma loja</td></tr>
     <tr><td><kbd>Espaço</kbd></td><td>Freio de mão</td></tr>
     <tr><td><kbd>T</kbd> <kbd>G</kbd> <kbd>H</kbd> <kbd>X</kbd></td><td>Com um pedestre perto: conversar, cumprimentar, chamar para seguir, assustar</td></tr>
     <tr><td><kbd>J</kbd> / <kbd>K</kbd></td><td>Soco / chute</td></tr>
     <tr><td><kbd>N</kbd></td><td>Começar (ou cancelar) uma entrega, dentro de um veículo</td></tr>
-    <tr><td><kbd>O</kbd></td><td>Trabalhos (gari e panfletagem)</td></tr>
+    <tr><td><kbd>O</kbd></td><td>Trabalhos (gari, panfletagem, jardineiro, leiturista de luz, motorista de app)</td></tr>
     <tr><td><kbd>B</kbd></td><td>Comprar o terreno ou a casa onde você está</td></tr>
     <tr><td><kbd>C</kbd></td><td>Construir no seu terreno</td></tr>
     <tr><td><kbd>V</kbd></td><td>Abrir ou cuidar do seu negócio</td></tr>
@@ -132,7 +133,7 @@ footer{text-align:center;color:var(--fraco);font-size:13px;padding:24px 16px;bor
   <ul>
     <li><b>Lado esquerdo da tela:</b> encoste o dedo e arraste para andar (é um joystick invisível).</li>
     <li><b>Lado direito:</b> arraste para girar a câmera.</li>
-    <li>Os comandos aparecem como <b>botões</b> quando fazem sentido: <b>Entrar</b> perto de um veículo, 👊 🦶 para lutar, 💬 👋 🚶 😱 perto de um pedestre, 🚚 Entrega, 💰 Comprar terreno, 🏪 Negócio, 🏡 Casa.</li>
+    <li>Os comandos aparecem como <b>botões</b> quando fazem sentido: <b>Entrar</b> perto de um veículo, 🛒 <b>Balcão</b> dentro de uma loja, 👊 🦶 para lutar, 💬 👋 🚶 😱 perto de um pedestre, 🚚 Entrega, 💰 Comprar terreno, 🏪 Negócio, 🏡 Casa.</li>
     <li>O botão <b>☰</b> no canto abre os atalhos: Menu, Chat, Meu terreno, Mapa, Foto, Conquistas, Trabalho e Jornal.</li>
     <li>Funciona com o celular em pé ou deitado. Deitado se vê mais da cidade.</li>
   </ul>
@@ -143,20 +144,26 @@ footer{text-align:center;color:var(--fraco);font-size:13px;padding:24px 16px;bor
   <p>Quem começa agora recebe <b>M$ 5.000</b>. O saldo aparece no painel (💰).</p>
   <div class="grade">
     <div class="cartao"><b>Para ganhar</b>Entregas de veículo, trabalhos de gari e panfletagem, e a renda do seu negócio.</div>
-    <div class="cartao"><b>Para gastar</b>Terrenos, casa, abrir negócio, remédio na farmácia.</div>
+    <div class="cartao"><b>Para gastar</b>Terrenos, casa, abrir negócio e os produtos das lojas (comida, remédio, roupa, conserto, turbo).</div>
     <div class="cartao"><b>Para perder</b>Ser preso (multa de M$ 500) e desmaiar (conta do hospital de M$ 150).</div>
   </div>
 </section>
 
 <section id="veiculos">
   <h2>🚗 Veículos</h2>
-  <p>Há veículos estacionados pela cidade. Chegue perto e aperte <kbd>E</kbd> (ou o botão <b>Entrar</b>). <kbd>E</kbd> de novo para descer.</p>
+  <p>Dá para dirigir <b>qualquer veículo</b>: os estacionados e também os carros que passam na rua. Chegue perto e aperte <kbd>E</kbd> (ou o botão <b>Entrar</b>). <kbd>E</kbd> de novo para descer.</p>
+  <ul>
+    <li><b>Carro da rua:</b> fique na frente dele (ele para) e aperte <kbd>E</kbd>. O motorista desce e o carro é seu: hatch, sedã, SUV, picape, ônibus, ambulância, caminhão, carreta…</li>
+    <li><b>Viatura da polícia</b> também dá para pegar, mas é crime: ganha 2 estrelas de procurado na hora.</li>
+    <li>Carro da rua largado longe some depois de um tempo.</li>
+  </ul>
   <div class="tabela"><table>
     <tr><th>Veículo</th><th>Jeito</th></tr>
     <tr><td>Hatch e Sedã</td><td>Carros rápidos e fáceis de guiar</td></tr>
     <tr><td>SUV e Picape</td><td>Mais pesados, bons de subida</td></tr>
     <tr><td>Moto custom, trail e urbana</td><td>As mais ágeis; a custom é a mais veloz</td></tr>
-    <tr><td>Cavalo mecânico</td><td>Caminhão: lento, mas paga mais nas entregas</td></tr>
+    <tr><td>Cavalo mecânico e carreta</td><td>Caminhões: lentos, mas pagam mais nas entregas</td></tr>
+    <tr><td>Ônibus</td><td>Comprido e pesado, cuidado nas curvas</td></tr>
   </table></div>
   <ul>
     <li>As ruas sobem e descem como na cidade de verdade: o veículo perde força na subida e embala na descida.</li>
@@ -178,8 +185,11 @@ footer{text-align:center;color:var(--fraco);font-size:13px;padding:24px 16px;bor
   <div class="grade">
     <div class="cartao"><b>🧹 Gari</b>Recolha 8 sacos de lixo nas calçadas em até 3 minutos.</div>
     <div class="cartao"><b>📄 Panfletagem</b>Entregue panfleto para 6 pessoas em até 2 min e meio. Nem todo mundo aceita!</div>
+    <div class="cartao"><b>🌻 Jardineiro</b>Ache os 6 canteiros (feixe verde) nas calçadas e fique 3 segundos em cada para regar. M$ 85 por canteiro.</div>
+    <div class="cartao"><b>🔌 Leiturista de luz</b>Vá até a porta de 6 casas (feixe azul) e fique 2 segundos anotando o relógio. M$ 95 por casa.</div>
+    <div class="cartao"><b>🚕 Motorista de app</b>Com qualquer veículo, pare no ponto amarelo para o passageiro entrar e leve até o ponto verde. São 3 corridas, M$ 180 cada.</div>
   </div>
-  <p>O gari ganha M$ 90 por saco e o panfleteiro M$ 70 por panfleto. Terminar tudo dentro do tempo dá bônus (M$ 300 e M$ 250).
+  <p>O gari ganha M$ 90 por saco e o panfleteiro M$ 70 por panfleto. Terminar tudo dentro do tempo dá bônus (de M$ 250 a M$ 450, conforme o trabalho). Uma seta no alto da tela aponta o próximo ponto.
 </section>
 
 <section id="terreno">
@@ -226,12 +236,30 @@ footer{text-align:center;color:var(--fraco);font-size:13px;padding:24px 16px;bor
   </ul>
 </section>
 
+<section id="lojas">
+  <h2>🛒 Comprar nas lojas</h2>
+  <p>Entre em qualquer negócio aberto (de qualquer jogador) e aperte <kbd>E</kbd> (no celular, o botão 🛒 <b>Balcão</b>). Escolha o produto: o preço sai do seu saldo e o efeito vale na hora.</p>
+  <div class="tabela"><table>
+    <tr><th>Loja</th><th>Produtos e efeito</th></tr>
+    <tr><td>🥖 Padaria</td><td>Pão (+10 energia), café (+5 e corre mais rápido 1 min), bolo (+30)</td></tr>
+    <tr><td>🍔 Lanchonete</td><td>X-salada (+35), suco (+12), combo completo (+65)</td></tr>
+    <tr><td>🛒 Mercado</td><td>Marmita (+35), água (+5), banana (+8), energético (+15 e corre mais rápido 2 min)</td></tr>
+    <tr><td>🍻 Bar</td><td>Refri (+8), porção (+45), água com gás (+6)</td></tr>
+    <tr><td>💊 Farmácia</td><td>Remédio (energia cheia), curativo (+25), vitamina C (+15 e corre mais rápido)</td></tr>
+    <tr><td>👕 Loja de Roupas</td><td>Tênis de corrida (corre mais rápido 5 min), roupa nova (disfarce: a polícia perde você de vista), boné</td></tr>
+    <tr><td>🔧 Oficina</td><td>Conserto (deixa novo o último veículo que você dirigiu), turbo (veículo mais rápido por 5 min), lavagem</td></tr>
+  </table></div>
+  <div class="cartao dica">💡 No seu próprio negócio tudo sai pela metade do preço.</div>
+</section>
+
 <section id="energia">
   <h2>❤️ Energia, hospital e farmácia</h2>
   <ul>
     <li>A barra de energia (❤️) cai quando você apanha, leva tiro ou é atropelado.</li>
     <li>Se ela zerar, você <b>desmaia</b> e acorda no hospital mais perto, com uma conta de <b>M$ 150</b>.</li>
-    <li>Para recuperar: dormir na cama da sua casa ou comprar <b>remédio</b> numa farmácia (M$ 40, energia cheia).</li>
+    <li><b>Fome:</b> a energia vai caindo devagar com o tempo. Descansando (sem apanhar) ela volta sozinha só <b>até 50%</b>.</li>
+    <li>Para passar de 50%: <b>comer</b> numa padaria, lanchonete, mercado ou bar, tomar <b>remédio</b> na farmácia (energia cheia) ou dormir na cama da sua casa.</li>
+    <li>Energia alta é a sua reserva para briga, tiro de gangue e atropelamento.</li>
   </ul>
 </section>
 
@@ -242,7 +270,8 @@ footer{text-align:center;color:var(--fraco);font-size:13px;padding:24px 16px;bor
     <li><b>Batida, atropelamento e agressão</b> dão estrelas de procurado (★, até 3).</li>
     <li>Com estrela, a viatura vem atrás de você; com 3 estrelas vêm duas.</li>
     <li>Se o policial te alcançar parado ou a pé: <b>PRESO</b>, multa de M$ 500.</li>
-    <li>Fique longe e fora de vista por um tempo para <b>despistar</b> e limpar as estrelas.</li>
+    <li>Fique longe e fora de vista por um tempo para <b>despistar</b> e limpar as estrelas, ou compre uma <b>roupa nova</b> na loja de roupas para despistar na hora.</li>
+    <li>Pegar uma viatura da polícia dá 2 estrelas na hora.</li>
   </ul>
 </section>
 

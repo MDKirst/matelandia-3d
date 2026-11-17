@@ -15,7 +15,7 @@ const dedos={};
 const digitando=()=>document.activeElement&&document.activeElement.tagName==='INPUT';
 
 // janela aberta (negócio, trabalhos, jornal, conquistas, foto): Esc fecha só ela; as outras teclas esperam
-const JANELAS='#negocio.on,#trabalhos.on,#jornal.on,#conquistas.on,#foto.on,#mapa.on,#gangue.on';
+const JANELAS='#negocio.on,#trabalhos.on,#jornal.on,#conquistas.on,#foto.on,#mapa.on,#gangue.on,#balcao.on';
 export const janelaAberta=()=>document.querySelector(JANELAS);
 addEventListener('keydown',e=>{ const j=janelaAberta(); if(!j) return;
   e.stopImmediatePropagation(); if(j.id==='gangue'){ j.dispatchEvent(new CustomEvent('tecla',{detail:e.code})); for(const k in tecla) tecla[k]=false; return; }   // interrogatório da gangue: só 1–4

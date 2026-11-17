@@ -107,11 +107,12 @@ export function sair(){
 export function dirigir(dt, acel, giro, freio, obstaculo){
   const c=dirigindo, T=c.tipo;
   if(c.quebrado) acel=Math.min(0,acel)*0.35;                                    // motor morto: só uma ré devagar, para sair de onde travou
-  if(acel>0) c.v += (c.v<0 ? T.acel*2.2 : T.acel)*acel*dt;                       // frente (freia se estava de ré)
+  const tb=reforco.turbo>0?1.25:1;                                               // turbo da oficina
+  if(acel>0) c.v += (c.v<0 ? T.acel*2.2 : T.acel*tb)*acel*dt;                       // frente (freia se estava de ré)
   else if(acel<0) c.v += (c.v>0 ? -T.acel*2.2 : -T.acel*0.6)*(-acel)*dt;         // freio, depois ré
   else c.v -= Math.sign(c.v)*Math.min(Math.abs(c.v), 1.6*dt);                   // rolagem
   if(freio) c.v -= Math.sign(c.v)*Math.min(Math.abs(c.v), 12*dt);
-  const vmax=T.vmax*(1-0.55*Math.max(0,c.dano-50)/50);                          // muito batido perde força
+  const vmax=T.vmax*tb*(1-0.55*Math.max(0,c.dano-50)/50);                          // muito batido perde força
   c.v = Math.max(-vmax*0.3, Math.min(vmax, c.v));
   // bicicleta: quanto mais rápido, menos esterço
   const esterco = giro*0.6/(1+Math.abs(c.v)/18);                                // em alta, menos esterço (estilo GTA)
@@ -163,3 +164,41 @@ export function efeitosVeiculos(dt){
       else fumaca(p.x,p.y+0.2,p.z, Math.min(1,(c.dano-35)/50)); }
   }
 }
+
+/* ───────── qualquer carro da rua (pedido do Maicon em 17/11) ─────────
+   E perto de um carro do trânsito: ele sai da fila do trânsito e vira um veículo dirigível, igual aos
+   estacionados. Ficam no máximo 4 desses soltos pela cidade; os largados longe somem. */
+const DO_TRANSITO={
+  hatch:{nome:'Hatch',vmax:26,acel:6.5,entre:2.5,cam:8.5}, sedan:{nome:'Sedã',vmax:27,acel:6,entre:2.7,cam:9},
+  suv:{nome:'SUV',vmax:24,acel:6,entre:2.8,cam:9}, suv2:{nome:'SUV',vmax:24,acel:6,entre:2.8,cam:9},
+  picape:{nome:'Picape',vmax:22,acel:5,entre:3.1,cam:9.5}, picape2:{nome:'Picape',vmax:22,acel:5,entre:3.1,cam:9.5},
+  onibus:{nome:'Ônibus',vmax:18,acel:2.6,entre:6,cam:15}, ambulancia:{nome:'Ambulância',vmax:26,acel:5.5,entre:3.4,cam:10},
+  'caminhonete-policia':{nome:'Viatura',vmax:29,acel:7,entre:3,cam:9.5}, 'viatura-suv':{nome:'Viatura',vmax:29,acel:7,entre:2.9,cam:9.5},
+  cavalo:{nome:'Cavalo mecânico',vmax:17,acel:2.8,entre:4.2,cam:13}, cavalinho:{nome:'Carreta',vmax:16,acel:2.2,entre:7,cam:17},
+};
+const ID_PAGA={ suv2:'suv', picape2:'picape', 'caminhonete-policia':'viatura', 'viatura-suv':'viatura', cavalinho:'carreta' };
+export function adotar({obj, arq, x, z, h}){
+  const base=DO_TRANSITO[arq]||DO_TRANSITO.sedan, tipo={ id:ID_PAGA[arq]||arq, ...base };
+  const ry=obj.rotation.y; obj.rotation.set(0,0,0); obj.updateMatrixWorld(true);
+  const tam=new THREE.Box3().setFromObject(obj).getSize(new THREE.Vector3());
+  obj.rotation.order='YXZ'; obj.position.set(x,0,z); obj.rotation.y=h??ry; scene.add(obj);
+  const mats=[]; obj.traverse(o=>{ if(o.isMesh){ o.material=o.material.clone(); mats.push([o.material,o.material.color.clone()]); } });
+  const c={tipo, obj, h:h??ry, v:0, comp:tam.z, larg:tam.x, alt:tam.y, dano:0, quebrado:false, acum:0, queima:0, mats, solto:true};
+  frota.push(c);
+  const soltos=frota.filter(o=>o.solto&&o!==c&&o!==dirigindo);
+  while(soltos.length>3){ const o=soltos.shift(); scene.remove(o.obj); frota.splice(frota.indexOf(o),1); }
+  return c;
+}
+// os soltos largados longe do jogador somem (não enchem a cidade)
+export function recolherSoltos(px,pz){
+  for(let i=frota.length-1;i>=0;i--){ const c=frota[i]; if(!c.solto||c===dirigindo) continue;
+    if(Math.hypot(c.obj.position.x-px,c.obj.position.z-pz)>380){ scene.remove(c.obj); frota.splice(i,1); } }
+}
+// oficina: conserto deixa o veículo novo
+export function consertar(c){
+  if(!c) return false;
+  c.dano=0; c.quebrado=false; c.queima=0; for(const [m,cor] of c.mats) m.color.copy(cor); return true;
+}
+// turbo comprado na oficina: mais velocidade e arrancada por um tempo (segundos)
+export const reforco={ turbo:0 };
+export const nomeDoTransito=a=>(DO_TRANSITO[a]||{nome:'carro'}).nome;

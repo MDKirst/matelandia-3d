@@ -7,6 +7,8 @@ import { $ } from './cena.js';
 export const DUR={ soco:0.38, chute:0.6 };          // duração do golpe (s)
 export const DANO={ soco:12, chute:20 };            // energia tirada de outro jogador
 const DESMAIO=5, ESPERA_CURA=4, CURA=5;             // s caído · s sem apanhar até começar a curar · energia/s
+// fome (17/11): a energia cai devagar com o tempo e descansar só recupera até a metade; para encher: comer, remédio ou dormir
+export const DESCANSO=50, FOME=1/20, PISO_FOME=10;   // teto da cura sozinha · energia/s gasta · a fome nunca derruba abaixo disso
 
 export const vida={ e:100, caido:0, queda:0, semApanhar:99, empurra:null };
 export const golpe={ tipo:null, t:0, seq:0, acertou:false };
@@ -64,7 +66,8 @@ export function atualizarLuta(dt, onAcerto){
   if(vida.caido>0){ vida.caido-=dt; vida.queda=Math.min(1,vida.queda+dt*3);
     if(vida.caido<=0){ vida.e=100; vida.semApanhar=99; aoAcordar(); } }
   else { vida.queda=Math.max(0,vida.queda-dt*1.5);
-    if(vida.semApanhar>ESPERA_CURA&&vida.e<100) vida.e=Math.min(100,vida.e+CURA*dt); }
+    if(vida.semApanhar>ESPERA_CURA&&vida.e<DESCANSO) vida.e=Math.min(DESCANSO,vida.e+CURA*dt);
+    if(vida.e>PISO_FOME) vida.e=Math.max(PISO_FOME,vida.e-FOME*dt); }
   hud();
 }
 export function levarPancada(dano, fx, fz){

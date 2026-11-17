@@ -84,6 +84,8 @@ function rota(x0,z0,x1,z1){
 }
 
 function tirar(c){ scene.remove(c.obj); if(c.guarda) scene.remove(c.guarda.obj); }
+// roupa nova (disfarce) ou fim da perseguição: some com as estrelas e as viaturas atrás
+export function perdoar(){ if(!policia.estrelas) return false; limpar(); return true; }
 function limpar(){ for(const c of policia.carros) tirar(c); policia.carros=[]; policia.estrelas=0; semVer=0; hud(); }
 
 function descerGuarda(c){

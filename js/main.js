@@ -45,7 +45,9 @@ import { policia } from './policia.js';
 import { trabalho, comecar, atualizarTrabalho, abrirTrabalhos } from './trabalhos.js';
 import { iniciarJornal, noticiar } from './jornal.js';
 import { revolta, quandoTurmaBater } from './pedestres.js';
-import { farmaciaAqui, comprarRemedio, PRECO_REMEDIO } from './negocios.js';
+import { lojaAqui, abrirBalcao } from './negocios.js';
+import { carroDaRuaPerto, tirarDoTransito } from './transito.js';
+import { perdoar } from './policia.js';
 import { iniciarNegocios, atualizarNegocios, acaoNegocio, pertoDeNegocioMeu } from './negocios.js';
 import { frota, iniciarVeiculos, veiculoPerto, entrar, sair, dirigir, dentroDeVeiculo, frente, esquerda } from './veiculos.js';
 import * as veic from './veiculos.js';
@@ -94,7 +96,7 @@ function aPe(dt){
   if(forca>0.12){
     const {yaw}=cam;
     const vx=(-Math.sin(yaw)*iy+Math.cos(yaw)*ix), vz=(-Math.cos(yaw)*iy-Math.sin(yaw)*ix), l=Math.hypot(vx,vz);
-    const vel=(correndo?CORRER:ANDAR)*forca*dt, dx=vx/l*vel, dz=vz/l*vel;
+    const vel=(correndo?CORRER*(efeito.corrida>0?1.35:1):ANDAR)*forca*dt, dx=vx/l*vel, dz=vz/l*vel;
     if(travado(p.x,p.z)||!travado(p.x+dx,p.z+dz)){ p.x+=dx; p.z+=dz; }   // já dentro de algo (carro parou em cima, bloco posto no pé): deixa sair
     else if(!travado(p.x+dx,p.z)) p.x+=dx;
     else if(!travado(p.x,p.z+dz)) p.z+=dz;
@@ -139,7 +141,7 @@ function aoVolante(dt){
   // câmera vem para trás do veículo quando ele anda (parado, dá para olhar em volta)
   if(Math.abs(c.v)>0.6){ let d=c.h-cam.yaw; d=Math.atan2(Math.sin(d),Math.cos(d)); cam.yaw+=d*Math.min(1,dt*2.5); }
   cam.dist+= (c.tipo.cam-cam.dist)*Math.min(1,dt*3);
-  const s=document.createElement('small'); s.textContent=' km/h · '+c.tipo.nome+(c.quebrado?' · QUEBRADO':c.dano>0?` · motor ${Math.round(100-c.dano)}%`:'');
+  const s=document.createElement('small'); s.textContent=' km/h · '+c.tipo.nome+(c.quebrado?' · QUEBRADO':c.dano>0?` · motor ${Math.round(100-c.dano)}%`:'')+(veic.reforco.turbo>0?' · 🚀 turbo':'');
   $('velo').replaceChildren(String(Math.round(Math.abs(c.v)*3.6)), s);
   if(Math.abs(c.v)*3.6>100) conquista('veloz');
 }
@@ -190,6 +192,27 @@ function acertar(tipo){
 }
 quandoApanhar((dano,fx,fz)=>{ if(veic.dirigindo) return; if(levarPancada(dano,fx,fz)) somPancada(); }, ()=>[jogador.position.x,jogador.position.z]);
 
+// 🛒 produtos do balcão (negocios.js PRODUTOS): devolve texto de erro (não cobra) ou '' quando aplicou
+const efeito={ corrida:0, ultimo:null };
+function aplicarProduto(ef){
+  if(ef.conserto){ const c=efeito.ultimo&&frota.includes(efeito.ultimo)?efeito.ultimo:null;
+    if(!c) return 'Dirija um veículo antes: o conserto é no último que você usou';
+    if(c.dano<=0&&!c.quebrado) return `${c.tipo.nome} já está inteiro`;
+    if(ef.conserto==='leve'){ if(c.quebrado||c.dano>40) return 'Lavagem não resolve: precisa do conserto'; veic.consertar(c); return ''; }
+    veic.consertar(c); return ''; }
+  if(ef.turbo){ veic.reforco.turbo=Math.max(veic.reforco.turbo,ef.turbo); return ''; }
+  if(ef.disfarce){ if(!perdoar()) return 'Ninguém está atrás de você: a roupa nova serve para despistar a polícia'; return ''; }
+  const so=(ef.e||ef.cheia)&&!ef.corrida;
+  if(so&&vida.e>=99.5) return 'Sua energia já está cheia';
+  if(ef.cheia) vida.e=100; else if(ef.e) vida.e=Math.min(100,vida.e+ef.e);
+  if(ef.corrida) efeito.corrida=Math.max(efeito.corrida,ef.corrida);
+  return '';
+}
+function passarEfeitos(dt){
+  if(efeito.corrida>0){ efeito.corrida-=dt; if(efeito.corrida<=0) avisarTerreno('👟 Acabou o efeito: correndo normal'); }
+  if(veic.reforco.turbo>0){ veic.reforco.turbo-=dt; if(veic.reforco.turbo<=0) avisarTerreno('🚀 O turbo acabou'); }
+}
+
 function trocarVeiculo(){
   if(veic.dirigindo){
     const era=veic.dirigindo, [x,z,h]=sair(); jogador.position.set(x,0,z); jogador.visible=true; rumo=h-Math.PI/2;
@@ -197,7 +220,11 @@ function trocarVeiculo(){
     cam.dist=distAPe;                                                              // câmera volta para perto (a pé)
     $('velo').style.display='none';
   } else {
-    const c=veiculoPerto(jogador.position.x,jogador.position.z); if(!c) return;
+    let c=veiculoPerto(jogador.position.x,jogador.position.z);
+    if(!c){ const t=carroDaRuaPerto(jogador.position.x,jogador.position.z); if(!t) return;          // carro da rua: o motorista desce e ele é seu
+      const r=tirarDoTransito(t); c=veic.adotar(r);
+      if(r.policia) crime(2,'Roubo de viatura'); else avisarTerreno(`🔑 Você pegou ${c.tipo.nome==='SUV'?'o':'a'} ${c.tipo.nome} da rua`); }
+    efeito.ultimo=c;
     distAPe=cam.dist; entrar(c); jogador.visible=!!c.tipo.moto; animar('parado');
     if(c.tipo.moto){ c.obj.rotation.z=0; sentar(jogador,c.obj,true); } conquista('motorista'); colecionar('frota','veic',c.tipo.id,5);
     $('velo').style.display='block';
@@ -232,7 +259,7 @@ function quadro(){
   else { const preso=cumprirPena(dt); if(preso){ pedido.usar=false; pedido.golpe=null; pedido.casa=false; }
     if(pedido.usar){ pedido.usar=false;
       if(casa.dentro){ const r=usarEmCasa(jogador); if(r==='dormiu') vida.e=100; if(r==='saiu'){ cam.dist=camRua[0]; cam.pitch=camRua[1]; } }
-      else if(!veic.dirigindo&&farmaciaAqui(jogador.position.x,jogador.position.z)) comprarRemedio(vida);   // farmácia: remédio enche a energia
+      else if(!veic.dirigindo&&lojaAqui(jogador.position.x,jogador.position.z)) abrirBalcao(lojaAqui(jogador.position.x,jogador.position.z),aplicarProduto);   // balcão de qualquer negócio: comprar produtos
       else if(!veic.dirigindo&&!(policia.estrelas>0)&&entrarCasa(jogador,jogador.position.x,jogador.position.z)){ camRua=[cam.dist,cam.pitch]; cam.dist=7.5; cam.pitch=1.05; }
       else if(!(vida.caido>0)) trocarVeiculo(); }
     if(pedido.entrega){ pedido.entrega=false; if(trabalho.tipo) avisarTerreno('Termine o trabalho atual antes da entrega (O cancela)'); else alternarCorrida(veic.dirigindo); }
@@ -251,14 +278,15 @@ function quadro(){
   const p=jogador.position;
 
   // dica de entrar / botão do celular
-  const perto=!veic.dirigindo&&!casa.dentro&&veiculoPerto(p.x,p.z);
+  const perto=!veic.dirigindo&&!casa.dentro&&!home.aberta&&(veiculoPerto(p.x,p.z)||(()=>{ const t=carroDaRuaPerto(p.x,p.z); return t&&{rua:true,policia:t.policia,tipo:{id:t.arq,nome:veic.nomeDoTransito(t.arq)}}; })());
   $('dica').style.display=perto?'block':'none'; if(perto) $('dica').textContent=`E · entrar ${perto.tipo.nome==='SUV'?'no':'na'} ${perto.tipo.nome}`;
   if(perto&&perto.tipo.id==='cavalo') $('dica').textContent='E · subir no cavalo mecânico';
+  if(perto&&perto.rua) $('dica').textContent=`E · pegar ${perto.tipo.nome==='SUV'||perto.tipo.nome==='Ônibus'?'o':'a'} ${perto.tipo.nome}`+(perto.policia?' (crime!)':'');
   $('usar').style.display=(perto||veic.dirigindo)&&matchMedia('(pointer:coarse)').matches?'block':'none';
   $('usar').textContent=veic.dirigindo?'Sair':'Entrar';
   // pedestre perto (a pé): mostra as ações
-  const farm=!home.aberta&&!veic.dirigindo&&!casa.dentro&&farmaciaAqui(p.x,p.z);
-  const terr=!home.aberta&&!veic.dirigindo&&!perto?(casa.dentro?dicaCasa(p.x,p.z):farm?`E comprar remédio (${fmt(PRECO_REMEDIO)}): energia cheia`:dicaTerreno(p.x,p.z)||dicaCasa(p.x,p.z)):'';
+  const loja=!home.aberta&&!veic.dirigindo&&!casa.dentro&&lojaAqui(p.x,p.z);
+  const terr=!home.aberta&&!veic.dirigindo&&!perto?(casa.dentro?dicaCasa(p.x,p.z):loja?'E comprar no balcão (comida, remédio, roupa, conserto…)':dicaTerreno(p.x,p.z)||dicaCasa(p.x,p.z)):'';
   if(terr){ $('dica').style.display='block'; $('dica').textContent=TOQUE?terr.replace(/\b[BCV] (?=comprar|construir|abrir|caixa)/g,'').replace(/^./,c=>c.toUpperCase()):terr; }   // celular: sem as teclas
   const gente=!home.aberta&&!veic.dirigindo&&!perto&&!terr&&pedestrePerto(p.x,p.z);
   if(gente){ $('dica').style.display='block'; $('dica').textContent='T conversar · G cumprimentar · H '+(gente.modo==='seguir'?'dispensar':'chamar')+' · X assustar'+(quantosSeguem()?` · ${quantosSeguem()} seguindo`:''); }
@@ -276,9 +304,9 @@ function quadro(){
   efeitosVeiculos(dt); atualizarEfeitos(dt); atualizarBaloes(dt); atualizarNegocios(dt,p.x,p.z);
   // celular: sem teclado, os botões de terreno aparecem conforme o lugar (B comprar / C construir / V negócio)
   { const toqueTela=matchMedia('(pointer:coarse)').matches&&!home.aberta&&!veic.dirigindo, tb=$('terrBtn');
-    const dc=toqueTela?(farm?'E remedio':dicaCasa(p.x,p.z)):'', cb=$('casaCtx'), ac=dc.startsWith('B ')?'comprar':dc.startsWith('E ')?'usar':null;   // casa: comprar, entrar, sair, dormir
+    const dc=toqueTela?(loja?'E balcao':dicaCasa(p.x,p.z)):'', cb=$('casaCtx'), ac=dc.startsWith('B ')?'comprar':dc.startsWith('E ')?'usar':null;   // casa: comprar, entrar, sair, dormir
     cb.style.display=ac&&!veic.dirigindo?'block':'none';
-    if(ac&&cb.dataset.k!==dc){ cb.dataset.k=dc; cb.dataset.acao=ac; cb.textContent=dc==='E remedio'?'💊 Comprar remédio':dc.includes('comprar')?'🏡 Comprar casa':dc.includes('entrar')?'🚪 Entrar em casa':dc.includes('sair')?'🚪 Sair de casa':'🛏️ Dormir'; }
+    if(ac&&cb.dataset.k!==dc){ cb.dataset.k=dc; cb.dataset.acao=ac; cb.textContent=dc==='E balcao'?'🛒 Balcão':dc.includes('comprar')?'🏡 Comprar casa':dc.includes('entrar')?'🚪 Entrar em casa':dc.includes('sair')?'🚪 Sair de casa':'🛏️ Dormir'; }
     const d=toqueTela&&!casa.dentro?dicaTerreno(p.x,p.z):'', acao=obra.ativa?'obra':d.startsWith('B comprar')?'comprar':d.startsWith('C construir')?'obra':null;
     $('negBtn').style.display=toqueTela&&!obra.ativa&&pertoDeNegocioMeu(p.x,p.z)?'block':'none';
     { const eb=$('entBtn'), dirige=TOQUE&&!home.aberta&&!!veic.dirigindo&&!trabalho.tipo, k=dirige?(alvoCorrida()?'c':'e'):'';   // entrega: só existia na tecla N
@@ -286,7 +314,8 @@ function quadro(){
     tb.style.display=acao?'block':'none';
     if(acao&&tb.dataset.k!==acao+obra.ativa){ tb.dataset.k=acao+obra.ativa; tb.dataset.acao=acao; tb.textContent=obra.ativa?'✅ Sair da obra':acao==='comprar'?'💰 Comprar terreno':'🧱 Construir'; } }
   if(!home.aberta) atualizarCorrida(dt, veic.dirigindo);
-  alvoTrab=!home.aberta?atualizarTrabalho(dt,p.x,p.z,!veic.dirigindo):null;
+  alvoTrab=!home.aberta?atualizarTrabalho(dt,p.x,p.z,!veic.dirigindo,veic.dirigindo?veic.dirigindo.v:0):null;
+  if(!home.aberta){ veic.recolherSoltos(p.x,p.z); passarEfeitos(dt); }
   if(!home.aberta&&!casa.dentro) atualizarGPS(dt,p.x,p.z,camera.position.x,camera.position.z,avisarTerreno); else $('gps').style.display='none';
   // online: manda meu estado e move os outros jogadores
   if(!home.aberta){ const D2=veic.dirigindo; enviarEstado(dt,{x:p.x,z:p.z,r:rumo,a:D2?'parado':estadoAPe,vt:D2?D2.tipo.id:null,vh:D2?D2.h:null,e:vida.e,c:vida.caido>0,g:[golpe.seq,golpe.tipo||'']}); }

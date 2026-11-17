@@ -362,3 +362,47 @@ export function atualizarNegocios(dt, px, pz){
   musicaLoja(dentro);
   for(let i=flut.length-1;i>=0;i--){ const f=flut[i]; f.t-=dt; f.s.position.y+=dt*0.8; f.s.material.opacity=Math.min(1,f.t); if(f.t<=0){ f.n.g.remove(f.s); flut.splice(i,1); } }
 }
+
+/* ───────── 🛒 balcão: o jogador compra produtos em qualquer negócio aberto (pedido do Maicon em 17/11) ─────────
+   Cada produto desconta do saldo e muda algo no jogo. Efeitos (main.js aplica):
+   e: energia +N · cheia: energia 100 · corrida: s correndo mais rápido · disfarce: some com as estrelas da polícia
+   conserto: arruma o último veículo que dirigiu · turbo: s de turbo no veículo. No seu próprio negócio sai pela metade. */
+export const PRODUTOS={
+  padaria:   [['🥖','Pão francês',6,{e:10}], ['☕','Café',5,{e:5,corrida:60}], ['🍰','Bolo',22,{e:30}]],
+  lanchonete:[['🍔','X-salada',22,{e:35}], ['🧃','Suco',8,{e:12}], ['🍟','Combo completo',40,{e:65}]],
+  mercado:   [['🍱','Marmita',18,{e:35}], ['💧','Água',3,{e:5}], ['🍌','Banana',4,{e:8}], ['⚡','Energético',15,{e:15,corrida:120}]],
+  roupas:    [['👟','Tênis de corrida',120,{corrida:300}], ['🧥','Roupa nova (disfarce)',150,{disfarce:true}], ['🧢','Boné',35,{e:5}]],
+  farmacia:  [['💊','Remédio',PRECO_REMEDIO,{cheia:true}], ['🩹','Curativo',15,{e:25}], ['🍊','Vitamina C',20,{e:15,corrida:90}]],
+  oficina:   [['🔧','Conserto do veículo',80,{conserto:true}], ['🚀','Turbo (5 min)',200,{turbo:300}], ['🧴','Lavagem',25,{conserto:'leve'}]],
+  bar:       [['🥤','Refri',6,{e:8}], ['🍗','Porção',35,{e:45}], ['🧊','Água com gás',5,{e:6}]],
+};
+// jogador dentro de um negócio aberto (de qualquer jogador)?
+export function lojaAqui(x,z){
+  for(const n of abertos.values()){ const l=n.l, T=TIPOS[l.negocio]; if(!T) continue;
+    const dx=x-l.A[0], dz=z-l.A[1], u=dx*l.t[0]+dz*l.t[1], v=dx*l.n[0]+dz*l.n[1];
+    if(u>X0&&u<X1&&v>Z0&&v<(T.fundo||Z1)) return n; }
+  return null;
+}
+const descreve=ef=>[ef.cheia?'energia cheia':ef.e?`+${ef.e} energia`:'', ef.corrida?`corre mais rápido ${ef.corrida>=120?Math.round(ef.corrida/60)+' min':ef.corrida+' s'}`:'',
+  ef.disfarce?'a polícia perde você de vista':'', ef.conserto===true?'arruma o último veículo que você dirigiu':ef.conserto?'tira a sujeira e o amassado leve':'', ef.turbo?'veículo mais rápido':''].filter(Boolean).join(' · ');
+// aplicar(ef) devolve texto de erro (não cobra) ou '' (deu certo)
+export function abrirBalcao(n, aplicar){
+  const l=n.l, T=TIPOS[l.negocio], dono=meu(l), lista=PRODUTOS[l.negocio]||[];
+  $('balcaoTit').textContent=`${T.ic} ${nomeNeg(l)}`;
+  $('balcaoInfo').textContent=(dono?'Seu negócio: aqui você paga só a metade. ':'')+`Saldo: ${fmt(salvo.saldo)}`;
+  const g=$('balcaoLista'); g.replaceChildren();
+  for(const [ic,nome,preco0,ef] of lista){ const preco=dono?Math.ceil(preco0/2):preco0;
+    const b=document.createElement('button'); b.className='neg';
+    const i=document.createElement('div'); i.className='ic'; i.textContent=ic;
+    const tx=document.createElement('div'); const nm=document.createElement('b'); nm.textContent=`${nome} · ${fmt(preco)}`; const s=document.createElement('span'); s.textContent=descreve(ef); tx.append(nm,s); b.append(i,tx);
+    b.disabled=salvo.saldo<preco; b.title=b.disabled?'Saldo insuficiente':'';
+    b.onclick=()=>{ if(salvo.saldo<preco){ avisar('Saldo insuficiente'); return; }
+      const erro=aplicar(ef); if(erro){ avisar(erro); return; }
+      ganhar(-preco);
+      $('balcao').classList.remove('on'); avisar(`${ic} ${nome}: ${descreve(ef)} (−${fmt(preco)})`);
+      dispatchEvent(new CustomEvent('matelandia:comprou',{detail:{tipo:l.negocio,nome}})); };
+    g.append(b); }
+  $('balcao').classList.add('on');
+}
+$('balcaoFechar')?.addEventListener('click',()=>$('balcao').classList.remove('on'));
+$('balcao')?.addEventListener('click',e=>{ if(e.target.id==='balcao') $('balcao').classList.remove('on'); });
