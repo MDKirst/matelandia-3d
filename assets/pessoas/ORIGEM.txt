@@ -11,3 +11,6 @@ da Poly Pizza (poly.pizza/m/BTALZymknF e poly.pizza/m/9kF7eTDbhO), enxugados pel
 piloto-estradeiro.glb, piloto-gladius.glb, piloto-ludwick.glb: pilotos do Couro & Asfalto (public/modelos,
 imagem por IA -> 3D -> esqueleto e movimentos do Mixamo), copiados em 16/11/2026 a pedido do Maicon.
 Sem brasao de clube no arquivo (no Couro & Asfalto o brasao e posto pelo codigo).
+
+valdir.glb ("Seu Valdir", agricultor): imagem por IA (FLUX) em pose T -> 3D no TRELLIS.2 (Maicon) -> reduzido no
+Blender -> esqueleto no Mixamo (Maicon) + movimentos do Mixamo da pasta jogo/GDB (os mesmos dos pilotos), 16/11/2026.
