@@ -71,7 +71,8 @@ export function desenharMapa(){
   k.save(); k.translate(W/2,H/2); k.scale(e,e); k.translate(-vista.cx,-vista.cz);
   const vx0=vista.cx-W/2/e-50, vx1=vista.cx+W/2/e+50, vz0=vista.cz-H/2/e-50, vz1=vista.cz+H/2/e+50;
   const poli=(pts)=>{ k.beginPath(); pts.forEach((q,i)=>i?k.lineTo(q[0],q[1]):k.moveTo(q[0],q[1])); k.closePath(); };
-  if(d.terrenos){ for(const [lista,cor] of [[d.terrenos.livres||[],'rgba(34,197,94,.55)'],[d.terrenos.outros,'rgba(148,163,184,.5)'],[d.terrenos.meus,'#F97316']]) for(const l of lista){ k.fillStyle=cor; poli(l.cantos); k.fill(); } }
+  if(d.terrenos){ for(const [lista,cor] of [[d.terrenos.livres||[],'rgba(34,197,94,.55)'],[d.terrenos.outros,'rgba(148,163,184,.5)'],[d.terrenos.meus,'#F97316']]) for(const l of lista){ k.fillStyle=cor; poli(l.cantos); k.fill(); }
+    for(const l of d.terrenos.livres||[]) if(l.esp==='balada'){ k.fillStyle=Math.floor(performance.now()/450)%2?'rgba(217,70,239,.95)':'rgba(250,204,21,.95)'; poli(l.cantos); k.fill(); } }   // balada à venda pisca
   k.fillStyle='#6b665b';
   for(const p of predios){ const b=p.bb; if(b[2]<vx0||b[0]>vx1||b[3]<vz0||b[1]>vz1) continue; poli(p.pts); k.fill(); }
   if(d.casas){ for(const [lista,cor] of [[d.casas.outras,'#94a3b8'],[d.casas.minhas,'#F97316']]) for(const pts of lista){ k.fillStyle=cor; poli(pts); k.fill(); } }
@@ -95,8 +96,9 @@ export function desenharMapa(){
     k.beginPath(); k.moveTo(0,14*dpr); k.lineTo(9*dpr,-10*dpr); k.lineTo(0,-4*dpr); k.lineTo(-9*dpr,-10*dpr); k.closePath(); k.fill(); k.stroke(); k.restore(); }
   k.fillStyle='#fff'; k.font=`800 ${18*dpr}px system-ui`; k.fillText('N',W/2,22*dpr);
 }
-export function abrirMapa(){ const d=dados(); vista.cx=d.jogador[0]; vista.cz=d.jogador[1]; $('mapa').classList.add('on'); montarAtalhos(); desenharMapa(); }
-export function fecharMapa(){ $('mapa').classList.remove('on'); }
+let piscar=null;   // redesenha enquanto aberto, para a balada à venda piscar
+export function abrirMapa(){ const d=dados(); vista.cx=d.jogador[0]; vista.cz=d.jogador[1]; $('mapa').classList.add('on'); montarAtalhos(); desenharMapa(); clearInterval(piscar); piscar=setInterval(()=>{ if(dados().terrenos?.livres?.some(l=>l.esp==='balada')) desenharMapa(); },450); }
+export function fecharMapa(){ $('mapa').classList.remove('on'); clearInterval(piscar); piscar=null; }
 export function alternarMapa(){ $('mapa').classList.contains('on')?fecharMapa():abrirMapa(); }
 const zoom=(f,sx,sy)=>{ const dpr=Math.min(devicePixelRatio,2), r=cv.getBoundingClientRect(); sx??=r.width/2; sy??=r.height/2;
   const [mx,mz]=mundo(sx,sy,dpr); vista.esc=Math.max(0.08,Math.min(4,vista.esc*f)); const [nx,nz]=mundo(sx,sy,dpr); vista.cx+=mx-nx; vista.cz+=mz-nz; desenharMapa(); };

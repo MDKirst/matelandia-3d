@@ -86,4 +86,4 @@ try{ if(localStorage.getItem('matelandia3d.ajuda')!=='1') document.body.classLis
 $('terrBtn').addEventListener('click',e=>{ pedido[e.currentTarget.dataset.acao||'comprar']=true; e.currentTarget.blur(); });
 $('negBtn').addEventListener('click',e=>{ pedido.negocio=true; e.currentTarget.blur(); });
 for(const b of document.querySelectorAll('#acoes button')) b.addEventListener('click',e=>{ pedido.acao=b.dataset.acao; e.currentTarget.blur(); });
-for(const b of document.querySelectorAll('#luta button')) b.addEventListener('click',e=>{ pedido.golpe=b.dataset.golpe; e.currentTarget.blur(); });
+for(const b of document.querySelectorAll('#luta button')) b.addEventListener('click',e=>{ if(b.dataset.pulo) pedido.pulo=true; else pedido.golpe=b.dataset.golpe; e.currentTarget.blur(); });

@@ -17,7 +17,13 @@ export function minimapa(px,pz,rumo,veiculos=[],transito=[],alvo=null,jogadores=
       mm.beginPath(); l.cantos.forEach((q,i)=>i?mm.lineTo(q[0],q[1]):mm.moveTo(q[0],q[1])); mm.closePath(); mm.fillStyle=fill; mm.fill(); mm.strokeStyle=stroke; mm.lineWidth=2.5; mm.stroke(); };
     for(const l of terrenos.livres||[]) lote(l,'rgba(34,197,94,.55)','#bbf7d0');                   // à venda: verde (cor da placa VENDE-SE)
     for(const l of terrenos.outros) lote(l,'rgba(148,163,184,.45)','#cbd5e1');
-    for(const l of terrenos.meus) lote(l,'rgba(249,115,22,.75)','#fff7ed'); }
+    for(const l of terrenos.meus) lote(l,'rgba(249,115,22,.75)','#fff7ed');
+    // postos e balada (17/11): ícone no lote; a balada à venda pisca até alguém comprar
+    const pisca=Math.floor(performance.now()/450)%2===0;
+    for(const l of terrenos.livres||[]) if(l.esp==='balada') lote(l,pisca?'rgba(217,70,239,.9)':'rgba(250,204,21,.85)','#fdf4ff');
+    mm.font='22px system-ui'; mm.textAlign='center'; mm.textBaseline='middle';
+    for(const l of [...(terrenos.livres||[]),...terrenos.outros,...terrenos.meus]) if(l.esp){ const [x,z]=l.centro; if(Math.abs(x-px)<alc+20&&Math.abs(z-pz)<alc+20) mm.fillText(l.esp==='posto'?'⛽':'🪩',x,z); }
+    mm.textBaseline='alphabetic'; }
   mm.fillStyle='#8d8676';
   const cs=terrenos?.casas; if(cs){ for(const [lista,cor] of [[cs.outras,'#94a3b8'],[cs.minhas,'#F97316']]) for(const pts of lista){ mm.fillStyle=cor; mm.beginPath(); pts.forEach((q,i)=>i?mm.lineTo(q[0],q[1]):mm.moveTo(q[0],q[1])); mm.closePath(); mm.fill(); } mm.fillStyle='#8d8676'; }
   for(const p of predios){ const b=p.bb; if(b[2]<px-alc||b[0]>px+alc||b[3]<pz-alc||b[1]>pz+alc) continue;

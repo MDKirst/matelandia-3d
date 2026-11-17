@@ -21,3 +21,6 @@ A viatura da policia passou a ser a caminhonete-policia.glb (preta, do Couro & A
 
 viatura-suv.glb: SUV da policia (PRF) feita por IA (FLUX -> TRELLIS.2) no Couro & Asfalto (commits 734b6de/6528ae0);
 saiu de la em 04/11 (e266bbd) e foi recuperada do historico em 16/11/2026 a pedido do Maicon, para patrulhar a cidade.
+
+classica.glb, custom.glb, esportiva.glb e naked.glb (motos de IA: imagem do Gemini/Flow -> 3D TRELLIS.2): copiadas do Couro & Asfalto
+(public/modelos/moto-*.glb) em 17/11/2026, pedido do Maicon ("usa as motos 3d do couro e asfalto").

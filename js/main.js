@@ -40,6 +40,7 @@ import { construirCampos } from './campos.js';
 import { sentar, descer, girarRodas } from './moto.js';
 import { iniciarCeu, desenhar, horaJogo, relogioTxt, quantoNoite, postes, posteEm } from './ceu.js';
 import { iniciarCriancas, atualizarCriancas, bateNaCrianca, posicoesCriancas } from './criancas.js';
+import { iniciarEspeciais, atualizarEspeciais, pontosEspeciais } from './especiais.js';
 import { ganhar as conquista, contar, colecionar } from './conquistas.js';
 import { pedirFoto, talvezFotografar } from './foto.js';
 import { policia } from './policia.js';
@@ -84,6 +85,8 @@ let lugaresCache=[], gesto=0, estadoAPe='parado', camRua=[9,0.42];
 const TOQUE=matchMedia('(pointer:coarse)').matches;
 // celular: os botões do painel sem as teclas do teclado ("Foto (P)" → "Foto")
 if(TOQUE) for(const b of document.querySelectorAll('#btns button')) b.textContent=b.textContent.replace(/\s*\([^)]*\)\s*$/,'');
+// pulo (17/11, pedido do Maicon): Espaço a pé (no carro o Espaço continua sendo o freio de mão)
+const pulo={ y:0, v:0, antes:false };
 const relogio=new THREE.Clock(), alvo=new THREE.Vector3(); let rumo=0, tLento=0, passo=0, ruaAtual='', orbita=0.6;
 function aPe(dt){
   let ix=(tecla.KeyD||tecla.ArrowRight?1:0)-(tecla.KeyA||tecla.ArrowLeft?1:0);
@@ -92,6 +95,9 @@ function aPe(dt){
   if(toque.joy){ ix=toque.joy.x; iy=-toque.joy.y; if(Math.hypot(ix,iy)>0.92) correndo=true; }
   if(vida.caido>0||golpe.tipo||detido>0){ ix=0; iy=0; }                          // desmaiado ou no meio do golpe: parado
   const forca=Math.min(1,Math.hypot(ix,iy)); let estado='parado';
+  { const quer=(tecla.Space&&!pulo.antes)||pedido.pulo; pulo.antes=!!tecla.Space; pedido.pulo=false;
+    if(quer&&pulo.y===0&&vida.caido<=0&&!golpe.tipo&&detido<=0&&!casa.dentro) pulo.v=5.4;           // ~1 m de altura
+    if(pulo.v||pulo.y){ pulo.v-=15*dt; pulo.y=Math.max(0,pulo.y+pulo.v*dt); if(pulo.y===0) pulo.v=0; } }
   const p=jogador.position;
   if(vida.empurra){ const [ex,ez]=vida.empurra; vida.empurra=null; if(!travado(p.x+ex,p.z+ez)){ p.x+=ex; p.z+=ez; } }
   if(forca>0.12){
@@ -106,7 +112,7 @@ function aPe(dt){
   }
   p.x=Math.max(LX0+3,Math.min(LX1-3,p.x)); p.z=Math.max(LZ0+3,Math.min(LZ1-3,p.z));
   jogador.rotation.y=rumo; suporte.rotation.order='YXZ'; suporte.rotation.y=av.giroExtra;
-  suporte.rotation.x=-vida.queda*Math.PI/2; suporte.position.y=vida.queda*0.12;   // desmaiado: deitado de costas
+  suporte.rotation.x=-vida.queda*Math.PI/2; suporte.position.y=vida.queda*0.12+pulo.y;   // pulando sobe; desmaiado: deitado de costas
   if(gesto>0){ gesto-=dt; if(estado==='parado') estado='acenar'; }       // acenando para alguém
   estadoAPe=estado;
   animar(estado); if(av.mixer) av.mixer.update(dt);
@@ -165,7 +171,7 @@ function cumprirPena(dt){
   return detido>0;
 }
 // o que o mapa grande mostra (pontos fixos dos lugares públicos + negócios e casa dos jogadores)
-fonteMapa(()=>{ const pts=pontosNegocios();
+fonteMapa(()=>{ const pts=[...pontosNegocios(),...pontosEspeciais()];
   for(const l of lugaresCache){ const t=(l.cat||'')+' '+l.n; const tipo=/hospital/i.test(t)?'hospital':/police|pol[ií]cia|\bPM\b/i.test(t)?'policia':null; if(!tipo) continue;
     const [x,z]=toXZ(l.lat,l.lon); pts.push({x,z,ic:tipo==='hospital'?'🏥':'🚔',nome:l.n,tipo}); }
   for(const c of todasCasas) if(c.dono&&c.dono===nuvem.uid) pts.push({x:(c.porta||[c.cx,c.cz])[0],z:(c.porta||[c.cx,c.cz])[1],ic:'🏡',nome:'Minha casa',tipo:'minhaCasa'});
@@ -306,7 +312,7 @@ function quadro(){
   if(!home.aberta) atualizarPolicia(dt,{x:p.x,z:p.z,dirigindo:!!D,v:D?D.v:0},prender);
   if(!home.aberta&&!casa.dentro) atualizarGangues(dt,{x:p.x,z:p.z,y:altura(p.x,p.z),dirigindo:!!D,caido:vida.caido>0||detido>0},
     (dano,fx,fz)=>{ if(levarPancada(dano,fx,fz)) somPancada(); return vida.caido>0; }, avisarTerreno);
-  efeitosVeiculos(dt); atualizarEfeitos(dt); atualizarBaloes(dt); atualizarNegocios(dt,p.x,p.z);
+  efeitosVeiculos(dt); atualizarEfeitos(dt); atualizarBaloes(dt); atualizarNegocios(dt,p.x,p.z); atualizarEspeciais(dt);
   // celular: sem teclado, os botões de terreno aparecem conforme o lugar (B comprar / C construir / V negócio)
   { const toqueTela=matchMedia('(pointer:coarse)').matches&&!home.aberta&&!veic.dirigindo, tb=$('terrBtn');
     const dc=toqueTela?(loja?'E balcao':dicaCasa(p.x,p.z)):'', cb=$('casaCtx'), ac=dc.startsWith('B ')?'comprar':dc.startsWith('E ')?'usar':null;   // casa: comprar, entrar, sair, dormir
@@ -387,7 +393,7 @@ carregarCidade().then(async()=>{
   try{ const l=lugaresCache=(await (await fetch('dados/lugares.json')).json()).lugares; await iniciarPedestres(l, jogador.position.x, jogador.position.z); iniciarGangues().catch(e=>console.warn('gangues',e)); iniciarCriancas().catch(e=>console.warn('crianças',e)); }catch(e){ console.warn('pedestres',e); }
   const p=jogador.position, [x,z]=pontoLivre(p.x,p.z); p.set(x,0,z);   // não nascer dentro de uma casa
   progresso('Demarcando terrenos…');
-  console.info('terrenos', iniciarTerrenos());
+  console.info('terrenos', iniciarTerrenos()); console.info('postos/balada', iniciarEspeciais());
   console.info('casas à venda', iniciarCasas());
   iniciarNegocios().catch(e=>console.warn('negócios',e));
   iniciarJornal().catch(e=>console.warn('jornal',e));

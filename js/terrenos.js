@@ -11,6 +11,8 @@ import { ruas, predios } from './cidade.js';
 import { bloqueado, definirBloqueioExtra } from './mundo.js';
 import { substituidoPorMarco } from './marcos.js';
 import { comerciosRemovidos, prediosOcultos } from './predios.js';
+import { ocultosMarcos } from './marcos.js';
+import { ESPECIAIS, comoLote } from './especiais-dados.js';
 import { noCampo } from './campos.js';
 import { altura } from './relevo.js';
 import { LX0, LZ0, LX1, LZ1 } from './geo.js';
@@ -108,7 +110,7 @@ function lotesVazios(){
   // prédios de comércio que saíram (predios.js): para refazer os 70 terrenos de antes IGUAIS (os ids
   // são a posição e têm dono no banco), eles contam como prédio na primeira passada
   const removido=(x,z)=>comerciosRemovidos.some(p=>{ const b=p.bb; return x>=b[0]&&x<=b[2]&&z>=b[1]&&z<=b[3]&&dentroPoly(x,z,p.pts); });
-  const oculto=(x,z)=>prediosOcultos.some(p=>{ const b=p.bb; return x>=b[0]&&x<=b[2]&&z>=b[1]&&z<=b[3]&&dentroPoly(x,z,p.pts); });   // saiu da tela, mas os terrenos contam como prédio
+  const oculto=(x,z)=>[...prediosOcultos,...ocultosMarcos].some(p=>{ const b=p.bb; return x>=b[0]&&x<=b[2]&&z>=b[1]&&z<=b[3]&&dentroPoly(x,z,p.pts); });   // saiu da tela, mas os terrenos contam como prédio
   const livreCom=(c,bloq)=>{ for(let u=0.5;u<=W-0.5;u+=2.75) for(let v=0.5;v<=D-0.5;v+=2.9){
       const x=c.A[0]+c.t[0]*u+c.n[0]*v, z=c.A[1]+c.t[1]*u+c.n[1]*v;
       if(bloq(x,z)||noCampo(x,z,3)||substituidoPorMarco(x,z,'muro',0)||(v>1&&pertoDeRua(x,z,0.2))) return false; }
@@ -151,9 +153,10 @@ function montarLote(c,idx){
   const id=Math.round(c.cx)+'_'+Math.round(c.cz);
   const grupo=new THREE.Group(); grupo.position.set(c.A[0],0,c.A[1]); grupo.rotation.y=Math.atan2(-c.t[1],c.t[0]);   // local +x = frente (t), +z = fundo (n)
   // chão do lote (também é o alvo do raio da construção)
-  const chao=new THREE.Mesh(new THREE.PlaneGeometry(W,D,3,6).rotateX(-Math.PI/2).translate(W/2,0,D/2),matChao); chao.renderOrder=-6.6; grupo.add(chao);
-  for(const [x,z] of [[0,0],[W,0],[0,D],[W,D]]){ const e=new THREE.Mesh(new THREE.BoxGeometry(0.12,0.9,0.12),matEstaca); e.position.set(x,0.45,z); grupo.add(e); }
-  const l={id, A:c.A, t:c.t, n:c.n, preco:Math.round((W*D*(22+((idx*37)%17)))/500)*500, grupo, chao, placa:null, blocos:new Map(), ocupa:new Set(), inst:[]};
+  const w=c.w||W, d=c.d||D;                                        // lote especial (posto, balada) tem tamanho próprio
+  const chao=new THREE.Mesh(new THREE.PlaneGeometry(w,d,3,6).rotateX(-Math.PI/2).translate(w/2,0,d/2),matChao); chao.renderOrder=-6.6; grupo.add(chao);
+  for(const [x,z] of [[0,0],[w,0],[0,d],[w,d]]){ const e=new THREE.Mesh(new THREE.BoxGeometry(0.12,0.9,0.12),matEstaca); e.position.set(x,0.45,z); grupo.add(e); }
+  const l={id, A:c.A, t:c.t, n:c.n, preco:c.preco||Math.round((W*D*(22+((idx*37)%17)))/500)*500, w, d, especial:c.especial||null, grupo, chao, placa:null, blocos:new Map(), ocupa:new Set(), inst:[]};
   l.cx=c.cx; l.cz=c.cz;
   scene.add(grupo); trocarPlaca(l);
   // terreno já comprado neste navegador
@@ -165,8 +168,8 @@ const meuNome=()=>{ try{ return (localStorage.getItem('matelandia3d.nome')||'').
 function trocarPlaca(l){
   if(l.placa) l.grupo.remove(l.placa);
   l.placa=null; if(meu(l)||l.dono) return;                         // comprado (por você ou outro): a placa sai
-  l.placa=placa('VENDE-SE',fmt(l.preco),'#15803d');
-  l.placa.position.set(W/2,0,0.8); l.placa.rotation.y=Math.PI;   // de frente para a rua
+  l.placa=placa(l.especial?'À VENDA':'VENDE-SE',fmt(l.preco),l.especial?'#a21caf':'#15803d');
+  l.placa.position.set(l.w/2,0,0.8); l.placa.rotation.y=Math.PI;   // de frente para a rua
   l.grupo.add(l.placa);
 }
 
@@ -184,9 +187,10 @@ function refazer(l){
 }
 // bloco no chão/primeiro andar bloqueia passagem (pessoa, carro, polícia)
 function bloqueiaBloco(x,z){
-  for(const l of lotes){ if(!l.ocupa.size&&!l.ocupaNeg) continue;
+  for(const l of lotes){ if(!l.ocupa.size&&!l.ocupaNeg&&!l.ocupaEsp) continue;
     const dx=x-l.A[0], dz=z-l.A[1], u=dx*l.t[0]+dz*l.t[1], v=dx*l.n[0]+dz*l.n[1];
-    if(u<0||v<0||u>=W||v>=D) continue;
+    if(u<0||v<0||u>=l.w||v>=l.d) continue;
+    if(l.ocupaEsp?.(u,v)) return true;
     const cel=Math.floor(u)+','+Math.floor(v); if(l.ocupa.has(cel)||l.ocupaNeg?.has(cel)) return true; }
   return false;
 }
@@ -195,7 +199,7 @@ function bloqueiaBloco(x,z){
 export const obra={ ativa:false, lote:null, tipo:0, tirar:false, giro:0 };
 function loteEm(x,z,margem=0){
   for(const l of lotes){ const dx=x-l.A[0], dz=z-l.A[1], u=dx*l.t[0]+dz*l.t[1], v=dx*l.n[0]+dz*l.n[1];
-    if(u>=-margem&&v>=-margem-3&&u<=W+margem&&v<=D+margem) return l; }
+    if(u>=-margem&&v>=-margem-3&&u<=l.w+margem&&v<=l.d+margem) return l; }
   return null;
 }
 let aviso=null;
@@ -221,6 +225,7 @@ export async function comprar(x,z){
 export function alternarObra(x,z){
   if(obra.ativa){ sairObra(); return; }
   const l=loteEm(x,z,0); if(!l||!meu(l)){ avisar(l?'Compre o terreno primeiro (B)':'Entre no seu terreno para construir'); return; }
+  if(l.especial){ avisar('Aqui o prédio já vem pronto: V para cuidar do negócio'); return; }
   if(l.negocio){ avisar('Aqui funciona o seu negócio: V para cuidar dele'); return; }
   obra.ativa=true; obra.lote=l; $('barra').style.display='flex'; fantasma.visible=true; marcarBarra();
 }
@@ -230,6 +235,7 @@ function sairObra(){ obra.ativa=false; obra.lote=null; $('barra').style.display=
 export function dicaTerreno(x,z){
   const l=loteEm(x,z,1); if(!l) { if(obra.ativa) sairObra(); return ''; }
   if(obra.ativa) return 'Clique: colocar · Direito: tirar · 1–8 blocos · 9 porta · 0 janela · P piso · C: sair · V: negócio';
+  if(l.especial&&ganchos.especial) return ganchos.especial(l);
   const neg=ganchos.dica?.(l); if(neg) return neg;
   if(!meu(l)&&l.dono) return `Terreno de ${l.donoNome||'outro jogador'}`;
   return meu(l)?'C construir · V abrir um negócio':`B comprar terreno (${fmt(l.preco)}) · saldo ${fmt(salvo.saldo)}`;
@@ -310,6 +316,7 @@ function marcarBarra(){ [...$('barra').querySelectorAll('.bloco')].forEach((d,i)
 export function iniciarTerrenos(){
   definirBloqueioExtra(bloqueiaBloco);
   lotesVazios().forEach(montarLote);
+  ESPECIAIS.forEach((e,i)=>montarLote(comoLote(e),i));   // DEPOIS dos comuns: os ids dos terrenos de sempre não mudam
   montarBarra(); hudSaldo();
   ligarNuvem().catch(e=>console.warn('mundo compartilhado:',e));
   return lotes.length;
@@ -346,11 +353,11 @@ async function ligarNuvem(){
 export const lotesMeus=()=>lotes.filter(meu);
 // para o minimapa e o "ir ao terreno": cantos do lote, centro e um ponto na calçada da frente
 const desenhoLote=l=>{ const c=(u,v)=>[l.A[0]+l.t[0]*u+l.n[0]*v, l.A[1]+l.t[1]*u+l.n[1]*v];
-  return { id:l.id, cantos:[c(0,0),c(W,0),c(W,D),c(0,D)], centro:c(W/2,D/2), frente:c(W/2,-1.5) }; };
+  return { id:l.id, cantos:[c(0,0),c(l.w,0),c(l.w,l.d),c(0,l.d)], centro:c(l.w/2,l.d/2), frente:c(l.w/2,-1.5), esp:l.especial?.tipo||null }; };
 export const terrenosNoMapa=()=>({ meus:lotes.filter(meu).map(desenhoLote), outros:lotes.filter(l=>l.dono&&!meu(l)).map(desenhoLote), livres:lotes.filter(l=>!l.dono&&!meu(l)).map(desenhoLote) });
 export { avisar as avisarTerreno };
 // para o negocios.js (sem import circular: ele registra a dica aqui)
-export const ganchos={ dica:null };
+export const ganchos={ dica:null, especial:null, acaoEspecial:null };
 // tira todos os blocos do terreno (para abrir um negócio no lugar)
 export function limparBlocos(l){ if(!meu(l)) return; for(const k of [...l.blocos.keys()]) tirarBloco(l.id,k); l.blocos.clear(); refazer(l); }
 export { sairObra };

@@ -310,6 +310,7 @@ $('negocio').addEventListener('click',e=>{ if(e.target.id==='negocio') fecharUI(
 export function acaoNegocio(x,z){
   const l=loteEm(x,z,1);
   if(!l){ avisar('Vá até o seu terreno para abrir um negócio (L leva até ele)'); return; }
+  if(l.especial){ ganchos.acaoEspecial?.(l); return; }               // posto / balada: o negócio já vem pronto (especiais.js)
   if(!meu(l)){ avisar(l.negocio?`${TIPOS[l.negocio].ic} ${nomeNeg(l)}`:l.dono?`Terreno de ${l.donoNome||'outro jogador'}`:'Compre o terreno primeiro (B)'); return; }
   if(l.negocio) abrirPainel(l); else abrirCardapio(l);
 }

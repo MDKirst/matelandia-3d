@@ -23,6 +23,11 @@ const TIPOS = [
   { id:'sedan',  nome:'Sedã',            arq:'assets/veiculos/sedan.glb',  vmax:27, acel:6,  entre:2.7, cam:9  },
   { id:'trail',  nome:'Moto trail',      arq:'assets/veiculos/trail.glb',  vmax:28, acel:8,  entre:1.5, cam:6, moto:true },
   { id:'urbana', nome:'Moto urbana',     arq:'assets/veiculos/urbana.glb', vmax:25, acel:7.5,entre:1.4, cam:6, moto:true },
+  // as outras motos de IA do Couro & Asfalto (pedido do Maicon em 17/11)
+  { id:'classica', nome:'Moto clássica', arq:'assets/veiculos/classica.glb', vmax:26, acel:7,  entre:1.45, cam:6, moto:true },
+  { id:'custom',   nome:'Moto cruiser', arq:'assets/veiculos/custom.glb',   vmax:27, acel:7,  entre:1.65, cam:6.5, moto:true },
+  { id:'esportiva',nome:'Moto esportiva',arq:'assets/veiculos/esportiva.glb',vmax:34, acel:9,  entre:1.3, cam:6, moto:true },
+  { id:'naked',    nome:'Moto naked',    arq:'assets/veiculos/naked.glb',    vmax:31, acel:8.5,entre:1.4, cam:6, moto:true },
 ];
 // 17/11 (pedido do Maicon: "os carros têm que pegar mais velocidade"): velocidade máxima +45% e arrancada +70%
 // para todo veículo dirigível (aplicado nos dados, então velocímetro e som do motor acompanham)

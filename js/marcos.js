@@ -13,12 +13,16 @@ const PRACA_MUNICIPAL = [[-111.7,-94.5],[6.3,-83.1],[-3.5,16.2],[-119.3,6.4]];  
 const PRACA_BIAZUS    = [[-611.0,105.6],[-553.9,111.1],[-560.1,211.4],[-617.6,204.4]];
 const IGREJA = { c:[-636,156.5], r:17.5 };              // contorno de 12 lados do Overture, ~37 m de diâmetro
 const LOTE_COLEGIO = [-788,-675,85,196];                 // x0,x1,z0,z1 (OSM: amenity=school, desenhado como "prédio")
+const PREFEITURA = [[255.8,-22.1],[247.7,40.0],[289.1,44.4],[294.6,-19.3]];   // OSM amenity=townhall (contorno do terreno inteiro)
+// prédios do OSM que o marco substitui mas que os terrenos continuam enxergando (para nenhum terreno mudar de lugar)
+export const ocultosMarcos = [];
 
 function dentroPoly(x,z,pts){ let c=false; for(let i=0,j=pts.length-1;i<pts.length;j=i++){ const a=pts[i],b=pts[j]; if((a[1]>z)!==(b[1]>z)&&x<(b[0]-a[0])*(z-a[1])/(b[1]-a[1])+a[0]) c=!c; } return c; }
 
 // Prédio genérico que sai do mapa porque o marco o substitui.
 // fonte: 'osm' | 'overture'; A = área em m²
 export function substituidoPorMarco(x,z,fonte,A){
+  if(dentroPoly(x,z,PREFEITURA)) return fonte==='osm'?'oculto':true;
   if(Math.hypot(x-IGREJA.c[0],z-IGREJA.c[1])<IGREJA.r+4) return true;
   if(x>=LOTE_COLEGIO[0]&&x<=LOTE_COLEGIO[1]&&z>=LOTE_COLEGIO[2]&&z<=LOTE_COLEGIO[3]) return true;
   if(dentroPoly(x,z,PRACA_MUNICIPAL)) return fonte==='muro' || (fonte==='overture' && A<150);   // quiosques/palco saem; quadra coberta fica; praça sem muro
@@ -97,6 +101,50 @@ function letreiro(l1,l2,x,y,z,ry){
   cabe(l2,600,400); k.textAlign='right'; k.fillText(l2,1000,82);
   const tex=new THREE.CanvasTexture(cv); tex.colorSpace=THREE.SRGBColorSpace;
   const m=new THREE.Mesh(new THREE.PlaneGeometry(15,2.2),new THREE.MeshBasicMaterial({map:tex})); m.position.set(x,y,z); m.rotation.y=ry; placas.push(m);
+}
+
+/* ───────── Prefeitura Municipal (pedido do Maicon em 17/11) ─────────
+   Forma, cor e posição pela foto que ele mandou (só referência; modelagem própria): prédio comprido de
+   3 andares, corpo creme, pilares e vigas amarelos, faixas de janelas com parapeito branco, rampa com
+   corrimão na frente, gramado, três mastros com bandeiras e a torre de antena atrás. Frente para a
+   Rua Rui Barbosa (leste). Eixos: s = comprimento (norte), q = profundidade (leste = frente). */
+function prefeitura(){
+  const C=[271.8,10.75], N=[0.086,-0.996], E=[0.996,0.086], ry=Math.atan2(N[0],N[1]);
+  const W=([q,s])=>[C[0]+E[0]*q+N[0]*s, C[1]+E[1]*q+N[1]*s];
+  const bx=(q0,q1,s0,s1,y0,y1,c)=>{ const [x,z]=W([(q0+q1)/2,(s0+s1)/2]); caixa(Math.abs(q1-q0),y1-y0,Math.abs(s1-s0),x,y0,z,c,ry); };
+  const CREME=0xe8dfb8, AMARELO=0xd9c35f, BRANCO=0xf3f0e4, VIDRO=0x3b4f63, CINZA=0x8e9196, LAJE=0xd6d1c2;
+  const Q0=-19, Q1=-3, S0=-26, S1=26, AND=3.6, H=AND*3;
+  bx(Q0,Q1,S0,S1,0,0.6,CINZA);                                         // base
+  bx(Q0+0.4,Q1-0.4,S0+0.4,S1-0.4,0.6,H,CREME);                         // corpo
+  for(let f=0;f<3;f++){ const y=f*AND;
+    for(const [qa,qb] of [[Q1-0.45,Q1-0.3],[Q0+0.3,Q0+0.45]]) bx(qa,qb,S0+0.6,S1-0.6,y+1.05,y+3.0,VIDRO);   // janelas da frente e do fundo
+    bx(Q1-0.3,Q1+0.15,S0+0.6,S1-0.6,y+0.15,y+1.05,BRANCO);             // parapeito branco (frente)
+    bx(Q1-0.4,Q1+0.5,S0,S1,y+3.25,y+AND,AMARELO);                      // viga amarela
+    for(const s0 of [S0-0.45,S1-0.15]) bx(Q0+2,Q1-2,s0,s0+0.6,y+1.2,y+2.9,VIDRO); }   // janelas das pontas
+  for(let s=S0;s<=S1+0.01;s+=6.5) bx(Q1-0.45,Q1+0.65,s-0.45,s+0.45,0,H+0.6,AMARELO);   // pilares
+  bx(Q0-0.4,Q1+0.9,S0-0.8,S1+0.8,H,H+0.45,LAJE); bx(Q0-0.4,Q1+0.9,S0-0.8,S1+0.8,H+0.45,H+0.9,BRANCO);   // laje e platibanda
+  // entrada: portas de vidro e marquise
+  bx(Q1+0.1,Q1+0.3,-3.2,3.2,0.6,3.1,0x22303d); bx(Q1,Q1+3.2,-4,4,3.1,3.35,BRANCO);
+  for(const s of [-3.8,3.8]) bx(Q1+2.9,Q1+3.15,s-0.12,s+0.12,0.6,3.1,CINZA);
+  // rampa até a porta (em degraus suaves) com corrimão
+  for(let i=0;i<8;i++){ const s0=-22+i*2.3; bx(Q1+0.9,Q1+2.8,s0,s0+2.3,0,0.08+i*0.07,0xbab3a2); }
+  bx(Q1+0.9,Q1+2.8,-3.6,3.6,0,0.6,0xbab3a2);
+  for(let s=-22;s<=-4;s+=2) bx(Q1+2.8,Q1+2.9,s-0.04,s+0.04,0,1.2+(s+22)*0.03,0xc9ccd0);
+  bx(Q1+2.78,Q1+2.92,-22,-4,1.15,1.25,0xc9ccd0);
+  // mastros e bandeiras (cores simples: verde/amarelo, verde/branco e vermelho/amarelo)
+  [[0x16a34a,0xfacc15],[0x15803d,0xf8fafc],[0xdc2626,0xfacc15]].forEach(([a,b],i)=>{ const s=-24+i*2.6, q=15;
+    bx(q-0.07,q+0.07,s-0.07,s+0.07,0,9,0xd1d5db); bx(q-0.03,q+0.03,s+0.1,s+1.9,7.2,8.0,a); bx(q-0.03,q+0.03,s+0.1,s+1.9,8.0,8.8,b); });
+  // torre de antena atrás (treliça simplificada, faixas vermelhas e brancas)
+  { const q=-13, s=8; for(let k=0;k<8;k++) bx(q-0.35,q+0.35,s-0.35,s+0.35,H+0.9+k*3,H+0.9+(k+1)*3,k%2?0xf8fafc:0xdc2626);
+    bx(q-1.4,q+1.4,s-0.06,s+0.06,H+18,H+18.2,0x9ca3af); bx(q-0.06,q+0.06,s-1.4,s+1.4,H+22,H+22.2,0x9ca3af); }
+  // caminho de tijolinho da rua até a rampa
+  caminho([W([19,-12]),W([10,-15]),W([4.5,-21])],1.8);
+  // placa com o nome, no gramado
+  placa('PREFEITURA MUNICIPAL','DE MATELÂNDIA',...(([x,z])=>[x,1.9,z])(W([16,4])));
+  { const m=placas[placas.length-1]; const [x,z]=W([16,4]); m.position.set(x,1.9,z); m.rotation.y=Math.atan2(E[0],E[1]);
+    for(const d of [-3,3]) bx(16-0.08,16+0.08,4+d-0.08,4+d+0.08,0,1.0,0x6b7280); }
+  // colisão: o prédio (o resto é gramado)
+  const [cx,cz]=W([(Q0+Q1)/2,0]); retGirado(cx,cz,Q1-Q0+1,S1-S0+1,ry);
 }
 
 /* ───────── Colégio Estadual Euclides da Cunha ───────── */
@@ -227,7 +275,7 @@ const hash=(x,z)=>{ const h=Math.sin(x*12.9898+z*78.233)*43758.5453; return h-Ma
 function arvoresDeRua(predios, ruaLonge){
   const TIPOS=new Set(['primary','secondary','tertiary','residential','unclassified','living_street']);
   const CEL=30, grade=new Map(), kk=(i,j)=>i+'_'+j;
-  for(const [lista,folga] of [[predios,2.2],[prediosOcultos,5]]) for(const p of lista){ const b=[p.bb[0]-folga,p.bb[1]-folga,p.bb[2]+folga,p.bb[3]+folga];
+  for(const [lista,folga] of [[predios,2.2],[prediosOcultos,5],[ocultosMarcos,2.2]]) for(const p of lista){ const b=[p.bb[0]-folga,p.bb[1]-folga,p.bb[2]+folga,p.bb[3]+folga];
     for(let i=Math.floor(b[0]/CEL);i<=Math.floor(b[2]/CEL);i++) for(let j=Math.floor(b[1]/CEL);j<=Math.floor(b[3]/CEL);j++){ const c=kk(i,j); if(!grade.has(c)) grade.set(c,[]); grade.get(c).push(b); } }
   const perto=(x,z)=>(grade.get(kk(Math.floor(x/CEL),Math.floor(z/CEL)))||[]).some(b=>x>b[0]&&x<b[2]&&z>b[1]&&z<b[3]);
   const postas=[], ocupado=(x,z)=>postas.some(q=>Math.abs(q[0]-x)<6&&Math.abs(q[1]-z)<6);
@@ -248,7 +296,7 @@ function arvoresDeRua(predios, ruaLonge){
 }
 
 export function construirMarcos(predios, ruaLonge){
-  igreja(); colegio(ruaLonge); pracaMunicipal(ruaLonge); pracaBiazus(ruaLonge);
+  igreja(); colegio(ruaLonge); pracaMunicipal(ruaLonge); pracaBiazus(ruaLonge); prefeitura();
   const deRua=arvoresDeRua(predios, ruaLonge);
   const g=mergeGeometries(geos,false); geos.forEach(x=>x.dispose());
   if(g) scene.add(new THREE.Mesh(g,new THREE.MeshLambertMaterial({vertexColors:true,side:THREE.DoubleSide})));
