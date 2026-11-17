@@ -14,3 +14,5 @@ Sem brasao de clube no arquivo (no Couro & Asfalto o brasao e posto pelo codigo)
 
 valdir.glb ("Seu Valdir", agricultor): imagem por IA (FLUX) em pose T -> 3D no TRELLIS.2 (Maicon) -> reduzido no
 Blender -> esqueleto no Mixamo (Maicon) + movimentos do Mixamo da pasta jogo/GDB (os mesmos dos pilotos), 16/11/2026.
+policial.glb e valdir2.glb: modelos 3D por IA do Maicon -> reduzidos no Blender -> esqueleto no Mixamo (Maicon) +
+movimentos da pasta jogo/GDB, 16/11/2026. O policial tambem e o guarda que desce da viatura (policia.js).

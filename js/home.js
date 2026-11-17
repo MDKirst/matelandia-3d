@@ -18,6 +18,8 @@ export const PERSONAGENS = [
     .map(([id,nome,papel])=>({ id, nome, papel, arq:`assets/pessoas/${id}.glb` })),
   // pilotos do Couro & Asfalto (IA + Mixamo), pedido do Maicon em 16/11
   { id:'valdir', nome:'Seu Valdir', papel:'agricultor', arq:'assets/pessoas/valdir.glb' },   // IA (FLUX → TRELLIS.2) + Mixamo, 16/11
+  { id:'valdir2', nome:'Seu Valdir 2', papel:'agricultor', arq:'assets/pessoas/valdir2.glb' },
+  { id:'policial', nome:'Policial', papel:'polícia militar', arq:'assets/pessoas/policial.glb' },
   ...[['piloto-estradeiro','Estradeiro','motociclista'],['piloto-gladius','Gladius','motociclista'],['piloto-ludwick','Ludwick','motociclista']]
     .map(([id,nome,papel])=>({ id, nome, papel, arq:`assets/pessoas/${id}.glb` })),
 ];

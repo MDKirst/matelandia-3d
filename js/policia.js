@@ -22,7 +22,10 @@ export async function iniciarPolicia(lugares){
   // viatura = a caminhonete preta da polícia do Couro & Asfalto (modelo de IA), pedido do Maicon em 16/11
   await new Promise(ok=>loader.load('assets/veiculos/caminhonete-policia.glb',g=>{ molde=g.scene; ok(); },undefined,()=>ok()));
   await new Promise(ok=>loader.load('assets/veiculos/viatura-suv.glb',g=>{ moldeSuv=g.scene; ok(); },undefined,()=>ok()));   // SUV da polícia: metade das viaturas
-  moldeGuarda=await carregarModelo('male-suit-24');
+  // policial que desce da viatura: o PM feito por IA (Mixamo); os movimentos dele têm nome em inglês
+  moldeGuarda=await carregarModelo('policial');
+  if(moldeGuarda){ const a=moldeGuarda.anims; a.parado??=a.Idle; a.andar??=a.Walk; a.correr??=a.Run; a.acenar??=a.Clapping; }
+  else moldeGuarda=await carregarModelo('male-suit-24');
 }
 
 function avisar(txt,seg=3){ const a=$('aviso'); a.textContent=txt; a.style.opacity=1; aviso=seg; }
