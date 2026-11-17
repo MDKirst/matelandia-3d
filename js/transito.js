@@ -2,6 +2,7 @@
 // mão direita, respeitando mão única. Em cruzamento escolhem uma rua ao acaso; rua sem
 // saída = meia-volta. Param se tiver algo na frente. Só existem perto do jogador.
 import * as THREE from 'three';
+import { porModo } from './config.js';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { MeshoptDecoder } from 'three/addons/libs/meshopt_decoder.module.js';
 import { scene } from './cena.js';
@@ -27,7 +28,7 @@ const MODELOS = [
 // tinta por cima da textura (multiplica: pega bem na picape branca, quase nada no SUV preto)
 const TINTAS = [0xffffff,0xffffff,0xd9443b,0x3b6fd9,0xb9bec4,0x3a3f45,0x2f8f5b,0xe0b54a];
 import { horaJogo, fatorCarros } from './ceu.js';
-const QTD = 18, RAIO_NASCE = [90, 320], RAIO_SOME = 420;
+const QTD = porModo(18,9), RAIO_NASCE = porModo([90, 320],[70, 240]), RAIO_SOME = porModo(420,300);   // leve (celular): metade dos carros, mais perto
 // patrulha (pedido do Maicon em 16/11): as primeiras vagas do trânsito são sempre viaturas do Couro & Asfalto,
 // rodando devagar pela cidade com o giroflex piscando; continuam de madrugada (o limite da hora nunca corta essas)
 const PATRULHA = ['viatura-suv','caminhonete-policia','viatura-suv'];

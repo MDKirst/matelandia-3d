@@ -4,6 +4,7 @@
 // encolhida e pintada de cor viva; a criança é um boneco Quaternius em escala de criança, posado
 // pelo mesmo sentar() da moto do jogador. Atropelar não machuca: a criança cai, levanta e reclama.
 import * as THREE from 'three';
+import { porModo } from './config.js';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { MeshoptDecoder } from 'three/addons/libs/meshopt_decoder.module.js';
 import { clone as clonarEsqueleto } from 'three/addons/utils/SkeletonUtils.js';
@@ -14,7 +15,7 @@ import { horaJogo, fatorPessoas } from './ceu.js';
 import { carregarModelo, falar } from './pedestres.js';
 import { prepararRodas, girarRodas, sentar, URBANA } from './moto.js';
 
-const QTD=9, LONGE=210, PERTO_MIN=45, PERTO_MAX=150;
+const QTD=porModo(9,4), LONGE=210, PERTO_MIN=45, PERTO_MAX=150;
 const MODELOS=['male-casual-hoodie-24','female-casual','male-casual','female-jeans','male-punk-24','female-tank-top'];
 const CORES=[0xff4fa3,0x2fb5ff,0x7dff4f,0xffd23f,0xb06bff,0xff7a2f];
 const COM_CALCADA=new Set(['residential','tertiary','secondary','unclassified','living_street','tertiary_link','secondary_link']);

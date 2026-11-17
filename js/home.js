@@ -6,6 +6,7 @@ import { MeshoptDecoder } from 'three/addons/libs/meshopt_decoder.module.js';
 import { $ } from './cena.js';
 import { usarPersonagem } from './avatar.js';
 import { semRelevo } from './relevo.js';
+import { LEVE } from './config.js';
 import { nuvem, conectarNuvem, aoTrocarConta, entrarGoogle, sairGoogle, souAdmin } from './nuvem.js';
 
 // Maicon + os da Quaternius (assets/pessoas) + os pilotos do Couro & Asfalto
@@ -51,6 +52,8 @@ function contaAdmin(){
   lista=PERSONAGENS; idx=Math.max(0,lista.findIndex(p=>p.id==='maicon')); guardar('maicon'); mostrar();
 }
 export const home={ aberta:true };
+// modo leve: marcado = ?leve=1, desmarcado = ?leve=0 (recarrega a página com a escolha)
+{ const c=$('leveJog'); if(c){ c.checked=LEVE; c.addEventListener('change',()=>{ const u=new URL(location.href); u.searchParams.set('leve',c.checked?'1':'0'); location.href=u.toString(); }); } }
 // nome e online lembrados no navegador
 try{ $('nomeJog').value=localStorage.getItem('matelandia3d.nome')||''; $('onlineJog').checked=localStorage.getItem('matelandia3d.online')!=='0'; }catch(e){}
 

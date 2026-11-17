@@ -1,18 +1,19 @@
 // Renderizador, cena, câmera e luzes
 import * as THREE from 'three';
+import { LEVE } from './config.js';
 
 export const $ = id=>document.getElementById(id);
 export const cv = $('c');
-export const renderer = new THREE.WebGLRenderer({canvas:cv, antialias:true});
-renderer.setPixelRatio(Math.min(devicePixelRatio,2));
+export const renderer = new THREE.WebGLRenderer({canvas:cv, antialias:!LEVE, powerPreference:'high-performance'});
+renderer.setPixelRatio(LEVE?Math.min(devicePixelRatio,1.25):Math.min(devicePixelRatio,2));   // celular: tela de 3x desenhava 9x os pixels
 renderer.outputColorSpace = THREE.SRGBColorSpace;
 
 export const scene = new THREE.Scene();
 const CEU = 0xbfd9ee;
 scene.background = new THREE.Color(CEU);
-scene.fog = new THREE.Fog(CEU, 260, 1300);
+scene.fog = LEVE?new THREE.Fog(CEU, 170, 720):new THREE.Fog(CEU, 260, 1300);   // leve: neblina mais perto (e a câmera não desenha além dela)
 
-export const camera = new THREE.PerspectiveCamera(60, 1, 0.3, 4000);
+export const camera = new THREE.PerspectiveCamera(60, 1, 0.3, LEVE?800:4000);
 scene.add(new THREE.HemisphereLight(0xffffff, 0x8a8f7a, 1.6));
 const sol = new THREE.DirectionalLight(0xfff2dd, 1.8); sol.position.set(-0.5,1,0.35); scene.add(sol);
 

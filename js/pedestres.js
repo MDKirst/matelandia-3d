@@ -3,6 +3,7 @@
 // frente das lojas olhando a vitrine; nas praças ficam em grupinhos conversando. Fogem do carro
 // que vem rápido e acenam para o jogador a pé. Só existem perto da câmera (somem longe e renascem).
 import * as THREE from 'three';
+import { porModo } from './config.js';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { MeshoptDecoder } from 'three/addons/libs/meshopt_decoder.module.js';
 import { clone as clonarEsqueleto } from 'three/addons/utils/SkeletonUtils.js';
@@ -18,7 +19,7 @@ import { grupoDe, movimento, peso, nomeGrupo, perfil, PRACA, saudacao, FALA_LUGA
 export const PESSOAS = ['male-casual','female-casual','male-shirt','female-dress','male-long-sleeve','female-tank-top','male-suit','female-alternative',
   'male-casual-2-24','female-casual-2-24','male-worker-24','female-worker-24','male-farmer-24','female-formal-24','male-casual-hoodie-24','female-suit-24','male-beach-24','male-suit-24','male-punk-24','female-jeans'];
 const COM_CALCADA = new Set(['primary','secondary','tertiary','residential','unclassified','living_street','primary_link','secondary_link','tertiary_link']);
-const QTD = 34, RAIO_NASCE = [25, 140], RAIO_SOME = 190, RAIO_ANIMA = 90;
+const QTD = porModo(34,14), RAIO_NASCE = [25, 140], RAIO_SOME = 190, RAIO_ANIMA = porModo(90,45);   // leve (celular): menos gente, animação só de perto
 // praças (centro e raio aproximados, em metros locais): grupinhos conversando
 const PRACAS = [ {c:[-55,-34], r:22}, {c:[-585,158], r:28} ];
 
