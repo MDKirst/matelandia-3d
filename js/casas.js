@@ -29,7 +29,7 @@ export function acharPorta(p){
 }
 export function iniciarCasas(){
   for(const p of predios){ if(p.osm||p.galpao||p.marco) continue; const A=area(p.pts); if(A<35||A>350) continue;
-    const cx=(p.bb[0]+p.bb[2])/2, cz=(p.bb[1]+p.bb[3])/2, id=Math.round(cx)+'_'+Math.round(cz); if(porId.has(id)) continue;
+    const cx=(p.bb[0]+p.bb[2])/2, cz=(p.bb[1]+p.bb[3])/2, b0=p.bb0||p.bb, id=Math.round((b0[0]+b0[2])/2)+'_'+Math.round((b0[1]+b0[3])/2); if(porId.has(id)) continue;   // id pela posição original (a casa recuada da calçada não muda de código)
     const c={ id, pts:p.pts, bb:p.bb, cx, cz, area:A, preco:Math.max(8000,Math.round(A*70/500)*500), porta:null, dono:null, nome:'' };
     casas.push(c); porId.set(id,c); }
   ligar().catch(e=>console.warn('casas',e));
@@ -94,7 +94,7 @@ function texTV(){ const cv=document.createElement('canvas'); cv.width=160; cv.he
   muro(parede,-W/2,-0.7,D/2,D/2+0.1); muro(parede,0.7,W/2,D/2,D/2+0.1);
   solidos.push([-W/2-1,-D/2-1,W/2+1,-D/2],[-W/2-1,-D/2,-W/2,D/2],[W/2,-D/2,W/2+1,D/2],[-W/2,D/2,-0.7,D/2+1],[0.7,D/2,W/2,D/2+1]);
   // parede do quarto (com vão de porta)
-  const meia=lamb(0xe7dcc8); movel(meia,1,2.2,0,H*0.55,-0.05,0.05); movel(meia,3.2,W/2,0,H*0.55,-0.05,0.05); movel(meia,1,1.1,0,H*0.55,-D/2,0);
+  const meia=lamb(0xe7dcc8); movel(meia,1,2.0,0,H*0.55,-0.05,0.05); movel(meia,3.2,W/2,0,H*0.55,-0.05,0.05); movel(meia,1,1.1,0,H*0.55,-D/2,0);
   // cozinha (canto noroeste): bancada, pia, fogão, geladeira; mesa com 4 cadeiras
   movel(lamb(0xf5f5f4),-W/2,-1.6,0,0.9,-D/2,-D/2+0.65); caixa(lamb(0x57534e),-W/2,-1.6,0.9,0.95,-D/2,-D/2+0.65);
   caixa(lamb(0x9ca3af),-3.3,-2.7,0.95,0.97,-D/2+0.1,-D/2+0.55); caixa(lamb(0x111827),-2.2,-1.7,0.95,0.97,-D/2+0.1,-D/2+0.55);
@@ -102,17 +102,57 @@ function texTV(){ const cv=document.createElement('canvas'); cv.width=160; cv.he
   movel(lamb(0x92400e),-3.6,-2.0,0.72,0.78,-1.4,-0.4); caixa(lamb(0x78350f),-2.85,-2.75,0,0.72,-0.95,-0.85);
   for(const [x,z] of [[-3.9,-0.9],[-1.7,-0.9],[-2.8,-1.75],[-2.8,-0.05]]) caixa(lamb(0x7c2d12),x-0.22,x+0.22,0,0.45,z-0.22,z+0.22);
   // sala (canto sudeste): sofá virado para a TV, tapete, mesinha
-  movel(lamb(0x1e3a8a),1.6,4.4,0,0.45,3.1,3.9); movel(lamb(0x1e40af),1.6,4.4,0.45,0.95,3.65,3.9,false);
-  caixa(new THREE.MeshLambertMaterial({color:0xb45309}),1.4,4.6,0.005,0.015,0.8,2.8);
-  movel(lamb(0x78350f),2.4,3.6,0,0.4,1.6,2.2);
-  movel(lamb(0x292524),2.0,4.0,0,0.5,0.25,0.6);
-  const tv=new THREE.Mesh(new THREE.PlaneGeometry(1.6,0.9),new THREE.MeshBasicMaterial({map:texTV()})); tv.position.set(3,1.1,0.62); sala.add(tv);
-  caixa(lamb(0x111827),2.15,3.85,0.62,1.58,0.5,0.6);
+  movel(lamb(0x1e3a8a),2.7,4.8,0,0.45,3.1,3.9); movel(lamb(0x1e40af),2.7,4.8,0.45,0.95,3.65,3.9,false);
+  caixa(new THREE.MeshLambertMaterial({color:0xb45309}),2.6,4.9,0.005,0.015,0.8,2.8);
+  movel(lamb(0x78350f),3.3,4.3,0,0.4,1.7,2.3);
+  movel(lamb(0x292524),3.5,4.9,0,0.5,0.25,0.6);
+  const tv=new THREE.Mesh(new THREE.PlaneGeometry(1.3,0.75),new THREE.MeshBasicMaterial({map:texTV()})); tv.position.set(4.2,1.05,0.62); sala.add(tv);
+  caixa(lamb(0x111827),3.5,4.9,0.62,1.48,0.5,0.6);
   // quarto (canto nordeste): cama de casal, criados-mudos, guarda-roupa, quadro
   movel(lamb(0xf8fafc),2.3,4.4,0,0.55,-D/2+0.3,-D/2+2.4); caixa(lamb(0x7c3aed),2.3,4.4,0.55,0.6,-D/2+1.1,-D/2+2.4); caixa(lamb(0x5b21b6),2.3,4.4,0.3,1.1,-D/2+0.2,-D/2+0.32);
   movel(lamb(0x78350f),1.7,2.2,0,0.55,-D/2+0.3,-D/2+0.8); movel(lamb(0x78350f),4.45,W/2,0,0.55,-D/2+0.3,-D/2+0.8);
   movel(lamb(0x57534e),1.2,1.8,0,2.1,-2.6,-0.6);
   const q=new THREE.Mesh(new THREE.PlaneGeometry(1.2,0.8),lamb(0x0e7490)); q.position.set(3.35,1.8,-D/2+0.02); sala.add(q);
+  /* ───── mais móveis (pedido do Maicon em 17/11) ───── */
+  const cil=(m,x,z,r,y0,y1,seg=14)=>{ const c=new THREE.Mesh(new THREE.CylinderGeometry(r,r,y1-y0,seg),m); c.position.set(x,(y0+y1)/2,z); sala.add(c); return c; };
+  const brilho=c=>new THREE.MeshBasicMaterial({color:c});
+  const quadro=(cor,x,y,z,w,h,ry=0)=>{ const fr=new THREE.Mesh(new THREE.PlaneGeometry(w+0.1,h+0.1),lamb(0x3f2a1a)); fr.position.set(x,y,z); fr.rotation.y=ry; sala.add(fr);
+    const p=new THREE.Mesh(new THREE.PlaneGeometry(w,h),lamb(cor)); p.position.copy(fr.position); p.rotation.y=ry; p.translateZ(0.01); sala.add(p); };
+  // banheiro (canto sudoeste), meia-parede com vão virado para o leste
+  movel(meia,-W/2,-2.9,0,H*0.55,1.55,1.65); movel(meia,-2.95,-2.85,0,H*0.55,1.55,2.6); movel(meia,-2.95,-2.85,0,H*0.55,3.4,D/2);
+  caixa(lamb(0x93c5fd),-W/2,-2.95,0.004,0.012,1.65,D/2);                                              // piso de azulejo
+  movel(lamb(0xf8fafc),-4.85,-4.35,0,0.42,3.25,3.75); caixa(lamb(0xf8fafc),-4.95,-4.85,0.3,0.9,3.2,3.8);   // vaso e caixa acoplada
+  movel(lamb(0xf1f5f9),-4.0,-3.35,0,0.85,1.65,2.1); cil(lamb(0x94a3b8),-3.67,1.88,0.18,0.85,0.88);        // pia
+  { const e=new THREE.Mesh(new THREE.PlaneGeometry(0.6,0.7),new THREE.MeshBasicMaterial({color:0xcfe8f5})); e.position.set(-3.67,1.35,1.67); sala.add(e); }   // espelho
+  { const vidro=new THREE.Mesh(new THREE.BoxGeometry(0.04,1.9,0.95),new THREE.MeshLambertMaterial({color:0xbae6fd,transparent:true,opacity:0.35,depthWrite:false})); vidro.position.set(-4.1,0.95,2.15); sala.add(vidro); solidos.push([-W/2,1.65,-4.1,2.65]); }
+  caixa(lamb(0xe2e8f0),-W/2,-4.12,0.004,0.06,1.67,2.63); cil(lamb(0x9ca3af),-4.75,2.15,0.12,1.85,1.88);   // box do chuveiro
+  caixa(lamb(0x2563eb),-3.9,-3.3,0.004,0.016,3.2,3.7);                                                // tapetinho
+  // escritório (entre o banheiro e a cozinha): escrivaninha com computador, cadeira e estante de livros
+  movel(lamb(0xd6b88a),-2.6,-1.4,0.72,0.77,0.75,1.35); for(const x of [-2.55,-1.45]) caixa(lamb(0x8b6b45),x-0.03,x+0.03,0,0.72,0.8,1.3);
+  caixa(lamb(0x111827),-2.25,-1.75,0.77,1.12,0.84,0.88);                                              // monitor
+  { const tela=new THREE.Mesh(new THREE.PlaneGeometry(0.46,0.3),brilho(0x38bdf8)); tela.position.set(-2.0,0.95,0.885); sala.add(tela); }
+  caixa(lamb(0x1f2937),-2.2,-1.8,0.77,0.79,1.0,1.15);                                                 // teclado
+  movel(lamb(0x1f2937),-2.25,-1.75,0.42,0.48,1.55,2.05); caixa(lamb(0x1f2937),-2.25,-1.75,0.48,1.0,2.0,2.06); cil(lamb(0x6b7280),-2.0,1.8,0.04,0,0.42,8);   // cadeira
+  movel(lamb(0x5c3a1e),-W/2,-4.6,0,2.0,-0.3,1.4);                                                     // estante
+  for(let k=0;k<4;k++){ caixa(lamb(0x4a2e17),-4.6,-4.58,0.05+k*0.5,0.08+k*0.5,-0.3,1.4);
+    for(let i=0;i<9;i++){ const z=-0.25+i*0.18, h=0.28+((i*7+k*3)%5)*0.03; caixa(lamb([0xdc2626,0x2563eb,0x16a34a,0xeab308,0x7c3aed,0xf97316][(i+k)%6]),-4.95,-4.62,0.08+k*0.5,0.08+k*0.5+h,z,z+0.13); } }
+  // cozinha: armários altos, micro-ondas, fruteira e filtro
+  caixa(lamb(0xd6d3d1),-W/2,-1.6,1.6,2.3,-D/2,-D/2+0.38); for(let x=-4.5;x<-1.6;x+=0.85) caixa(lamb(0x78716c),x,x+0.05,1.9,2.0,-D/2+0.38,-D/2+0.4);
+  caixa(lamb(0x27272a),-4.7,-4.15,0.95,1.27,-D/2+0.08,-D/2+0.5); caixa(brilho(0x1e293b),-4.62,-4.3,1.0,1.22,-D/2+0.51,-D/2+0.52);
+  cil(lamb(0xa16207),-2.8,-0.9,0.22,0.78,0.85); for(const [dx,dz,c] of [[-0.08,0,0xdc2626],[0.08,0.05,0xf59e0b],[0,-0.08,0x84cc16]]){ const fr=new THREE.Mesh(new THREE.SphereGeometry(0.08,8,6),lamb(c)); fr.position.set(-2.8+dx,0.92,-0.9+dz); sala.add(fr); }
+  cil(lamb(0x60a5fa),-1.9,-D/2+0.33,0.12,0.95,1.35);
+  // sala: poltrona, abajur de chão, videogame, quadros, relógio
+  movel(lamb(0x9a3412),1.5,2.2,0,0.45,1.5,2.3); caixa(lamb(0x7c2d12),1.35,1.55,0.45,1.0,1.5,2.3); caixa(lamb(0x7c2d12),1.35,2.2,0.45,0.65,1.45,1.55); caixa(lamb(0x7c2d12),1.35,2.2,0.45,0.65,2.25,2.35);
+  cil(lamb(0x44403c),1.25,3.65,0.18,0,0.04); cil(lamb(0x44403c),1.25,3.65,0.025,0.04,1.5,6); { const ab=new THREE.Mesh(new THREE.CylinderGeometry(0.16,0.26,0.3,14,1,true),new THREE.MeshBasicMaterial({color:0xfde68a,side:THREE.DoubleSide})); ab.position.set(1.25,1.55,3.65); sala.add(ab); solidos.push([1.05,3.45,1.45,3.85]); }
+  caixa(lamb(0xf8fafc),3.6,3.95,0.5,0.58,0.32,0.55); caixa(lamb(0x111827),3.7,3.88,0.5,0.53,0.64,0.74); caixa(lamb(0x111827),4.3,4.48,0.5,0.53,0.64,0.74);   // videogame e controles
+  quadro(0xf97316,3.75,1.75,D/2-0.02,1.4,0.7,Math.PI); quadro(0x0f766e,W/2-0.02,1.7,2.2,0.8,0.6,-Math.PI/2); quadro(0x7c3aed,-W/2+0.02,1.7,-1.0,0.7,0.9,Math.PI/2);
+  { const rel=new THREE.Mesh(new THREE.CircleGeometry(0.22,20),lamb(0xffffff)); rel.position.set(-0.3,2.1,-D/2+0.02); sala.add(rel);
+    for(const [w,h,a] of [[0.02,0.14,0.6],[0.02,0.19,2.2]]){ const p=new THREE.Mesh(new THREE.PlaneGeometry(w,h),lamb(0x111827)); p.geometry.translate(0,h/2,0); p.position.set(-0.3,2.1,-D/2+0.03); p.rotation.z=a; sala.add(p); } }
+  // quarto: tapete, abajures nos criados-mudos, cômoda com espelho
+  caixa(lamb(0xf472b6),2.4,4.3,0.004,0.014,-1.45,-0.55);
+  for(const x of [1.95,4.72]){ cil(lamb(0x44403c),x,-D/2+0.55,0.03,0.55,0.8,6); const a=new THREE.Mesh(new THREE.CylinderGeometry(0.1,0.15,0.18,12),brilho(0xfde68a)); a.position.set(x,0.86,-D/2+0.55); sala.add(a); }
+  movel(lamb(0x92400e),4.45,4.95,0,0.85,-1.3,-0.3); caixa(lamb(0x78350f),4.44,4.45,0.2,0.75,-1.25,-0.35);
+  { const e=new THREE.Mesh(new THREE.PlaneGeometry(0.8,0.9),new THREE.MeshBasicMaterial({color:0xcfe8f5})); e.position.set(W/2-0.02,1.45,-0.8); e.rotation.y=-Math.PI/2; sala.add(e); }
   // planta na entrada
   caixa(lamb(0x7c2d12),-1.6,-1.2,0,0.4,3.3,3.7); const f=new THREE.Mesh(new THREE.IcosahedronGeometry(0.45,0),lamb(0x16a34a)); f.position.set(-1.4,0.85,3.5); sala.add(f);
 }

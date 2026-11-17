@@ -45,6 +45,33 @@ const matGalpao = new THREE.MeshLambertMaterial({vertexColors:true, map:texFacha
 // número pseudoaleatório estável por prédio (a cidade sai igual toda vez)
 const sorte = (x,z,k=0)=>{ const s=Math.sin(x*12.9898+z*78.233+k*37.719)*43758.5453; return s-Math.floor(s); };
 const area = pts=>{ let a=0; for(let i=0,j=pts.length-1;i<pts.length;j=i++) a+=(pts[j][0]+pts[i][0])*(pts[j][1]-pts[i][1]); return a/2; };
+// 17/11: casa do Overture que avança na calçada (o contorno do mapa às vezes passa do meio-fio) é empurrada
+// para trás inteira, até o fim da calçada (meia pista + 2 m). Se entra muito (> 4 m), só os cantos recuam.
+const CALCADA=2.0, CEL_R=60, gradeRuas=new Map();
+function segmentosPerto(x,z){
+  if(!gradeRuas.size) for(const r of ruas){ if(r.pe) continue; for(let i=0;i<r.pts.length-1;i++){ const a=r.pts[i], b=r.pts[i+1], m=r.w/2+CALCADA+6;
+      for(let gi=Math.floor((Math.min(a[0],b[0])-m)/CEL_R);gi<=Math.floor((Math.max(a[0],b[0])+m)/CEL_R);gi++) for(let gj=Math.floor((Math.min(a[1],b[1])-m)/CEL_R);gj<=Math.floor((Math.max(a[1],b[1])+m)/CEL_R);gj++){
+        const k=gi+'_'+gj; if(!gradeRuas.has(k)) gradeRuas.set(k,[]); gradeRuas.get(k).push([a,b,r.w/2+((r.tipo||'').startsWith('motorway')?1:CALCADA)]); } } }
+  return gradeRuas.get(Math.floor(x/CEL_R)+'_'+Math.floor(z/CEL_R))||[];
+}
+// quanto o ponto entra na faixa proibida de cada segmento: [entra, nx, nz] (normal saindo da rua)
+function invasao(x,z){
+  let pior=[0,0,0];
+  for(const [a,b,lim] of segmentosPerto(x,z)){ const vx=b[0]-a[0], vz=b[1]-a[1]; let t=((x-a[0])*vx+(z-a[1])*vz)/(vx*vx+vz*vz||1); t=Math.max(0,Math.min(1,t));
+    const px=a[0]+vx*t, pz=a[1]+vz*t, d=Math.hypot(x-px,z-pz), entra=lim-d; if(entra<=pior[0]) continue;
+    let nx=(x-px)/(d||1), nz=(z-pz)/(d||1); if(d<0.01){ const L=Math.hypot(vx,vz)||1; nx=-vz/L; nz=vx/L; } pior=[entra,nx,nz]; }
+  return pior;
+}
+function afastarDaRua(pts){
+  let p=pts;
+  for(let volta=0;volta<3;volta++){
+    let maior=[0,0,0]; for(const q of p){ const v=invasao(q[0],q[1]); if(v[0]>maior[0]) maior=v; }
+    if(maior[0]<=0.05) break;
+    if(maior[0]<=4){ const k=maior[0]+0.05; p=p.map(q=>[q[0]+maior[1]*k,q[1]+maior[2]*k]); }   // recua a casa inteira
+    else p=p.map(q=>{ const v=invasao(q[0],q[1]); return v[0]>0?[q[0]+v[1]*(v[0]+0.05),q[1]+v[2]*(v[0]+0.05)]:q; });   // entra muito: só os cantos
+  }
+  return p;
+}
 function dentro(x,z,pts){ let c=false; for(let i=0,j=pts.length-1;i<pts.length;j=i++){ const a=pts[i],b=pts[j]; if((a[1]>z)!==(b[1]>z)&&x<(b[0]-a[0])*(z-a[1])/(b[1]-a[1])+a[0]) c=!c; } return c; }
 
 function altura(p,pts,A,cx,cz){
@@ -235,6 +262,9 @@ export async function carregarPredios(){
     if(fora.has(idx)){ comerciosRemovidos.push({pts,bb}); continue; }
     if(fora.ocultos.has(idx)){ prediosOcultos.push({pts,bb}); continue; }
     if(noCampo(cx,cz)) continue;                                                              // no gramado de um campo de futebol                          // comércio: vira terreno
+    const bb0=bb, antes=pts; pts=afastarDaRua(pts);                                                      // fora da calçada (bb0: a casa comprada guarda o mesmo código)
+    if(pts!==antes){ const A2=Math.abs(area(pts)); if(A2<12||A2<A*0.35) continue; A=A2; }
+    const bbN=bbox(pts);
     const h=altura(p,pts,A,cx,cz), r=sorte(cx,cz,1);
     const quatro=pts.length===4 && A<900;
     const qd=quadra(cx,cz), i=qd.i, j=qd.j;
@@ -246,7 +276,7 @@ export async function carregarPredios(){
       else tel=pinta(laje(pts,h), FIBRO[(r*3)|0]);
       (A>600?qd.galpoes:qd.paredes).push(par); qd.telhados.push(uvs(tel,i*Q,j*Q));
     }catch(e){ continue; }
-    predios.push({pts,bb,h,galpao:A>600}); n++;
+    predios.push({pts,bb:bbN,bb0,h,galpao:A>600}); n++;
   }
   for(const qd of quadras.values()){
     for(const [lista,m] of [[qd.paredes,mat],[qd.galpoes,matGalpao]]){ if(!lista.length) continue;

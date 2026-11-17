@@ -10,6 +10,7 @@ import * as THREE from 'three';
 import { scene, renderer, camera } from './cena.js';
 import { semRelevo } from './relevo.js';
 import { ruas } from './cidade.js';
+import { arvores } from './marcos.js';
 
 const CICLO_MIN = 48;
 const fixa = (()=>{ const h=parseFloat(new URLSearchParams(location.search).get('hora')); return isFinite(h)?((h%24)+24)%24:null; })();
@@ -56,6 +57,13 @@ const TEX_AMARELA = texBrilho(255,214,150), TEX_BRANCA = texBrilho(255,250,235),
 // postes: um a cada ~32 m nas ruas com calçada, alternando o lado; o poste existe de dia também
 const COM_CALCADA = new Set(['primary','secondary','tertiary','residential','unclassified','living_street','primary_link','secondary_link','tertiary_link']);
 export const postes = [];   // [x,z]
+// o ponto cai no asfalto de alguma rua (com 0,3 m de folga)?
+function naPista(x,z){
+  for(const r of ruas){ if(r.pe) continue; const b=r.bb, m=r.w/2+0.3; if(x<b[0]-m||x>b[2]+m||z<b[1]-m||z>b[3]+m) continue;
+    for(let i=0;i<r.pts.length-1;i++){ const q=r.pts[i], n=r.pts[i+1], vx=n[0]-q[0], vz=n[1]-q[1]; let t=((x-q[0])*vx+(z-q[1])*vz)/(vx*vx+vz*vz||1); t=Math.max(0,Math.min(1,t));
+      if(Math.hypot(x-q[0]-vx*t,z-q[1]-vz*t)<m) return true; } }
+  return false;
+}
 function montarPostes(){
   const pos=[]; let lado=1;
   for(const r of ruas){ if(r.pe||!COM_CALCADA.has(r.tipo)||r.pts.length<2) continue;
@@ -63,7 +71,10 @@ function montarPostes(){
     for(let i=0;i<r.pts.length-1;i++){ const a=r.pts[i], b=r.pts[i+1], dx=b[0]-a[0], dz=b[1]-a[1], L=Math.hypot(dx,dz); if(L<0.5) continue;
       const ux=dx/L, uz=dz/L;
       for(let s=resto;s<L;s+=32){ lado=-lado; const off=lado*(r.w/2+0.55);
-        pos.push([a[0]+ux*s-uz*off, a[1]+uz*s+ux*off, Math.atan2(-uz*lado,ux*lado)]); }   // braço aponta para a rua
+        // 17/11: nada de poste em cima de outra rua (cruzamento, curva) nem colado numa árvore: tenta deslizar 3 m
+        for(const d of [0,3,-3,6]){ const ss=s+d; if(ss<0||ss>L) continue; const x=a[0]+ux*ss-uz*off, z=a[1]+uz*ss+ux*off;
+          if(naPista(x,z)||arvores.some(t=>Math.abs(t[0]-x)<1.8&&Math.abs(t[1]-z)<1.8)) continue;
+          pos.push([x, z, Math.atan2(-uz*lado,ux*lado)]); break; } }   // braço aponta para a rua
       resto=(resto-L)%32; if(resto<0) resto+=32; } }
   // tira os que ficaram colados (cruzamentos, ruas paralelas)
   const G=new Map(), ok=[];

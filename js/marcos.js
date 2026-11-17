@@ -6,6 +6,8 @@
 import * as THREE from 'three';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 import { scene, flat } from './cena.js';
+import { ruas } from './cidade.js';
+import { prediosOcultos } from './predios.js';
 
 const PRACA_MUNICIPAL = [[-111.7,-94.5],[6.3,-83.1],[-3.5,16.2],[-119.3,6.4]];   // OSM, leisure=park
 const PRACA_BIAZUS    = [[-611.0,105.6],[-553.9,111.1],[-560.1,211.4],[-617.6,204.4]];
@@ -46,8 +48,8 @@ function caminho(pts,w){ const h=w/2, pos=[], idx=[]; for(let i=0;i<pts.length;i
 const elipse=(cx,cz,rx,rz,n=48)=>Array.from({length:n+1},(_,i)=>{ const a=i/n*Math.PI*2; return [cx+Math.cos(a)*rx, cz+Math.sin(a)*rz]; });
 
 // árvore baixa: tronco + duas copas (instanciadas: centenas custam quase nada)
-const arvores=[];
-const arvore=(x,z,esc=1)=>arvores.push([x,z,esc]);
+export const arvores=[];
+const arvore=(x,z,esc=1,cor=0)=>arvores.push([x,z,esc,cor]);   // cor: 0 verde · 1 ipê-amarelo · 2 ipê-roxo
 
 /* ───────── Igreja Matriz (planta redonda) ───────── */
 function igreja(){
@@ -217,22 +219,56 @@ function pracaBiazus(ruaLonge){
     if(ruaLonge(x,z)) arvore(x,z,1.15+(i%4)*0.12); }
 }
 
+/* ───────── árvores nas calçadas (pedido do Maicon em 17/11) ─────────
+   Uma a cada ~17 m nos dois lados das ruas da cidade, perto do meio-fio, sorteio fixo pela posição
+   (todo mundo vê as mesmas). Fora de: BR, esquina (outra rua perto), frente de prédio/casa e terreno à venda.
+   Algumas são ipê amarelo ou roxo. */
+const hash=(x,z)=>{ const h=Math.sin(x*12.9898+z*78.233)*43758.5453; return h-Math.floor(h); };
+function arvoresDeRua(predios, ruaLonge){
+  const TIPOS=new Set(['primary','secondary','tertiary','residential','unclassified','living_street']);
+  const CEL=30, grade=new Map(), kk=(i,j)=>i+'_'+j;
+  for(const [lista,folga] of [[predios,2.2],[prediosOcultos,5]]) for(const p of lista){ const b=[p.bb[0]-folga,p.bb[1]-folga,p.bb[2]+folga,p.bb[3]+folga];
+    for(let i=Math.floor(b[0]/CEL);i<=Math.floor(b[2]/CEL);i++) for(let j=Math.floor(b[1]/CEL);j<=Math.floor(b[3]/CEL);j++){ const c=kk(i,j); if(!grade.has(c)) grade.set(c,[]); grade.get(c).push(b); } }
+  const perto=(x,z)=>(grade.get(kk(Math.floor(x/CEL),Math.floor(z/CEL)))||[]).some(b=>x>b[0]&&x<b[2]&&z>b[1]&&z<b[3]);
+  const postas=[], ocupado=(x,z)=>postas.some(q=>Math.abs(q[0]-x)<6&&Math.abs(q[1]-z)<6);
+  let n=0;
+  for(const r of ruas){ if(r.pe||!TIPOS.has(r.tipo)||r.pts.length<2) continue;
+    let resto=6;
+    for(let i=0;i<r.pts.length-1;i++){ const a=r.pts[i], b=r.pts[i+1], dx=b[0]-a[0], dz=b[1]-a[1], L=Math.hypot(dx,dz); if(L<1) continue;
+      const ux=dx/L, uz=dz/L;
+      for(let t=resto;t<L;t+=17){
+        for(const lado of [1,-1]){ const off=lado*(r.w/2+0.8), x=a[0]+ux*t-uz*off+ux*lado*4, z=a[1]+uz*t+ux*off+uz*lado*4;   // lados desencontrados
+          const sorte=hash(Math.round(x),Math.round(z)); if(sorte<0.22) continue;                    // umas falhas, para não ficar em fila de soldado
+          if(perto(x,z)||ocupado(x,z)||!ruaLonge(x,z,0.4)) continue;
+          const cor=sorte>0.95?1:sorte>0.915?2:0, esc=0.75+((sorte*7)%1)*0.45;
+          arvore(x,z,esc,cor); postas.push([x,z]); n++; } }
+      resto=((resto-L)%17+17)%17;
+    } }
+  return n;
+}
+
 export function construirMarcos(predios, ruaLonge){
   igreja(); colegio(ruaLonge); pracaMunicipal(ruaLonge); pracaBiazus(ruaLonge);
+  const deRua=arvoresDeRua(predios, ruaLonge);
   const g=mergeGeometries(geos,false); geos.forEach(x=>x.dispose());
   if(g) scene.add(new THREE.Mesh(g,new THREE.MeshLambertMaterial({vertexColors:true,side:THREE.DoubleSide})));
   if(pisos.length){ const p=mergeGeometries(pisos,false); const m=new THREE.Mesh(p,matPiso); m.renderOrder=-7; m.frustumCulled=false; scene.add(m); }
   for(const m of placas) scene.add(m);
   // árvores instanciadas
   if(arvores.length){
-    const tronco=new THREE.InstancedMesh(new THREE.CylinderGeometry(0.22,0.3,3,6).translate(0,1.5,0),new THREE.MeshLambertMaterial({color:0x6b4f36}),arvores.length);
-    const copa=new THREE.InstancedMesh(new THREE.IcosahedronGeometry(2.6,0).translate(0,4.6,0),new THREE.MeshLambertMaterial({color:0x4f7a3a,flatShading:true}),arvores.length);
-    const copa2=new THREE.InstancedMesh(new THREE.IcosahedronGeometry(1.9,0).translate(0.9,6.0,-0.4),new THREE.MeshLambertMaterial({color:0x5f8c44,flatShading:true}),arvores.length);
-    arvores.forEach(([x,z,e],i)=>{ M.compose(V.set(x,0,z),Qt.setFromEuler(E.set(0,i*1.7,0)),S.set(e,e,e)); tronco.setMatrixAt(i,M); copa.setMatrixAt(i,M); copa2.setMatrixAt(i,M); S.set(1,1,1);
-      const p=[]; for(let k=0;k<6;k++){ const a=k/6*Math.PI*2; p.push([x+Math.cos(a)*0.35*e, z+Math.sin(a)*0.35*e]); } solidos.push(p); });
-    scene.add(tronco,copa,copa2);
+    const gT=new THREE.CylinderGeometry(0.22,0.3,3,6).translate(0,1.5,0), gC=new THREE.IcosahedronGeometry(2.6,0).translate(0,4.6,0), gC2=new THREE.IcosahedronGeometry(1.9,0).translate(0.9,6.0,-0.4);
+    const mT=new THREE.MeshLambertMaterial({color:0x6b4f36}), mC=new THREE.MeshLambertMaterial({color:0xffffff,flatShading:true});
+    const CORES=[[0x4f7a3a,0x5f8c44],[0xe3b31b,0xf2c94c],[0x9b4f9e,0xb565b8]], PED=500, pedacos=new Map(), cor=new THREE.Color();
+    arvores.forEach((a,i)=>{ const c=Math.floor(a[0]/PED)+'_'+Math.floor(a[1]/PED); if(!pedacos.has(c)) pedacos.set(c,[]); pedacos.get(c).push([...a,i]);
+      const [x,z,e]=a, p=[]; for(let k=0;k<6;k++){ const g=k/6*Math.PI*2; p.push([x+Math.cos(g)*0.35*e, z+Math.sin(g)*0.35*e]); } solidos.push(p); });
+    for(const lista of pedacos.values()){
+      const tronco=new THREE.InstancedMesh(gT,mT,lista.length), copa=new THREE.InstancedMesh(gC,mC,lista.length), copa2=new THREE.InstancedMesh(gC2,mC,lista.length);
+      lista.forEach(([x,z,e,k,i],j)=>{ M.compose(V.set(x,0,z),Qt.setFromEuler(E.set(0,i*1.7,0)),S.set(e,e,e)); tronco.setMatrixAt(j,M); copa.setMatrixAt(j,M); copa2.setMatrixAt(j,M); S.set(1,1,1);
+        const tom=0.88+((i*0.37)%1)*0.24; copa.setColorAt(j,cor.setHex(CORES[k||0][0]).multiplyScalar(tom)); copa2.setColorAt(j,cor.setHex(CORES[k||0][1]).multiplyScalar(tom)); });
+      for(const m of [tronco,copa,copa2]){ m.computeBoundingSphere(); scene.add(m); }
+    }
   }
   const bb=pts=>{ let a=1e9,b=1e9,c=-1e9,d=-1e9; for(const p of pts){ a=Math.min(a,p[0]); b=Math.min(b,p[1]); c=Math.max(c,p[0]); d=Math.max(d,p[1]); } return [a,b,c,d]; };
   for(const pts of solidos) predios.push({pts,bb:bb(pts),marco:true});
-  return { arvores:arvores.length, solidos:solidos.length };
+  return { arvores:arvores.length, deRua, solidos:solidos.length };
 }
