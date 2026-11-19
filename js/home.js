@@ -22,6 +22,7 @@ export const PERSONAGENS = [
   { id:'valdir', nome:'Seu Valdir', papel:'agricultor', arq:'assets/pessoas/valdir.glb' },   // IA (FLUX → TRELLIS.2) + Mixamo, 16/11
   { id:'valdir2', nome:'Seu Valdir 2', papel:'agricultor', arq:'assets/pessoas/valdir2.glb' },
   { id:'policial', nome:'Policial', papel:'polícia militar', arq:'assets/pessoas/policial.glb' },
+  { id:'fortao', nome:'Fortão', papel:'lutador', arq:'assets/pessoas/fortao.glb' },   // IA + Mixamo com socos de verdade (19/11)
   ...[['piloto-estradeiro','Estradeiro','motociclista'],['piloto-gladius','Gladius','motociclista'],['piloto-ludwick','Ludwick','motociclista']]
     .map(([id,nome,papel])=>({ id, nome, papel, arq:`assets/pessoas/${id}.glb` })),
 ];

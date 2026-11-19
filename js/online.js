@@ -90,7 +90,7 @@ async function receber(id,d){
   if(nome!==o.nome){ if(o.tag) o.grupo.remove(o.tag); o.tag=etiqueta(nome); o.grupo.add(o.tag); o.nome=nome; }
   if(!o.barra){ o.barra=barraSprite(); o.grupo.add(o.barra); }
   pintarBarra(o.barra, typeof d.e==='number'?d.e:100);
-  if(Array.isArray(d.g)&&d.g[0]!==o.gSeq){ if(o.gSeq!==undefined&&DUR[d.g[1]]){ o.golpe={tipo:d.g[1],t:0}; if(d.g[1]==='tiro') o.atira=0.14; } o.gSeq=d.g[0]; }
+  if(Array.isArray(d.g)&&d.g[0]!==o.gSeq){ if(o.gSeq!==undefined&&Object.hasOwn(DUR,d.g[1])){   /* só soco/chute/tiro: nome vindo da rede */ o.golpe={tipo:d.g[1],t:0}; if(d.g[1]==='tiro') o.atira=0.14; } o.gSeq=d.g[0]; }
   const pid=d.p==='maicon'&&!ADMINS.includes(d.u)?'male-casual':d.p;      // o Maicon é exclusivo da conta do criador
   if(pid&&pid!==o.pid){ o.pid=pid; vestir(o,pid); }
   if((d.vt||null)!==o.vt){ o.vt=d.vt||null; trocarVeiculo(o); }
@@ -131,8 +131,8 @@ export function atualizarOnline(dt){
     o.grupo.position.set(o.x,0,o.z);
     o.q=Math.max(0,Math.min(1,(o.q||0)+(a.c?dt*3:-dt*1.5)));             // caído (desmaiou na briga)
     if(o.boneco){ o.boneco.rotation.y=o.r; o.boneco.rotation.x=-o.q*Math.PI/2; o.boneco.position.y=o.q*0.12+o.boneco.userData.pe;
-      const lg=o.golpe&&o.golpes?.[o.golpe.tipo];                      // golpe do Mixamo (quem tem): toca no lugar da pose por código
-      if(lg?.length&&!o.golpe.a){ const x=o.golpe.a=lg[(o.gSeq||0)%lg.length]; x.timeScale=velocidadeGolpe(x,o.golpe.tipo);
+      const lg=o.golpe&&o.golpes&&Object.hasOwn(o.golpes,o.golpe.tipo)?o.golpes[o.golpe.tipo]:null;                      // golpe do Mixamo (quem tem): toca no lugar da pose por código
+      if(Array.isArray(lg)&&lg.length&&!o.golpe.a){ const x=o.golpe.a=lg[Math.abs(o.gSeq|0)%lg.length]; x.timeScale=velocidadeGolpe(x,o.golpe.tipo);
         if(o.atual&&o.atual!==x) o.atual.fadeOut(0.08); x.reset().fadeIn(0.08).play(); o.atual=x; }
       const n=o.q>0?o.acoes.parado:(o.acoes[a.a]||o.acoes.parado); if(n&&n!==o.atual&&!(o.atual?.golpe&&o.atual.isRunning())){ if(o.atual) o.atual.fadeOut(0.25); n.reset().fadeIn(0.25).play(); o.atual=n; } o.mixer.update(dt);
       if(o.atira>0&&(o.atira-=dt)<=0){ const fx=Math.sin(o.r), fz=Math.cos(o.r); desenharTiro(bocaDaArma(o.boneco,fx,fz),fx,fz);   // tiro de outro jogador: clarão e som

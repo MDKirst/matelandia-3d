@@ -16,3 +16,7 @@ valdir.glb ("Seu Valdir", agricultor): imagem por IA (FLUX) em pose T -> 3D no T
 Blender -> esqueleto no Mixamo (Maicon) + movimentos do Mixamo da pasta jogo/GDB (os mesmos dos pilotos), 16/11/2026.
 policial.glb e valdir2.glb: modelos 3D por IA do Maicon -> reduzidos no Blender -> esqueleto no Mixamo (Maicon) +
 movimentos da pasta jogo/GDB, 16/11/2026. O policial tambem e o guarda que desce da viatura (policia.js).
+
+fortao.glb ("Fortão", lutador, 19/11/2026): imagem por IA (do Maicon) -> 3D por IA (Fortão.glb do Maicon) -> preparado no Blender
+(só a malha, 1,80 m) -> esqueleto e golpes no Mixamo (Maicon: Fight Idle, Punching Bag, Fist Fight A, Hook) + movimentos da
+pasta jogo/GDB. Montado por tools/fbx-para-glb-luta.mts: cada soco é um recorte de ~0,55 s do clipe do Mixamo (Soco..Soco4).
