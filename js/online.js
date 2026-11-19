@@ -9,6 +9,9 @@ import { MeshoptDecoder } from 'three/addons/libs/meshopt_decoder.module.js';
 import { clone as clonarEsqueleto } from 'three/addons/utils/SkeletonUtils.js';
 import { scene, $ } from './cena.js';
 import { DUR, poseGolpe, barraSprite, pintarBarra } from './luta.js';
+import { acoesDeGolpe, velocidadeGolpe } from './avatar.js';
+import { ALCANCE, naMira, desenharTiro, bocaDaArma } from './tiro.js';
+import { somTiro } from './som.js';
 import { nuvem, ADMINS } from './nuvem.js';
 
 const TRYSTERO='https://cdn.jsdelivr.net/npm/trystero@0.26.0/+esm';
@@ -87,7 +90,7 @@ async function receber(id,d){
   if(nome!==o.nome){ if(o.tag) o.grupo.remove(o.tag); o.tag=etiqueta(nome); o.grupo.add(o.tag); o.nome=nome; }
   if(!o.barra){ o.barra=barraSprite(); o.grupo.add(o.barra); }
   pintarBarra(o.barra, typeof d.e==='number'?d.e:100);
-  if(Array.isArray(d.g)&&d.g[0]!==o.gSeq){ if(o.gSeq!==undefined&&DUR[d.g[1]]) o.golpe={tipo:d.g[1],t:0}; o.gSeq=d.g[0]; }
+  if(Array.isArray(d.g)&&d.g[0]!==o.gSeq){ if(o.gSeq!==undefined&&DUR[d.g[1]]){ o.golpe={tipo:d.g[1],t:0}; if(d.g[1]==='tiro') o.atira=0.14; } o.gSeq=d.g[0]; }
   const pid=d.p==='maicon'&&!ADMINS.includes(d.u)?'male-casual':d.p;      // o Maicon é exclusivo da conta do criador
   if(pid&&pid!==o.pid){ o.pid=pid; vestir(o,pid); }
   if((d.vt||null)!==o.vt){ o.vt=d.vt||null; trocarVeiculo(o); }
@@ -103,6 +106,7 @@ async function vestir(o,pid){
   const achar=re=>g.animations.find(a=>re.test(a.name));
   const A=c=>c?o.mixer.clipAction(c):null;
   o.acoes={ parado:A(achar(/^parado$|idle/i)), andar:A(achar(/^andar$|walk/i)), correr:A(achar(/^correr$|run/i)), acenar:A(achar(/acenar|wave|clap/i)) };
+  o.golpes=acoesDeGolpe(o.mixer,g.animations);
   if(o.tag){ o.tag.position.y=2.25; }
   b.rotation.order='YXZ'; b.userData.pe=b.position.y;
   if(o.veic) o.boneco.visible=false;
@@ -127,8 +131,13 @@ export function atualizarOnline(dt){
     o.grupo.position.set(o.x,0,o.z);
     o.q=Math.max(0,Math.min(1,(o.q||0)+(a.c?dt*3:-dt*1.5)));             // caído (desmaiou na briga)
     if(o.boneco){ o.boneco.rotation.y=o.r; o.boneco.rotation.x=-o.q*Math.PI/2; o.boneco.position.y=o.q*0.12+o.boneco.userData.pe;
-      const n=o.q>0?o.acoes.parado:(o.acoes[a.a]||o.acoes.parado); if(n&&n!==o.atual){ if(o.atual) o.atual.fadeOut(0.25); n.reset().fadeIn(0.25).play(); o.atual=n; } o.mixer.update(dt);
-      if(o.golpe){ o.golpe.t+=dt; const T=o.golpe.t/DUR[o.golpe.tipo]; if(T>=1) o.golpe=null; else poseGolpe(o.boneco,o.golpe.tipo,T,Math.sin(o.r),Math.cos(o.r)); } }
+      const lg=o.golpe&&o.golpes?.[o.golpe.tipo];                      // golpe do Mixamo (quem tem): toca no lugar da pose por código
+      if(lg?.length&&!o.golpe.a){ const x=o.golpe.a=lg[(o.gSeq||0)%lg.length]; x.timeScale=velocidadeGolpe(x,o.golpe.tipo);
+        if(o.atual&&o.atual!==x) o.atual.fadeOut(0.08); x.reset().fadeIn(0.08).play(); o.atual=x; }
+      const n=o.q>0?o.acoes.parado:(o.acoes[a.a]||o.acoes.parado); if(n&&n!==o.atual&&!(o.atual?.golpe&&o.atual.isRunning())){ if(o.atual) o.atual.fadeOut(0.25); n.reset().fadeIn(0.25).play(); o.atual=n; } o.mixer.update(dt);
+      if(o.atira>0&&(o.atira-=dt)<=0){ const fx=Math.sin(o.r), fz=Math.cos(o.r); desenharTiro(bocaDaArma(o.boneco,fx,fz),fx,fz);   // tiro de outro jogador: clarão e som
+        const [mx,mz]=minhaPos(), dd=Math.hypot(o.x-mx,o.z-mz); if(dd<90) somTiro(dd); }
+      if(o.golpe){ o.golpe.t+=dt; const T=o.golpe.t/DUR[o.golpe.tipo]; if(T>=1) o.golpe=null; else if(!o.golpe.a) poseGolpe(o.boneco,o.golpe.tipo,T,Math.sin(o.r),Math.cos(o.r)); } }
     if(o.veic){ o.veic.position.set(o.x,0,o.z); if(a.vh!=null){ let dh=a.vh-o.veic.rotation.y; dh=Math.atan2(Math.sin(dh),Math.cos(dh)); o.veic.rotation.y+=dh*k; } }
     if(o.tag) o.tag.position.y=o.vt?3.2:2.25;
     if(o.barra){ o.barra.position.y=(o.vt?3.2:2.25)-0.36; o.barra.visible=!o.vt; }
@@ -194,12 +203,12 @@ $('chatBtn').addEventListener('click',e=>{ e.currentTarget.blur(); abrirChat(); 
 // quem bate decide se acertou (tem a posição dos outros); quem apanha confere a distância e desconta
 export function golpearJogador(jx,jz,fx,fz,tipo,dano){
   if(!online.pancada) return null;
-  let alvo=null, md=1.9;
+  const tiro=tipo==='tiro'; let alvo=null, md=tiro?ALCANCE:1.9;
   for(const o of online.outros.values()){ if(o.vt||o.alvo.c) continue;
     const dx=o.x-jx, dz=o.z-jz, d=Math.hypot(dx,dz); if(d>=md||d<0.01) continue;
-    if((dx*fx+dz*fz)/d<0.35) continue; md=d; alvo=o; }
+    if(tiro?naMira(dx,dz,fx,fz)<0:(dx*fx+dz*fz)/d<0.35) continue; md=d; alvo=o; }
   if(!alvo) return null;
-  try{ online.pancada.send({d:dano, fx:Math.round(fx*100)/100, fz:Math.round(fz*100)/100}, alvo.id); }catch(e){}
+  try{ online.pancada.send({d:dano, fx:Math.round(fx*100)/100, fz:Math.round(fz*100)/100, ...(tiro?{t:1}:{})}, alvo.id); }catch(e){}
   return alvo.nome||'jogador';
 }
 let aoApanhar=()=>{}, minhaPos=()=>[0,0];
@@ -209,7 +218,7 @@ function apanhei(id,d){
   const o=online.outros.get(id); if(!o||!d) return;
   const dano=Number(d.d), fx=Number(d.fx), fz=Number(d.fz);
   if(!(dano>0&&dano<=20)||!isFinite(fx)||!isFinite(fz)) return;
-  const [x,z]=minhaPos(); if(Math.hypot(o.x-x,o.z-z)>3.5) return;            // longe demais: ignora (lag ou trapaça)
+  const [x,z]=minhaPos(); if(Math.hypot(o.x-x,o.z-z)>(d.t?ALCANCE+5:3.5)) return;   // longe demais: ignora (lag ou trapaça) · tiro vem de longe
   const agora=performance.now(); if(agora-(ultPancada.get(id)||0)<300) return; ultPancada.set(id,agora);
   const l=Math.hypot(fx,fz)||1; aoApanhar(dano, fx/l, fz/l, o.nome||'Alguém');
 }

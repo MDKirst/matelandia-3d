@@ -4,8 +4,8 @@
 import * as THREE from 'three';
 import { $ } from './cena.js';
 
-export const DUR={ soco:0.38, chute:0.6 };          // duração do golpe (s)
-export const DANO={ soco:12, chute:20 };            // energia tirada de outro jogador
+export const DUR={ soco:0.38, chute:0.6, tiro:0.32 }; // duração do golpe (s) · tiro: só quem tem arma (tiro.js)
+export const DANO={ soco:12, chute:20, tiro:15 };   // energia tirada de outro jogador
 const DESMAIO=5, ESPERA_CURA=4, CURA=5;             // s caído · s sem apanhar até começar a curar · energia/s
 // fome (17/11): a energia cai devagar com o tempo e descansar só recupera até a metade; para encher: comer, remédio ou dormir
 export const DESCANSO=50, FOME=1/20, PISO_FOME=10;   // teto da cura sozinha · energia/s gasta · a fome nunca derruba abaixo disso
@@ -41,7 +41,11 @@ function mirar(osso, dir, w){
 export function poseGolpe(raiz, tipo, t, fx, fz){
   if(!raiz||!tipo||t<0||t>1) return;
   const o=ossos(raiz), w=Math.sin(Math.PI*Math.min(1,t*1.15));        // estica rápido, volta mais devagar
-  if(tipo==='soco'){
+  if(tipo==='tiro'){                                                     // braço esticado na altura do ombro, apontando
+    const k=Math.min(1,t*6)*(t>0.8?(1-t)/0.2:1);
+    mirar(o.braco, d.set(fx,0.04,fz).normalize(), k);
+    mirar(o.antebraco, d.set(fx,0.04,fz).normalize(), k);
+  } else if(tipo==='soco'){
     mirar(o.braco, d.set(fx,0.08,fz).normalize(), w);
     mirar(o.antebraco, d.set(fx,0.1,fz).normalize(), w);
   } else {

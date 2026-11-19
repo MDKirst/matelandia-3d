@@ -7,7 +7,7 @@ import { toLL, toXZ, LX0, LZ0, LX1, LZ1 } from './geo.js';
 import { ANDAR, CORRER } from './config.js';
 import { satelite } from './satelite.js';
 import { ruas, predios, carregarCidade, status } from './cidade.js';
-import { jogador, suporte, av, animar } from './avatar.js';
+import { jogador, suporte, av, animar, animarGolpe } from './avatar.js';
 import { tecla, cam, toque, pedido } from './controles.js';
 import { bloqueado, ruaMaisProxima, pontoLivre } from './mundo.js';
 import { carregarPredios, atualizarTelhados } from './predios.js';
@@ -22,7 +22,8 @@ import { danificar, efeitosVeiculos } from './veiculos.js';
 import { baterNoCarro } from './transito.js';
 import { quandoAtropelar, interagir, pedestrePerto, atualizarBaloes, quantosSeguem } from './pedestres.js';
 import { iniciarPolicia, atualizarPolicia, crime, posicoesPolicia } from './policia.js';
-import { somBatida, somExplosao, somPancada, somSirene, somMundo } from './som.js';
+import { somBatida, somExplosao, somPancada, somSirene, somMundo, somTiro } from './som.js';
+import { desenharTiro, bocaDaArma, atualizarTiros } from './tiro.js';
 import { ganhar as pagar, fmt } from './terrenos.js';
 import { iniciarTerrenos, comprar, alternarObra, dicaTerreno, obra, lotesMeus, terrenosNoMapa, avisarTerreno, sairObra } from './terrenos.js';
 import { alternarCorrida, atualizarCorrida, alvoCorrida } from './entregas.js';
@@ -118,7 +119,7 @@ function aPe(dt){
   if(gesto>0){ gesto-=dt; if(estado==='parado') estado='acenar'; }       // acenando para alguém
   estadoAPe=estado;
   animar(estado); if(av.mixer) av.mixer.update(dt);
-  if(golpe.tipo) poseGolpe(suporte, golpe.tipo, golpe.t/DUR[golpe.tipo], Math.sin(rumo), Math.cos(rumo));
+  if(golpe.tipo&&!animarGolpe(golpe.tipo, golpe.seq)) poseGolpe(suporte, golpe.tipo, golpe.t/DUR[golpe.tipo], Math.sin(rumo), Math.cos(rumo));
   if(av.boneco){ const s=estado==='parado'?0:Math.sin(passo)*(estado==='correr'?0.9:0.55), q=av.boneco.userData.partes;
     q[0].rotation.x=s; q[1].rotation.x=-s; q[2].rotation.x=-s; q[3].rotation.x=s; }
 }
@@ -195,9 +196,11 @@ quandoTurmaBater((dano,fx,fz)=>{ if(veic.dirigindo) return false; if(levarPancad
 // soco/chute no meio do golpe: acerta pedestre ou outro jogador logo à frente
 function acertar(tipo){
   const p=jogador.position, fx=Math.sin(rumo), fz=Math.cos(rumo);
+  if(tipo==='tiro'){ desenharTiro(bocaDaArma(suporte,fx,fz),fx,fz); somTiro(3); }
   const ped=golpearPedestre(p.x,p.z,fx,fz,tipo), jog=golpearJogador(p.x,p.z,fx,fz,tipo,DANO[tipo]), gan=golpearGangue(p.x,p.z,fx,fz,tipo);
-  if(ped||jog||gan) somPancada();
-  if(ped==='nocaute') crime(1,'Agressão');
+  if((ped||jog||gan)&&tipo!=='tiro') somPancada();
+  if(tipo==='tiro'&&(ped||jog)) crime(ped==='nocaute'?2:1, ped?'Tiro em pedestre':'Tiro em jogador');
+  else if(ped==='nocaute') crime(1,'Agressão');
   if(ped){ const t=performance.now(); pancadas=pancadas.filter(x=>t-x<20000); pancadas.push(t);
     if(ped==='nocaute'||pancadas.length>=2){ pancadas=[]; revolta(p.x,p.z); } }
 }
@@ -283,8 +286,8 @@ function quadro(){
     if(pedido.acao){ const a=pedido.acao; pedido.acao=null;                     // T/G/H/X com um pedestre perto
       if(!veic.dirigindo){ const p=jogador.position, alvo=pedestrePerto(p.x,p.z);
         if(alvo){ rumo=Math.atan2(alvo.x-p.x,alvo.z-p.z); if(a==='cumprimentar') gesto=2.2; interagir(a,p.x,p.z); if(a==='conversar') contar('papo',10); } } }
-    if(pedido.golpe){ const g=pedido.golpe; pedido.golpe=null; if(!veic.dirigindo) golpear(g); }
-    atualizarLuta(dt, acertar);
+    if(pedido.golpe){ const g=pedido.golpe==='soco'&&av.arma?'tiro':pedido.golpe; pedido.golpe=null; if(!veic.dirigindo) golpear(g); }   // quem tem arma (Ricardo) atira no J
+    atualizarLuta(dt, acertar); atualizarTiros(dt);
     if(veic.dirigindo) aoVolante(dt); else { jogador.visible=true; aPe(dt); } }
   const p=jogador.position;
 

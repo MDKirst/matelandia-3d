@@ -15,6 +15,7 @@ import { horaJogo, fatorPessoas } from './ceu.js';
 import { sortearPersona } from './personas.js';
 import { ehComercio } from './comercio.js';
 import { grupoDe, movimento, peso, nomeGrupo, perfil, PRACA, saudacao, FALA_LUGAR } from './rotina.js';
+import { ALCANCE, naMira } from './tiro.js';
 
 export const PESSOAS = ['male-casual','female-casual','male-shirt','female-dress','male-long-sleeve','female-tank-top','male-suit','female-alternative',
   'male-casual-2-24','female-casual-2-24','male-worker-24','female-worker-24','male-farmer-24','female-formal-24','male-casual-hoodie-24','female-suit-24','male-beach-24','male-suit-24','male-punk-24','female-jeans'];
@@ -358,12 +359,12 @@ export function semPanfleto(x,z){ let m=null, md=1e9; for(const p of gente){ if(
 
 const FALAS_DOR=['Ai!','Ui!','Tá maluco?!','Para com isso!','Socorro, polícia!','Aiii!'];
 export function golpearPedestre(jx,jz,fx,fz,tipo){
-  let alvo=null, md=1.8;
+  let alvo=null, md=tipo==='tiro'?ALCANCE:1.8;
   for(const p of gente){ if(!p.obj||p.modo==='caido'||p.modo==='levantar') continue;
     const dx=p.x-jx, dz=p.z-jz, d=Math.hypot(dx,dz); if(d>=md||d<0.01) continue;
-    if((dx*fx+dz*fz)/d<0.35) continue; md=d; alvo=p; }
+    if(tipo==='tiro'?naMira(dx,dz,fx,fz)<0:(dx*fx+dz*fz)/d<0.35) continue; md=d; alvo=p; }
   if(!alvo) return null;
-  const p=alvo; p.energia=(p.energia??100)-(tipo==='chute'?40:24);
+  const p=alvo; p.energia=(p.energia??100)-(tipo==='tiro'?55:tipo==='chute'?40:24);
   if(p.energia<=0){
     p.energia=100; p.modo='caido'; p.t=6+Math.random()*3; p.queda=0;
     const k=tipo==='chute'?3.2:2.2; p.vx=fx*k; p.vz=fz*k; p.vy=1.2; p.rumo=Math.atan2(-fx,-fz);   // cai de costas

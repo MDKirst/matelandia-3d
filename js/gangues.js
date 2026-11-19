@@ -12,6 +12,7 @@ import { bloqueado, pontoLivre } from './mundo.js';
 import { horaJogo } from './ceu.js';
 import { carregarModelo, falar } from './pedestres.js';
 import { poseGolpe } from './luta.js';
+import { naMira } from './tiro.js';
 import { casas } from './casas.js';
 import { nuvem } from './nuvem.js';
 import { somTiro, somPancada } from './som.js';
@@ -119,8 +120,9 @@ function hostil(g,fala){
 // soco/chute do jogador num membro (até 1,8 m na frente). Devolve true se acertou.
 export function golpearGangue(x,z,fx,fz,tipo){
   for(const g of GANGUES) for(const p of g.membros){ if(p.caido) continue;
-    const ax=p.x-x, az=p.z-z, d=Math.hypot(ax,az); if(d>1.8||(ax*fx+az*fz)/(d||1)<0.35) continue;
-    p.vida-=tipo==='chute'?1.5:1; p.x+=fx*0.4; p.z+=fz*0.4;
+    const ax=p.x-x, az=p.z-z, d=Math.hypot(ax,az);
+    if(tipo==='tiro'){ if(naMira(ax,az,fx,fz)<0) continue; } else if(d>1.8||(ax*fx+az*fz)/(d||1)<0.35) continue;
+    p.vida-=tipo==='tiro'?2:tipo==='chute'?1.5:1; p.x+=fx*0.4; p.z+=fz*0.4;
     if(p.vida<=0){ p.caido=40; falar(p,'Ai!',1.5); }
     if(g.estado!=='hostil') hostil(g,'Bateu num dos nossos!');
     return true; }
