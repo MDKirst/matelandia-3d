@@ -5,7 +5,7 @@
 // Animações da pasta jogo/GDB; os golpes (Soco/Chute) e a guarda vêm de jogo/GDB/luta e são opcionais
 // (o que não estiver lá fica de fora; sem golpe o jogo usa a pose por código do luta.js).
 // uso (em matelandia-3d/tools): npx tsx fbx-para-glb-luta.mts <personagem.fbx> <textura.png> <pasta GDB> <saida.glb> [pasta com os clipes de luta]
-import { existsSync, readFileSync, writeFileSync } from 'node:fs';
+import { existsSync, readdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import * as THREE from 'three';
 import { NodeIO } from '@gltf-transform/core';
@@ -61,7 +61,7 @@ piloto.traverse((o) => {
 });
 // luta (19/11): clipes do Mixamo baixados pelo Maicon (com pele: o FBXLoader só usa o movimento). Cada clipe tem vários
 // socos seguidos; o jogo recorta UM soco (~0,55 s em volta do pico do alcance da mão, achado com tools/picos-soco.mts).
-// O jogo alterna Soco, Soco2… a cada J (avatar.js acoesDeGolpe). Sem chute: o K segue com a pose por código.
+// O jogo alterna Soco, Soco2… a cada J e Chute, Chute2… a cada K (avatar.js acoesDeGolpe); sem chute, o K usa a pose por código.
 const LUTA: { arq: string; nome: string; de?: number; ate?: number }[] = [
   { arq: 'Fight Idle', nome: 'Idle' },                         // guarda de lutador no lugar da respiração parada
   { arq: 'Punching Bag', nome: 'Soco', de: 0.83, ate: 1.38 },  // direto de direita
@@ -69,6 +69,18 @@ const LUTA: { arq: string; nome: string; de?: number; ate?: number }[] = [
   { arq: 'Fist Fight A', nome: 'Soco3', de: 1.27, ate: 1.82 }, // esquerda longa
   { arq: 'Hook', nome: 'Soco4', de: 0.9, ate: 1.45 },          // gancho de esquerda
 ];
+// chutes (19/11): qualquer "*Kick*.fbx" na pasta de luta vira Chute, Chute2… (ordem alfabética); o recorte é ~0,7 s em volta
+// do momento em que um pé vai mais à frente do quadril (achado sozinho, sem precisar medir à mão)
+const acharPicoPe = (clip: THREE.AnimationClip) => {
+  const mixer = new THREE.AnimationMixer(piloto), ac = mixer.clipAction(clip); ac.play();
+  const pes = ['mixamorigRightFoot', 'mixamorigLeftFoot'].map((n) => piloto.getObjectByName(n)!), quadril = piloto.getObjectByName('mixamorigHips')!;
+  const a = new THREE.Vector3(), q = new THREE.Vector3(); let melhor = [0, -1e9];
+  for (let t = 0; t <= clip.duration; t += 1 / 30) { mixer.setTime(t); piloto.updateMatrixWorld(true); quadril.getWorldPosition(q);
+    for (const pe of pes) { const v = pe.getWorldPosition(a).z - q.z; if (v > melhor[1]) melhor = [t, v]; } }
+  ac.stop(); mixer.uncacheRoot(piloto); return melhor[0];
+};
+if (pastaLuta) readdirSync(pastaLuta).filter((n) => /kick/i.test(n) && n.toLowerCase().endsWith('.fbx')).sort().forEach((n, i) => {
+  LUTA.push({ arq: n.replace(/\.fbx$/i, ''), nome: i ? `Chute${i + 1}` : 'Chute', pico: true } as any); });
 const temGuarda = !!pastaLuta && existsSync(join(pastaLuta, 'Fight Idle.fbx'));
 // Animações da pasta GDB foram baixadas em OUTRO boneco: o quadril vem noutra escala (o Fortão afundava 95 cm andando).
 // Uma escala só para a pasta toda, medida na respiração em pé (Breathing Idle) contra o quadril do personagem em pé.
@@ -93,6 +105,7 @@ if (pastaLuta) for (const g of LUTA) {
   const caminho = join(pastaLuta, `${g.arq}.fbx`);
   if (!existsSync(caminho)) { console.log('(sem', g.arq + ')'); continue; }
   let clip = filtrar(lerFbx(caminho).animations[0]);
+  if ((g as any).pico) { const t = acharPicoPe(clip); g.de = Math.max(0, t - 0.4); g.ate = Math.min(clip.duration, t + 0.3); console.log(`  pé no alto em ${t.toFixed(2)} s`); }
   if (g.de !== undefined) clip = recortar(clip, g.de, g.ate!);
   clip.name = g.nome; clips.push(clip);
   console.log(g.nome, clip.duration.toFixed(2), 's,', clip.tracks.length, 'trilhas (' + g.arq + ')');

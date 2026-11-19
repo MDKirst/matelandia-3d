@@ -50,6 +50,7 @@ export function casaPerto(x,z){
 export function dicaCasa(x,z){
   if(casa.dentro) return perto(casa.cama,1.6)?'E dormir (enche a energia)':perto(casa.porta,1.4)?'E sair de casa':'';
   const c=casaPerto(x,z); if(!c) return '';
+  if(c.qg) return `${c.qg} · não está à venda`;
   if(minha(c)) return 'E entrar na sua casa';
   if(c.dono) return `Casa de ${c.nome||'outro jogador'}`;
   return `B comprar esta casa (${fmt(c.preco)}) · saldo ${fmt(salvo.saldo)}`;
@@ -57,6 +58,7 @@ export function dicaCasa(x,z){
 let comprando=false;
 export async function comprarCasa(x,z){
   const c=casaPerto(x,z); if(!c) return false;
+  if(c.qg){ avisar(`${c.qg}: essa casa não está à venda`); return true; }
   if(minha(c)){ avisar('Esta casa já é sua: E para entrar'); return true; }
   if(c.dono){ avisar(`Casa de ${c.nome||'outro jogador'}`); return true; }
   if(!nuvem.ok){ avisar('Sem internet: não dá para comprar casa agora'); return true; }

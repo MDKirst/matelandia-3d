@@ -3,9 +3,11 @@
 import { ruas, predios } from './cidade.js';
 
 const CEL = 40;            // m
-let grade = new Map(), indexados = 0, extra = null;
+let grade = new Map(), indexados = 0, extra = null; const extras = [];
 // outro módulo pode bloquear mais coisas (blocos construídos pelo jogador)
 export function definirBloqueioExtra(f){ extra=f; }
+// outros bloqueios (barricada das gangues à noite)
+export function somarBloqueio(f){ extras.push(f); }
 const k = (i,j)=>i+'_'+j;
 
 // (re)monta a grade quando chegam prédios novos
@@ -21,6 +23,7 @@ function dentro(x,z,pts){ let c=false; for(let i=0,j=pts.length-1;i<pts.length;j
 
 export function bloqueado(x,z){
   if(extra&&extra(x,z)) return true;
+  for(const f of extras) if(f(x,z)) return true;
   if(indexados!==predios.length) indexar();
   const lista=grade.get(k(Math.floor(x/CEL),Math.floor(z/CEL))); if(!lista) return false;
   for(const p of lista){ const b=p.bb; if(x<b[0]||z<b[1]||x>b[2]||z>b[3]) continue; if(dentro(x,z,p.pts)) return true; }

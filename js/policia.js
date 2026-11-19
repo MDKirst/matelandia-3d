@@ -142,4 +142,6 @@ export function atualizarPolicia(dt, jog, prender){
   // longe de todas as viaturas por 12 s: despistou
   if(policia.carros.length&&menorDist>230){ semVer+=dt; if(semVer>12){ limpar(); avisar('Você despistou a polícia'); } } else semVer=0;
 }
+// viatura e PM para a batida no ponto das gangues (gangues.js)
+export const moldesPolicia=()=>({ carro:molde, suv:moldeSuv, pm:moldeGuarda });
 export const posicoesPolicia=()=>policia.carros.map(c=>[c.x,c.z,c.h,c.meio,c.larg]);

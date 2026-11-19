@@ -15,7 +15,7 @@ import { construirMarcos } from './marcos.js';
 import { carregarLojas } from './lojas.js';
 import { construirDetalhes, alturaLombada } from './detalhes.js';
 import { iniciarPedestres, atualizarPedestres, posicoesPedestres } from './pedestres.js';
-import { iniciarGangues, atualizarGangues, golpearGangue } from './gangues.js';
+import { iniciarGangues, atualizarGangues, golpearGangue, obstaculosGangues } from './gangues.js';
 import { home, pronto, progresso } from './home.js';
 import { atualizarEfeitos } from './efeitos.js';
 import { danificar, efeitosVeiculos } from './veiculos.js';
@@ -310,6 +310,7 @@ function quadro(){
   const D=veic.dirigindo, outros=[[p.x,p.z,D?D.comp/2:0.5,D?D.larg/2:0.5], ...frota.filter(c=>c!==D).map(c=>[c.obj.position.x,c.obj.position.z,c.comp/2,c.larg/2])];
   for(const [x,z] of posicoesPedestres()) outros.push([x,z,0.3,0.3]);   // o trânsito para para pedestre na pista
   for(const [x,z] of posicoesCriancas()) outros.push([x,z,0.8,0.4]);    // e para a criança de bike que cruzou na frente
+  outros.push(...obstaculosGangues());                                   // e na barricada das gangues (à noite)
   atualizarTransito(dt,p.x,p.z,outros);
   if(!casa.dentro) atualizarCriancas(dt,{x:p.x,z:p.z,dirigindo:!!D,v:D?D.v:0});
   atualizarPedestres(dt,{x:p.x,z:p.z,dirigindo:!!D,v:D?D.v:0, veic:D?{x:D.obj.position.x,z:D.obj.position.z,h:D.h,meio:D.comp/2,larg:D.larg/2,v:D.v}:null},

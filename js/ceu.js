@@ -1,5 +1,5 @@
 // Dia e noite.
-// Relógio do jogo: 1 dia = 48 min de verdade, contado a partir do relógio do computador, então todos
+// Relógio do jogo: 1 dia = 48 min de verdade (dia ~38 min, noite ~10 min), contado a partir do relógio do computador, então todos
 // os jogadores online veem a mesma hora (?hora=21 na URL fixa a hora, para testar).
 // Como a maior parte da cidade usa material sem luz (satélite, ruas, telhados), escurecer as luzes não
 // bastaria: depois de desenhar a cena, um retângulo na tela inteira MULTIPLICA tudo por uma cor
@@ -12,12 +12,14 @@ import { semRelevo } from './relevo.js';
 import { ruas } from './cidade.js';
 import { arvores } from './marcos.js';
 
-const CICLO_MIN = 48;
+const CICLO_MIN = 48, FRACAO_DIA = 0.79;   // fração do ciclo que é dia (6h–19h)
 const fixa = (()=>{ const h=parseFloat(new URLSearchParams(location.search).get('hora')); return isFinite(h)?((h%24)+24)%24:null; })();
 export function horaJogo(){
   if(fixa!==null) return fixa;
-  const min = Date.now()/60000;
-  return ((min/CICLO_MIN*24) + 10) % 24;      // +10: no começo de cada hora "real" não cai sempre na mesma hora do jogo
+  // 19/11 (pedido do Maicon: "muito tempo à noite"): as horas não andam no mesmo passo. O dia (6h–19h) leva
+  // FRACAO_DIA do ciclo (~38 min) e a noite (19h–6h) o resto (~10 min). Antes era metade/metade (24 min escuro).
+  const f = ((Date.now()/60000/CICLO_MIN) + 0.31) % 1;      // +0,31: o começo de cada hora "real" não cai sempre na mesma hora do jogo
+  return f < FRACAO_DIA ? 6 + 13*f/FRACAO_DIA : (19 + 11*(f-FRACAO_DIA)/(1-FRACAO_DIA)) % 24;
 }
 export const relogioTxt = h=>String(Math.floor(h)).padStart(2,'0')+':'+String(Math.floor((h%1)*60)).padStart(2,'0');
 
