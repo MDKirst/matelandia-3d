@@ -12,6 +12,7 @@ import { DUR, poseGolpe, barraSprite, pintarBarra } from './luta.js';
 import { acoesDeGolpe, velocidadeGolpe } from './avatar.js';
 import { ALCANCE, naMira, desenharTiro, bocaDaArma } from './tiro.js';
 import { somTiro } from './som.js';
+import { lerPersonagemInfo, baixarPersonagem } from './nuvem.js';
 import { nuvem, ADMINS } from './nuvem.js';
 
 const TRYSTERO='https://cdn.jsdelivr.net/npm/trystero@0.26.0/+esm';
@@ -95,9 +96,18 @@ async function receber(id,d){
   if(pid&&pid!==o.pid){ o.pid=pid; vestir(o,pid); }
   if((d.vt||null)!==o.vt){ o.vt=d.vt||null; trocarVeiculo(o); }
 }
+// personagem próprio de outro jogador ('u:<uid>'): só aparece se o admin aprovou; senão, boneco padrão
+const PADRAO='assets/pessoas/male-casual.glb';
+async function proprioDe(pid){
+  const uid=pid.slice(2).replace(/[^A-Za-z0-9]/g,'').slice(0,40); if(!uid) return carregar(PADRAO);
+  const info=await lerPersonagemInfo(uid); if(info?.status!=='aprovado') return carregar(PADRAO);
+  return arquivos['u:'+uid+':'+info.t]??=baixarPersonagem(uid,info).then(buf=>buf?new Promise(ok=>loader.parse(buf.slice(0),'',g=>ok(g),()=>ok(null))):null)
+    .then(g=>g||carregar(PADRAO));
+}
 async function vestir(o,pid){
-  const url=pid==='maicon'?'assets/maicon-animado.glb':`assets/pessoas/${pid.replace(/[^a-z0-9-]/g,'')}.glb`;
-  const g=await carregar(url); if(!g||o.pid!==pid) return;
+  const g=pid.startsWith('u:')?await proprioDe(pid)
+    :await carregar(pid==='maicon'?'assets/maicon-animado.glb':`assets/pessoas/${pid.replace(/[^a-z0-9-]/g,'')}.glb`);
+  if(!g||o.pid!==pid) return;
   if(o.boneco) o.grupo.remove(o.boneco);
   const b=clonarEsqueleto(g.scene); b.updateMatrixWorld(true);
   const box=new THREE.Box3().setFromObject(b,true), e=1.75/((box.max.y-box.min.y)||1.75); b.scale.multiplyScalar(e);

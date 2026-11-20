@@ -1,0 +1,145 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Tutorial: seu personagem · Matelândia 3D</title>
+<style>
+  :root{--fundo:#0f1115;--painel:#171a21;--linha:#2a2f3a;--txt:#e5e7eb;--fraco:#94a3b8;--laranja:#F97316;--ouro:#fcd34d;--ok:#4ade80;--ruim:#f87171}
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--fundo);color:var(--txt);font:16px/1.6 system-ui,-apple-system,"Segoe UI",sans-serif}
+  .pag{max-width:820px;margin:0 auto;padding:24px max(16px,env(safe-area-inset-left)) 60px}
+  h1{margin:0 0 4px;font-size:30px;line-height:1.2} h1 span{color:var(--laranja)}
+  .sub{color:var(--fraco);margin:0 0 18px}
+  a{color:var(--ouro)}
+  h2{font-size:21px;margin:34px 0 10px;display:flex;gap:10px;align-items:center}
+  h2 b{background:var(--laranja);color:#111;border-radius:999px;min-width:30px;height:30px;display:inline-grid;place-items:center;font-size:15px;padding:0 8px;flex:none}
+  ol,ul{padding-left:1.3em} li{margin:5px 0}
+  .caixa{background:var(--painel);border:1px solid var(--linha);border-radius:12px;padding:14px 16px;margin:12px 0}
+  .caixa.regra{border-color:rgba(248,113,113,.5)}
+  .caixa.dica{border-color:rgba(252,211,77,.45)}
+  .caixa h3{margin:0 0 6px;font-size:16px}
+  code,kbd{background:#262b36;border-radius:5px;padding:1px 6px;font-size:.92em}
+  .prompt{position:relative;background:#0b0d11;border:1px solid var(--linha);border-radius:10px;padding:12px 14px;font-family:ui-monospace,Consolas,monospace;font-size:14px;white-space:pre-wrap;word-break:break-word}
+  .copiar{margin-top:8px;background:#262b36;color:var(--txt);border:1px solid #3a4150;border-radius:8px;padding:6px 12px;font:inherit;font-size:14px;cursor:pointer}
+  .copiar:focus-visible{outline:2px solid var(--ouro);outline-offset:2px}
+  .tabela{overflow-x:auto} table{border-collapse:collapse;width:100%;font-size:15px}
+  th,td{text-align:left;padding:8px 10px;border-bottom:1px solid var(--linha);vertical-align:top}
+  th{color:var(--fraco);font-weight:600}
+  .botao{display:inline-block;background:var(--laranja);color:#111;font-weight:700;border-radius:10px;padding:10px 16px;text-decoration:none;margin-top:6px}
+  .mapa{display:flex;flex-wrap:wrap;gap:6px;align-items:center;font-size:14px;color:var(--fraco)}
+  .mapa span{background:var(--painel);border:1px solid var(--linha);border-radius:99px;padding:3px 10px;color:var(--txt)}
+</style>
+</head>
+<body>
+<div class="pag">
+  <h1>Crie o <span>seu personagem</span> para Matelândia 3D</h1>
+  <p class="sub">Em uns 40 minutos você inventa um personagem, transforma em 3D, coloca esqueleto e entra no jogo com ele. Tudo grátis.</p>
+
+  <div class="mapa" aria-label="Caminho"><span>Imagem por IA</span>→<span>3D no TRELLIS</span>→<span>Oficina 1</span>→<span>Mixamo</span>→<span>Oficina 2 e 3</span>→<span>Jogo</span></div>
+
+  <div class="caixa">
+    <h3>O que você precisa</h3>
+    <ul>
+      <li>Um <b>computador</b> com Chrome ou Edge (no celular o Mixamo não funciona direito).</li>
+      <li>Uma <b>conta Google</b>, para entrar no jogo e enviar o personagem.</li>
+      <li>Uma <b>conta Adobe</b> grátis, para usar o Mixamo (dá para criar com a conta Google).</li>
+    </ul>
+  </div>
+
+  <div class="caixa regra">
+    <h3>Regras (o professor confere antes de os outros verem)</h3>
+    <ul>
+      <li>Invente o personagem. <b>Não use foto de colega, professor ou qualquer pessoa real</b>, nem a sua.</li>
+      <li>Não copie personagem de filme, jogo ou desenho famoso.</li>
+      <li>Nada de roupa imprópria, sangue, arma, droga, palavrão ou símbolo ofensivo.</li>
+      <li>Personagem recusado continua só para você; os outros jogadores veem um boneco padrão.</li>
+    </ul>
+  </div>
+
+  <h2><b>1</b> Crie a imagem do personagem</h2>
+  <p>Use uma IA de imagem grátis (Gemini, ChatGPT ou Copilot). Copie o pedido abaixo e troque o que está entre colchetes.</p>
+  <div class="prompt" id="prompt">Crie a imagem de um personagem de jogo 3D, estilo [desenho animado / realista], corpo inteiro, de frente, em pose T: braços abertos esticados na horizontal, palmas para baixo, pernas um pouco afastadas. Fundo branco liso, sem sombra, sem objetos nas mãos. O personagem é [um jovem mecânico de Matelândia], usa [macacão azul e boné vermelho], cabelo [curto].</div>
+  <button class="copiar" id="copiar" type="button">Copiar o pedido</button>
+  <div class="caixa dica">
+    <h3>Para dar certo no 3D e no esqueleto</h3>
+    <ul>
+      <li>O corpo inteiro tem que aparecer: da cabeça aos pés.</li>
+      <li>Braços longe do corpo e dedos separados.</li>
+      <li>Evite capa, asa, saia rodada, cabelo até a cintura e casaco muito largo: atrapalham o esqueleto.</li>
+      <li>Salve a imagem no computador.</li>
+    </ul>
+  </div>
+
+  <h2><b>2</b> Transforme a imagem em 3D</h2>
+  <ol>
+    <li>Abra o <a href="https://huggingface.co/spaces/microsoft/TRELLIS.2" target="_blank" rel="noopener">TRELLIS.2 no Hugging Face</a>.</li>
+    <li>Suba a imagem e clique para gerar. Pode demorar alguns minutos; se a fila estiver cheia, tente de novo mais tarde ou use o <a href="https://huggingface.co/spaces/trellis-community/TRELLIS" target="_blank" rel="noopener">TRELLIS da comunidade</a>.</li>
+    <li>Se aparecer opção de simplificar a malha ou de tamanho de textura, escolha os valores menores (por exemplo, textura de 1024).</li>
+    <li>Baixe o arquivo <b>.glb</b>.</li>
+  </ol>
+  <p>Ficou com braço grudado, perna derretida ou rosto estranho? Volte ao passo 1 e gere outra imagem. Vale a pena: o resto depende disso.</p>
+
+  <h2><b>3</b> Oficina, passo 1: prepare para o Mixamo</h2>
+  <ol>
+    <li>Abra a <a href="oficina.html" target="_blank" rel="noopener">Oficina do Personagem</a>.</li>
+    <li>No passo 1, escolha o seu <b>.glb</b>.</li>
+    <li>Gire até o rosto do boneco olhar para a <b>seta amarela</b> no chão (para você). Se ele estiver deitado, use <b>Pôr em pé</b>.</li>
+    <li>Clique em <b>Baixar .zip para o Mixamo</b>. Vem o arquivo <code>personagem-para-mixamo.zip</code>. Não descompacte para o Mixamo; só guarde.</li>
+  </ol>
+
+  <h2><b>4</b> Coloque o esqueleto no Mixamo</h2>
+  <ol>
+    <li>Entre em <a href="https://www.mixamo.com" target="_blank" rel="noopener">mixamo.com</a> com a conta Adobe.</li>
+    <li>Clique em <b>Upload Character</b> e arraste o <code>personagem-para-mixamo.zip</code>.</li>
+    <li>O boneco tem que aparecer de frente e em pé. Se não, use os botões de girar do Mixamo e clique em <b>Next</b>.</li>
+    <li>Arraste os círculos coloridos para: <b>queixo</b>, <b>pulsos</b>, <b>cotovelos</b>, <b>joelhos</b> e <b>virilha</b>. Em <i>Skeleton LOD</i>, pode deixar o padrão.</li>
+    <li>Clique em <b>Next</b> e espere o Mixamo montar o esqueleto. Confira se ele se mexe direito e clique em <b>Next</b> de novo.</li>
+    <li>Sem escolher animação, clique em <b>Download</b>: <i>Format</i> = <b>FBX Binary (.fbx)</b> e <i>Pose</i> = <b>T-pose</b>. Baixe.</li>
+  </ol>
+  <p>Não precisa baixar andar e correr do Mixamo: a Oficina já coloca os movimentos do jogo.</p>
+
+  <h2><b>5</b> Oficina, passos 2 e 3: monte e envie</h2>
+  <ol>
+    <li>Na Oficina, no passo 2, escolha o <b>.fbx</b> que veio do Mixamo.</li>
+    <li>Se o boneco aparecer branco, descompacte o .zip do passo 3 e escolha a <code>textura.jpg</code> no campo <b>Textura</b>.</li>
+    <li>Teste os botões <b>Parado</b>, <b>Andar</b>, <b>Correr</b> e <b>Acenar</b>.</li>
+    <li>No passo 3, clique em <b>Entrar com Google</b>, dê um nome ao personagem (até 16 letras) e clique em <b>Enviar meu personagem</b>.</li>
+  </ol>
+
+  <h2><b>6</b> Jogue com ele</h2>
+  <ol>
+    <li>Abra o jogo e, na tela inicial, clique em <b>Entrar com Google</b> com a <b>mesma conta</b>.</li>
+    <li>O seu personagem aparece <b>primeiro</b> na lista. Escolha e clique em <b>JOGAR</b>.</li>
+    <li>Os outros jogadores veem o seu personagem depois que o professor aprovar. Até lá, eles veem um boneco padrão.</li>
+  </ol>
+  <p>Quer trocar? Mande outro pela Oficina: o novo substitui o antigo e volta para a fila de aprovação.</p>
+  <a class="botao" href="oficina.html" target="_blank" rel="noopener">Abrir a Oficina do Personagem</a>
+
+  <h2><b>?</b> Deu problema</h2>
+  <div class="tabela">
+    <table>
+      <thead><tr><th>O que aconteceu</th><th>O que fazer</th></tr></thead>
+      <tbody>
+        <tr><td>A Oficina diz que não conseguiu abrir o .glb</td><td>Confira se baixou o .glb do TRELLIS (e não a imagem ou um vídeo).</td></tr>
+        <tr><td>O Mixamo recusou o .zip</td><td>Suba o .zip inteiro, sem descompactar. Se ainda falhar, gere o .zip de novo na Oficina.</td></tr>
+        <tr><td>No Mixamo o boneco ficou deitado ou de costas</td><td>Volte à Oficina, gire até olhar para a seta amarela e baixe o .zip de novo.</td></tr>
+        <tr><td>A Oficina diz que o .fbx não tem esqueleto</td><td>No Mixamo, termine a marcação das juntas e baixe depois do <b>Next</b>, em FBX Binary.</td></tr>
+        <tr><td>O personagem ficou branco</td><td>Escolha a <code>textura.jpg</code> que está dentro do .zip do passo 3.</td></tr>
+        <tr><td>O braço ou a perna dobra estranho</td><td>Refaça as juntas no Mixamo, com cuidado nos cotovelos e joelhos.</td></tr>
+        <tr><td>Ficou acima do limite de tamanho</td><td>Gere de novo no TRELLIS com textura menor ou malha mais simples.</td></tr>
+        <tr><td>Não aparece no jogo</td><td>Na tela inicial do jogo, entre com a mesma conta Google que você usou na Oficina.</td></tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+<script>
+  document.getElementById('copiar').addEventListener('click', async e => {
+    const t = document.getElementById('prompt').innerText;
+    try { await navigator.clipboard.writeText(t); e.target.textContent = 'Copiado!'; }
+    catch (_) { const r = document.createRange(); r.selectNodeContents(document.getElementById('prompt')); const s = getSelection(); s.removeAllRanges(); s.addRange(r); e.target.textContent = 'Selecionado: aperte Ctrl+C'; }
+    setTimeout(() => { e.target.textContent = 'Copiar o pedido'; }, 2500);
+  });
+</script>
+</body>
+</html>

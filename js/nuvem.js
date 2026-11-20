@@ -134,3 +134,47 @@ export async function comprarCasaNuvem(id, nome){
 // dinheiro e caixa dos negócios na conta: jogadores/{uid} = { saldo, negocios:{lote:{coleta,vendas}}, t }
 export async function lerJogador(){ if(!nuvem.ok) return null; try{ return (await F.get(ref('jogadores/'+nuvem.uid))).val(); }catch(e){ console.warn('lerJogador',e); return null; } }
 export function gravarJogador(d){ if(!nuvem.ok) return; F.set(ref('jogadores/'+nuvem.uid),d).catch(e=>console.warn('gravarJogador',e)); }
+
+// Personagem próprio (20/11): o aluno monta o personagem na Oficina (oficina.html) e sobe o GLB.
+// personagens/{uid} = { nome, partes, tam, t, status:'pendente'|'aprovado'|'recusado' } (todos leem)
+// personagensArq/{uid}/{0..7} = pedaços do GLB em base64 (≤ 600 mil caracteres cada).
+// Só conta Google envia; o dono vê o dele na hora, os outros só depois que o admin aprova.
+// Trocar o arquivo volta para 'pendente' (a regra não deixa mexer no arquivo de um personagem aprovado).
+export const PERS_MAX=3_400_000, PERS_PEDACO=600_000;
+const paraB64=buf=>{ const b=new Uint8Array(buf); let s=''; for(let i=0;i<b.length;i+=0x8000) s+=String.fromCharCode.apply(null,b.subarray(i,i+0x8000)); return btoa(s); };
+const deB64=s=>{ const t=atob(s), b=new Uint8Array(t.length); for(let i=0;i<t.length;i++) b[i]=t.charCodeAt(i); return b; };
+export async function lerPersonagemInfo(uid){ if(!await conectarNuvem()) return null; try{ return (await F.get(ref('personagens/'+uid))).val(); }catch(e){ console.warn('personagem',e); return null; } }
+export function ouvirPersonagens(cb){ if(!nuvem.ok) return ()=>{}; return F.onValue(ref('personagens'),s=>cb(s.val()||{}),e=>console.warn('personagens',e)); }
+// baixa o GLB (ArrayBuffer) ou null; cache por uid+t enquanto a aba estiver aberta
+const persCache=new Map();
+export async function baixarPersonagem(uid, info){
+  if(!await conectarNuvem()) return null;
+  info??=await lerPersonagemInfo(uid); if(!info) return null;
+  const k=uid+':'+info.t;
+  if(!persCache.has(k)) persCache.set(k,(async()=>{
+    const v=(await F.get(ref('personagensArq/'+uid))).val(); if(!v) return null;
+    const partes=[]; for(let i=0;i<info.partes;i++){ if(typeof v[i]!=='string') return null; partes.push(deB64(v[i])); }
+    const tot=partes.reduce((a,p)=>a+p.length,0), out=new Uint8Array(tot); let o=0; for(const p of partes){ out.set(p,o); o+=p.length; }
+    return out.buffer;
+  })().catch(e=>{ console.warn('baixar personagem',e); persCache.delete(k); return null; }));
+  return persCache.get(k);
+}
+// envia o GLB da conta atual. Devolve 'ok' | 'sem-google' | 'grande' | 'erro'
+export async function enviarPersonagem(buf, nome, progresso){
+  if(!await conectarNuvem()) return 'erro';
+  if(!nuvem.conta) return 'sem-google';
+  if(buf.byteLength>PERS_MAX) return 'grande';
+  try{
+    await au.currentUser.getIdToken(true);            // o token passa a ter o e-mail do Google (a regra confere)
+    const b64=paraB64(buf), partes=[]; for(let i=0;i<b64.length;i+=PERS_PEDACO) partes.push(b64.slice(i,i+PERS_PEDACO));
+    const uid=nuvem.uid;
+    await F.set(ref('personagens/'+uid),{ nome:String(nome||'Meu personagem').slice(0,16), partes:partes.length, tam:buf.byteLength, t:Date.now(), status:'pendente' });
+    await F.remove(ref('personagensArq/'+uid));
+    for(let i=0;i<partes.length;i++){ await F.set(ref(`personagensArq/${uid}/${i}`),partes[i]); progresso?.((i+1)/partes.length); }
+    return 'ok';
+  }catch(e){ console.warn('enviar personagem',e); return 'erro'; }
+}
+// apaga primeiro a ficha (a regra só deixa mexer no arquivo de quem não está aprovado)
+export async function apagarPersonagem(){ if(!nuvem.ok) return; await F.remove(ref('personagens/'+nuvem.uid)).catch(()=>{}); await F.remove(ref('personagensArq/'+nuvem.uid)).catch(()=>{}); }
+// admin: aprova ou recusa
+export async function decidirPersonagem(uid, status){ if(!souAdmin()) return false; try{ await F.set(ref(`personagens/${uid}/status`),status); return true; }catch(e){ console.warn('decidir',e); return false; } }

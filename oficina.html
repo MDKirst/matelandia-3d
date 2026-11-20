@@ -1,0 +1,117 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Oficina do Personagem · Matelândia 3D</title>
+<style>
+  :root{--fundo:#0f1115;--painel:#171a21;--linha:#2a2f3a;--txt:#e5e7eb;--fraco:#94a3b8;--laranja:#F97316;--ouro:#fcd34d;--ok:#4ade80;--ruim:#f87171}
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--fundo);color:var(--txt);font:15px/1.5 system-ui,-apple-system,"Segoe UI",sans-serif}
+  .topo{padding:22px max(16px,env(safe-area-inset-left)) 8px;max-width:1100px;margin:0 auto}
+  h1{margin:0;font-size:28px} h1 span{color:var(--laranja)}
+  .sub{color:var(--fraco);margin:4px 0 0}
+  a{color:var(--ouro)}
+  main{max-width:1100px;margin:0 auto;padding:12px max(16px,env(safe-area-inset-left)) 40px;display:grid;gap:18px}
+  .conta{background:var(--painel);border:1px solid var(--linha);border-radius:12px;padding:12px 14px;display:flex;flex-wrap:wrap;gap:10px;align-items:center}
+  .passo{background:var(--painel);border:1px solid var(--linha);border-radius:12px;padding:16px;display:grid;gap:12px}
+  .passo h2{margin:0;font-size:19px;display:flex;gap:10px;align-items:center}
+  .passo h2 b{background:var(--laranja);color:#111;border-radius:999px;width:28px;height:28px;display:inline-grid;place-items:center;font-size:15px;flex:none}
+  .passo p{margin:0;color:var(--fraco)}
+  .lado{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:16px;align-items:start}
+  @media (max-width:760px){.lado{grid-template-columns:1fr}}
+  canvas.prev{width:100%;aspect-ratio:4/5;max-height:460px;background:radial-gradient(circle at 50% 35%,#283041,#12151b);border-radius:10px;display:block}
+  .botoes{display:flex;flex-wrap:wrap;gap:8px}
+  button,.botao{background:#262b36;color:var(--txt);border:1px solid #3a4150;border-radius:9px;padding:9px 14px;font:inherit;font-weight:600;cursor:pointer;text-decoration:none;display:inline-block}
+  button:hover:not(:disabled),.botao:hover{border-color:var(--laranja)}
+  button.forte,.botao.forte{background:var(--laranja);color:#111;border-color:var(--laranja)}
+  button:disabled{opacity:.45;cursor:not-allowed}
+  button:focus-visible,.botao:focus-visible,input:focus-visible{outline:2px solid var(--ouro);outline-offset:2px}
+  input[type=file]{color:var(--fraco);max-width:100%}
+  input[type=text]{background:#0f1218;color:var(--txt);border:1px solid #3a4150;border-radius:8px;padding:8px 10px;font:inherit;width:100%;max-width:260px}
+  label.campo{display:grid;gap:4px;font-weight:600}
+  .info{font-size:14px;color:var(--fraco);display:grid;gap:4px}
+  .info b{color:var(--txt);font-variant-numeric:tabular-nums}
+  .aviso{border-radius:8px;padding:9px 12px;font-size:14px}
+  .aviso.ok{background:rgba(74,222,128,.12);color:var(--ok)}
+  .aviso.ruim{background:rgba(248,113,113,.12);color:var(--ruim)}
+  .aviso.neutro{background:rgba(148,163,184,.12);color:var(--txt)}
+  .barra{height:8px;background:#262b36;border-radius:99px;overflow:hidden}
+  .barra i{display:block;height:100%;width:0;background:var(--laranja);transition:width .2s}
+  .lista{display:grid;gap:8px}
+  .item{display:flex;flex-wrap:wrap;gap:8px;align-items:center;border:1px solid var(--linha);border-radius:9px;padding:8px 10px}
+  .item .nome{font-weight:700;min-width:120px}
+  .tag{font-size:12px;border-radius:99px;padding:1px 8px;border:1px solid var(--linha)}
+  .tag.pendente{color:var(--ouro)} .tag.aprovado{color:var(--ok)} .tag.recusado{color:var(--ruim)}
+  [hidden]{display:none!important}
+</style>
+<script type="importmap">
+{"imports":{
+  "three":"https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
+  "three/addons/":"https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"
+}}
+</script>
+</head>
+<body>
+<div class="topo">
+  <h1>Oficina do <span>Personagem</span></h1>
+  <p class="sub">Transforme o seu personagem 3D num jogador de Matelândia. Antes de começar, leia o <a href="tutorial-personagem.html" target="_blank" rel="noopener">tutorial passo a passo</a>.</p>
+</div>
+<main>
+  <section class="conta" id="conta">Conectando…</section>
+
+  <section class="passo" id="passo1">
+    <h2><b>1</b> Preparar o modelo para o Mixamo</h2>
+    <p>Escolha o arquivo <b>.glb</b> que a IA criou. A Oficina deixa o boneco em pé, com 1,80 m, mais leve, e gera um <b>.zip</b> para subir no Mixamo.</p>
+    <div class="lado">
+      <div style="display:grid;gap:12px">
+        <input type="file" id="glb" accept=".glb,.gltf,model/gltf-binary">
+        <div class="info" id="info1" hidden></div>
+        <div class="botoes" id="giro1" hidden>
+          <button id="girarE" title="Girar para a esquerda">⟲ Girar 90°</button>
+          <button id="girarD" title="Girar para a direita">⟳ Girar 90°</button>
+          <button id="levantar" title="Usar se o boneco estiver deitado">↥ Pôr em pé</button>
+        </div>
+        <p id="dica1" hidden>O rosto do boneco tem que olhar para <b>você</b> (para a frente da tela). Se não estiver, gire.</p>
+        <div class="botoes"><button class="forte" id="gerarZip" disabled>Baixar .zip para o Mixamo</button></div>
+        <div id="msg1"></div>
+      </div>
+      <canvas class="prev" id="prev1" width="440" height="550" aria-label="Prévia do modelo do passo 1"></canvas>
+    </div>
+  </section>
+
+  <section class="passo" id="passo2">
+    <h2><b>2</b> Montar o personagem com o arquivo do Mixamo</h2>
+    <p>Escolha o <b>.fbx</b> que você baixou do Mixamo (o boneco com esqueleto, em pose T). Se ele aparecer branco, escolha também a <b>textura.jpg</b> que veio no .zip do passo 1. A Oficina põe os movimentos do jogo (parado, andar, correr e acenar).</p>
+    <div class="lado">
+      <div style="display:grid;gap:12px">
+        <label class="campo">Arquivo do Mixamo (.fbx)<input type="file" id="fbx" accept=".fbx"></label>
+        <label class="campo">Textura (opcional)<input type="file" id="tex" accept="image/*"></label>
+        <div class="info" id="info2" hidden></div>
+        <div class="botoes" id="anims" hidden>
+          <button data-anim="parado">Parado</button><button data-anim="andar">Andar</button><button data-anim="correr">Correr</button><button data-anim="acenar">Acenar</button>
+        </div>
+        <div id="msg2"></div>
+      </div>
+      <canvas class="prev" id="prev2" width="440" height="550" aria-label="Prévia do personagem montado"></canvas>
+    </div>
+  </section>
+
+  <section class="passo" id="passo3">
+    <h2><b>3</b> Enviar para o jogo</h2>
+    <p>Precisa entrar com a conta Google. Você já joga com ele na hora; os outros jogadores veem depois que o professor aprovar.</p>
+    <label class="campo">Nome do personagem<input type="text" id="nomeP" maxlength="16" placeholder="Ex.: Capitão Zé" autocomplete="off"></label>
+    <div class="botoes"><button class="forte" id="enviar" disabled>Enviar meu personagem</button><button id="apagar" hidden>Apagar meu personagem</button></div>
+    <div class="barra" id="barra" hidden><i></i></div>
+    <div id="msg3"></div>
+  </section>
+
+  <section class="passo" id="admin" hidden>
+    <h2><b>★</b> Aprovação (só o admin vê)</h2>
+    <p>Clique em Ver para carregar o personagem na prévia do passo 2 e confira antes de aprovar.</p>
+    <div class="lista" id="listaAdmin"></div>
+  </section>
+</main>
+<script type="module" src="js/oficina.js"></script>
+</body>
+</html>

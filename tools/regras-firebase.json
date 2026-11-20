@@ -147,6 +147,40 @@
           ".validate": false
         }
       }
+    },
+    "personagens": {
+      ".read": true,
+      "$uid": {
+        ".write": "auth != null && ((auth.uid === $uid && auth.token.email != null) || auth.uid === 'MyJ32756ZkMyoQiaboetnmrVPgr2')",
+        ".validate": "newData.hasChildren(['nome','partes','tam','t','status'])",
+        "nome": {
+          ".validate": "newData.isString() && newData.val().length >= 1 && newData.val().length <= 16"
+        },
+        "partes": {
+          ".validate": "newData.isNumber() && newData.val() >= 1 && newData.val() <= 8 && newData.val() % 1 === 0"
+        },
+        "tam": {
+          ".validate": "newData.isNumber() && newData.val() > 0 && newData.val() <= 3400000"
+        },
+        "t": {
+          ".validate": "newData.isNumber()"
+        },
+        "status": {
+          ".validate": "newData.val() === 'pendente' || (auth.uid === 'MyJ32756ZkMyoQiaboetnmrVPgr2' && (newData.val() === 'aprovado' || newData.val() === 'recusado'))"
+        },
+        "$outro": {
+          ".validate": false
+        }
+      }
+    },
+    "personagensArq": {
+      "$uid": {
+        ".read": "auth != null && (auth.uid === $uid || auth.uid === 'MyJ32756ZkMyoQiaboetnmrVPgr2' || root.child('personagens').child($uid).child('status').val() === 'aprovado')",
+        ".write": "auth != null && auth.uid === $uid && auth.token.email != null && root.child('personagens').child($uid).child('status').val() !== 'aprovado'",
+        "$i": {
+          ".validate": "$i.matches(/^[0-7]$/) && newData.isString() && newData.val().length <= 600000"
+        }
+      }
     }
   }
 }

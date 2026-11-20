@@ -7,7 +7,7 @@ import { $ } from './cena.js';
 import { usarPersonagem } from './avatar.js';
 import { semRelevo } from './relevo.js';
 import { LEVE } from './config.js';
-import { nuvem, conectarNuvem, aoTrocarConta, entrarGoogle, sairGoogle, souAdmin } from './nuvem.js';
+import { nuvem, conectarNuvem, aoTrocarConta, entrarGoogle, sairGoogle, souAdmin, lerPersonagemInfo, baixarPersonagem } from './nuvem.js';
 
 // Maicon + os da Quaternius (assets/pessoas) + os pilotos do Couro & Asfalto
 export const PERSONAGENS = [
@@ -43,14 +43,14 @@ async function liberarAdmin(){
     if([...new Uint8Array(h)].map(b=>b.toString(16).padStart(2,'0')).join('')!==ADMIN_HASH){ localStorage.removeItem('matelandia3d.admin'); return; }
     localStorage.setItem('matelandia3d.admin',cod);
     const era=lista[idx].id, salvo=guardado();
-    lista=PERSONAGENS; idx=Math.max(0,lista.findIndex(p=>p.id===(daUrl||!salvo||salvo==='maicon'?'maicon':era))); mostrar();
+    lista=[...lista.filter(p=>p.proprio),...PERSONAGENS]; idx=Math.max(0,lista.findIndex(p=>p.id===(daUrl||!salvo||salvo==='maicon'?'maicon':era))); mostrar();
   }catch(e){}
 }
 // conta Google do criador: o Maicon aparece e já vem escolhido (sem precisar do link com código)
 let maiconPosto=false;
 function contaAdmin(){
   if(!souAdmin()||maiconPosto) return; maiconPosto=true;
-  lista=PERSONAGENS; idx=Math.max(0,lista.findIndex(p=>p.id==='maicon')); guardar('maicon'); mostrar();
+  lista=[...lista.filter(p=>p.proprio),...PERSONAGENS]; idx=Math.max(0,lista.findIndex(p=>p.id==='maicon')); guardar('maicon'); mostrar();
 }
 export const home={ aberta:true };
 // modo leve: marcado = ?leve=1, desmarcado = ?leve=0 (recarrega a página com a escolha)
@@ -88,7 +88,25 @@ function mostrar(){
   else baixar(p).then(buf=>loader.parse(buf.slice(0),'',g=>{ cache[p.id]=g; usar(g); },()=>{})).catch(()=>{});
 }
 // guarda o arquivo: a prévia usa, e o jogo reaproveita ao clicar em JOGAR
-function baixar(p){ return arquivos[p.id] ??= fetch(p.arq).then(r=>{ if(!r.ok) throw new Error('HTTP '+r.status); return r.arrayBuffer(); });
+function baixar(p){ return arquivos[p.id] ??= (p.proprio
+  ? baixarPersonagem(p.uid,p.info).then(b=>{ if(!b) throw new Error('personagem próprio indisponível'); return b; })
+  : fetch(p.arq).then(r=>{ if(!r.ok) throw new Error('HTTP '+r.status); return r.arrayBuffer(); }));
+}
+// Personagem próprio (feito na Oficina, conta Google): entra no começo da lista só para o dono.
+// Online vai como 'u:<uid>'; os outros só veem depois que o admin aprova (online.js).
+let proprioUid=null;
+async function personagemProprio(){
+  const uid=nuvem.conta?nuvem.uid:null;
+  if(uid===proprioUid) return; proprioUid=uid;
+  const tira=()=>{ const era=lista[idx]; lista=lista.filter(p=>!p.proprio); idx=Math.max(0,lista.indexOf(era)); };
+  tira();
+  const info=uid?await lerPersonagemInfo(uid):null;
+  if(proprioUid!==uid){ return; }
+  if(!info){ mostrar(); return; }
+  const p={ id:'eu', proprio:true, uid, info, nome:info.nome,
+    papel:info.status==='aprovado'?'seu personagem':info.status==='recusado'?'seu personagem (recusado: só você vê)':'seu personagem (os outros veem depois da aprovação)' };
+  delete arquivos.eu; delete cache.eu;
+  lista=[p,...lista]; idx=guardado()==='eu'?0:idx+1; mostrar();
 }
 const relogio=new THREE.Clock();
 (function quadro(){ requestAnimationFrame(quadro); if(!home.aberta) return; const dt=Math.min(relogio.getDelta(),0.05); giro+=dt*0.6; if(atual) atual.rotation.y=giro; if(mixer) mixer.update(dt); r.render(cena,cam); })();
@@ -107,8 +125,9 @@ function jogar(){
   const p=lista[idx]; guardar(p.id);
   const nome=$('nomeJog').value.trim(), on=$('onlineJog').checked;
   try{ localStorage.setItem('matelandia3d.nome',nome); localStorage.setItem('matelandia3d.online',on?'1':'0'); }catch(e){}
-  dispatchEvent(new CustomEvent('matelandia:jogar',{detail:{personagem:p.id, nome:nome||p.nome, online:on}}));
-  if(escolhido!==p.id){ escolhido=p.id; baixar(p).then(buf=>usarPersonagem(p.arq,buf.slice(0))).catch(()=>usarPersonagem(p.arq)); }
+  dispatchEvent(new CustomEvent('matelandia:jogar',{detail:{personagem:p.proprio?'u:'+p.uid:p.id, nome:nome||p.nome, online:on}}));
+  const chaveP=p.proprio?'u:'+p.uid+':'+p.info.t:p.id;
+  if(escolhido!==chaveP){ escolhido=chaveP; baixar(p).then(buf=>usarPersonagem(p.arq||'proprio',buf.slice(0))).catch(()=>usarPersonagem(p.arq||'proprio')); }
   home.aberta=false; $('home').classList.add('fora'); document.body.classList.remove('em-home'); $('jogar').blur();
   setTimeout(()=>{ if(!home.aberta) $('home').style.display='none'; },400);   // some de vez depois do esmaecimento
 }
@@ -140,8 +159,8 @@ async function sair(){
   await sairGoogle(); mostrarConta();
 }
 $('conta').style.display='none';
-aoTrocarConta(n=>{ mostrarConta(n); contaAdmin(); });
-conectarNuvem().then(n=>{ mostrarConta(n); contaAdmin(); });
+aoTrocarConta(n=>{ mostrarConta(n); contaAdmin(); personagemProprio(); });
+conectarNuvem().then(n=>{ mostrarConta(n); contaAdmin(); personagemProprio(); });
 
 export function pronto(){ const b=$('jogar'); b.disabled=false; b.textContent='JOGAR'; $('carrega').textContent=''; }
 export function progresso(txt){ $('carrega').textContent=txt; }
