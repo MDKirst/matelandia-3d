@@ -168,6 +168,9 @@
         "status": {
           ".validate": "newData.val() === 'pendente' || (auth.uid === 'MyJ32756ZkMyoQiaboetnmrVPgr2' && (newData.val() === 'aprovado' || newData.val() === 'recusado'))"
         },
+        "hash": {
+          ".validate": "auth.uid === 'MyJ32756ZkMyoQiaboetnmrVPgr2' && newData.isString() && newData.val().matches(/^[0-9a-f]{64}$/)"
+        },
         "$outro": {
           ".validate": false
         }

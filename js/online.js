@@ -12,7 +12,7 @@ import { DUR, poseGolpe, barraSprite, pintarBarra } from './luta.js';
 import { acoesDeGolpe, velocidadeGolpe } from './avatar.js';
 import { ALCANCE, naMira, desenharTiro, bocaDaArma } from './tiro.js';
 import { somTiro } from './som.js';
-import { lerPersonagemInfo, baixarPersonagem } from './nuvem.js';
+import { lerPersonagemInfo, baixarPersonagem, hashDe } from './nuvem.js';
 import { nuvem, ADMINS } from './nuvem.js';
 
 const TRYSTERO='https://cdn.jsdelivr.net/npm/trystero@0.26.0/+esm';
@@ -100,8 +100,8 @@ async function receber(id,d){
 const PADRAO='assets/pessoas/male-casual.glb';
 async function proprioDe(pid){
   const uid=pid.slice(2).replace(/[^A-Za-z0-9]/g,'').slice(0,40); if(!uid) return carregar(PADRAO);
-  const info=await lerPersonagemInfo(uid); if(info?.status!=='aprovado') return carregar(PADRAO);
-  return arquivos['u:'+uid+':'+info.t]??=baixarPersonagem(uid,info).then(buf=>buf?new Promise(ok=>loader.parse(buf.slice(0),'',g=>ok(g),()=>ok(null))):null)
+  const info=await lerPersonagemInfo(uid); if(info?.status!=='aprovado'||!info.hash) return carregar(PADRAO);
+  return arquivos['u:'+uid+':'+info.t]??=baixarPersonagem(uid,info).then(async buf=>buf&&await hashDe(buf)===info.hash?buf:null).then(buf=>buf?new Promise(ok=>loader.parse(buf.slice(0),'',g=>ok(g),()=>ok(null))):null)
     .then(g=>g||carregar(PADRAO));
 }
 async function vestir(o,pid){

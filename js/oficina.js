@@ -9,7 +9,7 @@ import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { DRACOLoader } from 'three/addons/loaders/DRACOLoader.js';
 import { MeshoptDecoder } from 'three/addons/libs/meshopt_decoder.module.js';
 import { nuvem, conectarNuvem, aoTrocarConta, entrarGoogle, sairGoogle, souAdmin, lerPersonagemInfo, ouvirPersonagens,
-  baixarPersonagem, enviarPersonagem, apagarPersonagem, decidirPersonagem, PERS_MAX } from './nuvem.js';
+  baixarPersonagem, enviarPersonagem, apagarPersonagem, decidirPersonagem, esquecerPersonagem, hashDe, PERS_MAX } from './nuvem.js';
 
 const $=id=>document.getElementById(id);
 const MB=b=>(b/1048576).toFixed(1).replace('.',',')+' MB';
@@ -314,6 +314,7 @@ $('apagar').onclick=async()=>{ if(!confirm('Apagar o seu personagem do jogo? Voc
 
 /* ───────── admin: fila de aprovação ───────── */
 let adminLigado=false;
+const vistos=new Map();   // uid → SHA-256 do arquivo que o admin viu
 function ligarAdmin(){
   if(adminLigado) return; adminLigado=true; $('admin').hidden=false;
   ouvirPersonagens(todos=>{
@@ -326,12 +327,15 @@ function ligarAdmin(){
       const t=document.createElement('span'); t.className='tag '+info.status; t.textContent=info.status;
       const q=document.createElement('span'); q.className='info'; q.textContent=`${MB(info.tam||0)} · ${new Date(info.t).toLocaleString('pt-BR',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'})}`;
       const ver=Object.assign(document.createElement('button'),{textContent:'Ver'});
-      ver.onclick=async()=>{ ver.disabled=true; const buf=await baixarPersonagem(uid,info); ver.disabled=false;
+      ver.onclick=async()=>{ ver.disabled=true; esquecerPersonagem(uid); const buf=await baixarPersonagem(uid,info); ver.disabled=false;
         if(!buf){ aviso('msg2','ruim','Não consegui baixar esse personagem.'); return; }
+        vistos.set(uid+':'+info.t,await hashDe(buf)); if(info.status!=='aprovado'){ ap.disabled=false; ap.title=''; }
         try{ const g=await lerGLB(buf.slice(0)); const mix=new THREE.AnimationMixer(g.scene); prev2.por(g.scene); prev2.mixer=mix; prev2.acoes=Object.fromEntries(g.animations.map(a=>[a.name,mix.clipAction(a)])); tocar('andar'); $('anims').hidden=false;
           aviso('msg2','neutro',`Mostrando o personagem "${info.nome}" enviado por um aluno.`); $('passo2').scrollIntoView({behavior:'smooth'}); }
         catch(err){ aviso('msg2','ruim','Arquivo com defeito.'); } };
-      const ap=Object.assign(document.createElement('button'),{className:'forte',textContent:'Aprovar'}); ap.disabled=info.status==='aprovado'; ap.onclick=()=>decidirPersonagem(uid,'aprovado');
+      // só aprova depois de Ver: a aprovação fica presa ao arquivo exato que apareceu na prévia (hash)
+      const ap=Object.assign(document.createElement('button'),{className:'forte',textContent:'Aprovar'}); ap.disabled=info.status==='aprovado'||!vistos.has(uid+':'+info.t); if(ap.disabled&&info.status!=='aprovado') ap.title='Clique em Ver antes';
+      ap.onclick=()=>decidirPersonagem(uid,'aprovado',vistos.get(uid+':'+info.t));
       const re=Object.assign(document.createElement('button'),{textContent:'Recusar'}); re.disabled=info.status==='recusado'; re.onclick=()=>decidirPersonagem(uid,'recusado');
       d.append(n,t,q,ver,ap,re); return d;
     }));

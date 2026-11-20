@@ -177,4 +177,10 @@ export async function enviarPersonagem(buf, nome, progresso){
 // apaga primeiro a ficha (a regra só deixa mexer no arquivo de quem não está aprovado)
 export async function apagarPersonagem(){ if(!nuvem.ok) return; await F.remove(ref('personagens/'+nuvem.uid)).catch(()=>{}); await F.remove(ref('personagensArq/'+nuvem.uid)).catch(()=>{}); }
 // admin: aprova ou recusa
-export async function decidirPersonagem(uid, status){ if(!souAdmin()) return false; try{ await F.set(ref(`personagens/${uid}/status`),status); return true; }catch(e){ console.warn('decidir',e); return false; } }
+// A aprovação vale só para o arquivo que o admin viu: grava o SHA-256 dele junto. Quem baixa confere o hash
+// (se o aluno trocar o arquivo entre o "Ver" e o "Aprovar", o hash não bate e os outros veem o boneco padrão).
+export async function hashDe(buf){ const h=await crypto.subtle.digest('SHA-256',buf); return [...new Uint8Array(h)].map(b=>b.toString(16).padStart(2,'0')).join(''); }
+export async function decidirPersonagem(uid, status, hash){ if(!souAdmin()) return false;
+  try{ await F.update(ref('personagens/'+uid), status==='aprovado'?{ status, hash }:{ status, hash:null }); return true; }catch(e){ console.warn('decidir',e); return false; } }
+// baixa sem cache (o admin sempre vê o que está no banco agora)
+export function esquecerPersonagem(uid){ for(const k of [...persCache.keys()]) if(k.startsWith(uid+':')) persCache.delete(k); }
