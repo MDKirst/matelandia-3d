@@ -54,7 +54,7 @@ export async function entrarOnline(nome, personagem){
     const pancada=sala.makeAction('pancada'); online.pancada=pancada;
     pancada.onMessage=(d,{peerId})=>apanhei(peerId,d);
     $('chatBtn').style.display='inline-block'; $('chat').style.display='flex';
-    linha(null,`Você entrou na sala ${PARTICULAR||online.num||1}. Aperte Enter para conversar.`);
+    linha(null,`Você entrou na sala ${PARTICULAR||online.num||1}. ${matchMedia('(pointer:coarse)').matches?'Para conversar, toque em ☰ e depois em 💬 Chat.':'Aperte Enter para conversar.'}`);
     sala.onPeerJoin=()=>{ tEnvio=1; hud(); };                         // manda o estado já para quem chegou
     sala.onPeerLeave=id=>{ remover(id); hud(); };
     hud();

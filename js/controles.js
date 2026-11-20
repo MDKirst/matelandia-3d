@@ -51,17 +51,26 @@ addEventListener('blur',()=>{ for(const k in tecla) tecla[k]=false; });
 cv.addEventListener('pointerdown',e=>{
   document.activeElement?.blur?.();
   try{ cv.setPointerCapture(e.pointerId); }catch(_){}
-  if(e.pointerType!=='mouse'&&e.clientX<innerWidth*0.45&&!toque.joy) toque.joy={id:e.pointerId,x0:e.clientX,y0:e.clientY,x:0,y:0};
+  if(e.pointerType!=='mouse'&&e.clientX<innerWidth*0.45&&!toque.joy){ toque.joy={id:e.pointerId,x0:e.clientX,y0:e.clientY,x:0,y:0}; desenharJoy(); }
   else dedos[e.pointerId]={x:e.clientX,y:e.clientY};
 });
 cv.addEventListener('pointermove',e=>{
   const joy=toque.joy;
-  if(joy&&e.pointerId===joy.id){ const c=v=>Math.max(-1,Math.min(1,v/55)); joy.x=c(e.clientX-joy.x0); joy.y=c(e.clientY-joy.y0); return; }
+  if(joy&&e.pointerId===joy.id){ const c=v=>Math.max(-1,Math.min(1,v/55)); joy.x=c(e.clientX-joy.x0); joy.y=c(e.clientY-joy.y0); desenharJoy(); return; }
   const d=dedos[e.pointerId]; if(!d) return;
   cam.yaw-=(e.clientX-d.x)*0.006; cam.pitch=Math.max(0.06,Math.min(1.45,cam.pitch+(e.clientY-d.y)*0.005));
   d.x=e.clientX; d.y=e.clientY;
 });
-const soltar=e=>{ if(toque.joy&&e.pointerId===toque.joy.id) toque.joy=null; delete dedos[e.pointerId]; };
+const soltar=e=>{ if(toque.joy&&e.pointerId===toque.joy.id){ toque.joy=null; desenharJoy(); } delete dedos[e.pointerId]; };
+// joystick visível (celular): descansa no canto de baixo à esquerda; vai para onde o polegar encosta
+if(matchMedia('(pointer:coarse)').matches) document.body.classList.add('toque');
+function desenharJoy(){
+  const el=$('joy'); if(!el) return; const j=toque.joy, bola=el.firstElementChild;
+  if(!j){ el.classList.add('parado'); el.style.left=el.style.top=''; bola.style.transform=''; return; }
+  const m=Math.hypot(j.x,j.y)||1, k=Math.min(1,m)/m;                    // bolinha dentro do círculo
+  el.classList.remove('parado'); el.style.left=j.x0+'px'; el.style.top=j.y0+'px';
+  bola.style.transform=`translate(${j.x*k*36}px,${j.y*k*36}px)`;
+}
 cv.addEventListener('pointerup',soltar); cv.addEventListener('pointercancel',soltar);
 cv.addEventListener('wheel',e=>{ e.preventDefault(); cam.dist=Math.max(2.5,Math.min(80,cam.dist*(e.deltaY>0?1.12:0.89))); },{passive:false});
 
