@@ -20,6 +20,7 @@ import { estacionarMoto } from './veiculos.js';
 import { musicaLoja } from './som.js';
 import { acalmarCaes } from './caes.js';
 import { vida } from './luta.js';
+import { telaTex, texCache } from './canvastex.js';
 
 // curvas de movimento por hora (as mesmas ideias do rotina.js)
 const C_PADARIA=[[0,0],[5.5,0.05],[6.3,1],[9,0.5],[11,0.3],[15,0.5],[16.5,0.9],[18.5,0.6],[20,0.1],[24,0]];
@@ -70,16 +71,18 @@ const MENU = {
   eletronicos:[['📱','Celular','1.299'],['🎧','Fone','89'],['🔌','Carregador','49'],['🔋','Power bank','119'],['💡','Lâmpada LED','15']],
   papelaria: [['📒','Caderno','25'],['✏️','Lápis','2'],['🖊️','Caneta','3'],['🎒','Mochila','89'],['📐','Régua','4']],
 };
-function texCartaz([ic,nome,preco],cor){
-  const cv=document.createElement('canvas'); cv.width=256; cv.height=320; const k=cv.getContext('2d');
+function texCartaz(it,cor){ return texCache('cartaz|'+it.join('|')+'|'+cor,()=>texCartaz0(it,cor)); }
+function texCartaz0([ic,nome,preco],cor){
+  const [cv,k]=telaTex(256,320);
   k.fillStyle='#fffaf0'; k.fillRect(0,0,256,320); k.fillStyle='#'+new THREE.Color(cor).getHexString(); k.fillRect(0,0,256,26); k.fillRect(0,294,256,26);
   k.textAlign='center'; k.textBaseline='middle'; k.font='120px "Segoe UI Emoji","Apple Color Emoji","Noto Color Emoji",sans-serif'; k.fillText(ic,128,130);
   k.fillStyle='#1c1917'; let fs=34; k.font=`900 ${fs}px system-ui,sans-serif`; while(k.measureText(nome).width>236&&fs>18){ fs-=2; k.font=`900 ${fs}px system-ui,sans-serif`; } k.fillText(nome,128,222);
   k.fillStyle='#dc2626'; k.font='900 40px system-ui,sans-serif'; k.fillText('M$ '+preco,128,266);
   const t=new THREE.CanvasTexture(cv); t.colorSpace=THREE.SRGBColorSpace; t.anisotropy=4; return t;
 }
-function texQuadro(itens,titulo){
-  const cv=document.createElement('canvas'); cv.width=1024; cv.height=384; const k=cv.getContext('2d');
+function texQuadro(itens,titulo){ return texCache('quadro|'+titulo+'|'+itens.slice(0,5).map(i=>i.join('/')).join('|'),()=>texQuadro0(itens,titulo)); }
+function texQuadro0(itens,titulo){
+  const [cv,k]=telaTex(1024,384);
   k.fillStyle='#1f2a24'; k.fillRect(0,0,1024,384); k.strokeStyle='#8b5a2b'; k.lineWidth=18; k.strokeRect(9,9,1006,366);
   k.fillStyle='#fef3c7'; k.textBaseline='middle'; k.textAlign='center'; k.font='900 54px system-ui,sans-serif'; k.fillText(titulo,512,58);
   itens.slice(0,5).forEach(([ic,nome,preco],i)=>{ const y=118+i*54;
@@ -98,8 +101,9 @@ const lamb=c=>new THREE.MeshLambertMaterial({color:c});
 const MAT={ parede:lamb(0xf1ece2), base:lamb(0x6b6f73), vidro:new THREE.MeshLambertMaterial({color:0x9cc8e0,transparent:true,opacity:0.35}),
   laje:lamb(0xbdbab2), madeira:lamb(0x8b5a2b), balcao:lamb(0xe7e2d8), metal:lamb(0x9ca3af), escuro:lamb(0x1f2937) };
 function cx3(g,m,x0,x1,y0,y1,z0,z1){ const b=new THREE.Mesh(new THREE.BoxGeometry(x1-x0,y1-y0,z1-z0),m); b.position.set((x0+x1)/2,(y0+y1)/2,(z0+z1)/2); g.add(b); return b; }
-function texLetreiro(txt, ic, cor){
-  const cv=document.createElement('canvas'); cv.width=1024; cv.height=128; const k=cv.getContext('2d');
+function texLetreiro(txt, ic, cor){ return texCache('letreiro|'+txt+'|'+ic+'|'+cor,()=>texLetreiro0(txt,ic,cor)); }
+function texLetreiro0(txt, ic, cor){
+  const [cv,k]=telaTex(1024,128);
   k.fillStyle='#'+new THREE.Color(cor).getHexString(); k.fillRect(0,0,1024,128);
   k.fillStyle='rgba(255,255,255,.18)'; k.fillRect(0,0,1024,10); k.fillRect(0,118,1024,10);
   k.fillStyle='#fff'; k.textAlign='center'; k.textBaseline='middle';
@@ -107,7 +111,8 @@ function texLetreiro(txt, ic, cor){
   while(k.measureText(t).width>970&&fs>26){ fs-=2; k.font=`900 ${fs}px system-ui,sans-serif`; }
   k.fillText(t,512,68); const tx=new THREE.CanvasTexture(cv); tx.colorSpace=THREE.SRGBColorSpace; tx.anisotropy=4; return tx;
 }
-function texPiso(c){ const cv=document.createElement('canvas'); cv.width=cv.height=64; const k=cv.getContext('2d'); k.fillStyle=c; k.fillRect(0,0,64,64);
+function texPiso(c){ return texCache('piso|'+c,()=>texPiso0(c)); }
+function texPiso0(c){ const cv=document.createElement('canvas'); cv.width=cv.height=64; const k=cv.getContext('2d'); k.fillStyle=c; k.fillRect(0,0,64,64);
   k.fillStyle='rgba(0,0,0,.09)'; k.fillRect(0,0,64,2); k.fillRect(0,0,2,64); const t=new THREE.CanvasTexture(cv); t.wrapS=t.wrapT=THREE.RepeatWrapping; t.repeat.set(10,13); t.colorSpace=THREE.SRGBColorSpace; return t; }
 
 /* ───────── kitnet (21/11): 2 andares, 3 apartamentos por andar, corredor com grade na frente do 2º andar,

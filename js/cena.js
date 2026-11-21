@@ -1,6 +1,7 @@
 // Renderizador, cena, câmera e luzes
 import * as THREE from 'three';
 import { LEVE } from './config.js';
+import './canvastex.js';   // celular: reduz texturas dos modelos ao carregar (precisa vir antes de qualquer GLTFLoader)
 
 export const $ = id=>document.getElementById(id);
 export const cv = $('c');

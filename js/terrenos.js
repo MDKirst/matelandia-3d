@@ -16,6 +16,7 @@ import { ESPECIAIS, comoLote } from './especiais-dados.js';
 import { noCampo } from './campos.js';
 import { altura } from './relevo.js';
 import { LX0, LZ0, LX1, LZ1 } from './geo.js';
+import { telaTex, texCache } from './canvastex.js';
 import { lerJogador, gravarJogador } from './nuvem.js';
 import { nuvem, conectarNuvem, aoTrocarConta, ouvirLotes, ouvirBlocos, tomarLote, LIMITE_TERRENOS, porBloco, tirarBloco, subirBlocos } from './nuvem.js';
 
@@ -136,11 +137,11 @@ function dentroPoly(x,z,pts){ let c=false; for(let i=0,j=pts.length-1;i<pts.leng
 
 /* ───────── placa ───────── */
 function placa(l1,l2,cor){
-  const c=document.createElement('canvas'); c.width=512; c.height=256; const k=c.getContext('2d');
+  const t=texCache('placa|'+l1+'|'+l2+'|'+cor,()=>{ const [c,k]=telaTex(512,256);
   k.fillStyle=cor; k.fillRect(0,0,512,256); k.strokeStyle='#fff'; k.lineWidth=12; k.strokeRect(8,8,496,240);
   k.fillStyle='#fff'; k.textAlign='center'; let fs=92; k.font=`900 ${fs}px system-ui,sans-serif`; while(k.measureText(l1).width>460&&fs>40){ fs-=4; k.font=`900 ${fs}px system-ui,sans-serif`; } k.fillText(l1,256,118);
   k.font='800 66px system-ui,sans-serif'; k.fillText(l2,256,206);
-  const t=new THREE.CanvasTexture(c); t.colorSpace=THREE.SRGBColorSpace;
+  const t=new THREE.CanvasTexture(c); t.colorSpace=THREE.SRGBColorSpace; return t; });
   const g=new THREE.Group();
   const quadro=new THREE.Mesh(new THREE.PlaneGeometry(2.4,1.2),new THREE.MeshBasicMaterial({map:t,side:THREE.DoubleSide})); quadro.position.y=1.9; g.add(quadro);
   for(const x of [-0.9,0.9]){ const p=new THREE.Mesh(new THREE.BoxGeometry(0.1,1.4,0.1),new THREE.MeshLambertMaterial({color:0x6b4f36})); p.position.set(x,0.7,0); g.add(p); }

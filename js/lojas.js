@@ -9,6 +9,7 @@ import { toXZ } from './geo.js';
 import { ruas, predios } from './cidade.js';
 import { substituidoPorMarco } from './marcos.js';
 import { ehComercio } from './comercio.js';
+import { telaTex } from './canvastex.js';
 
 const DADOS = 'dados/lugares.json';
 // ramo → [cor do letreiro, cor do toldo]; o ramo sai da categoria e, sem ela, do nome
@@ -55,7 +56,7 @@ const CEL_W=512, CEL_H=128, ATLAS=2048, POR_ATLAS=(ATLAS/CEL_W)*(ATLAS/CEL_H);
 const atlas=[];  // {cv,k,n,quads:[]}
 function celula(nome, fundo){
   let a=atlas[atlas.length-1];
-  if(!a||a.n>=POR_ATLAS){ const cv=document.createElement('canvas'); cv.width=cv.height=ATLAS; a={cv,k:cv.getContext('2d'),n:0,pos:[],uv:[]}; atlas.push(a); }
+  if(!a||a.n>=POR_ATLAS){ const [cv,ctx]=telaTex(ATLAS,ATLAS); a={cv,k:ctx,n:0,pos:[],uv:[]}; atlas.push(a); }   // celular: atlas com metade dos pixels
   const i=a.n++, cx=(i%(ATLAS/CEL_W))*CEL_W, cy=Math.floor(i/(ATLAS/CEL_W))*CEL_H, k=a.k;
   k.fillStyle=fundo; k.fillRect(cx,cy,CEL_W,CEL_H);
   k.strokeStyle='rgba(255,255,255,.85)'; k.lineWidth=6; k.strokeRect(cx+5,cy+5,CEL_W-10,CEL_H-10);

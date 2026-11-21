@@ -1,0 +1,30 @@
+// 21/11: quanto de memória o jogo ocupa no modo celular (iPhone fechava a aba)
+// uso: node tools/teste/memoria.mjs [url]
+import { chromium } from 'playwright-core';
+import { readdirSync } from 'node:fs'; import { join } from 'node:path';
+const base=join(process.env.LOCALAPPDATA,'ms-playwright'), pasta=readdirSync(base).filter(n=>/^chromium-\d+$/.test(n)).sort().pop();
+const url=process.argv[2]||'http://localhost:8737/?sala=teste-auto&leve=1';
+const nav=await chromium.launch({ executablePath:join(base,pasta,'chrome-win64','chrome.exe'), headless:true, args:['--use-angle=swiftshader','--enable-unsafe-swiftshader','--ignore-gpu-blocklist','--enable-precise-memory-info'] });
+const ctx=await nav.newContext({ viewport:{width:812,height:375}, deviceScaleFactor:3, isMobile:true, hasTouch:true });
+const pg=await ctx.newPage(); const erros=[]; pg.on('pageerror',e=>erros.push(e.message));
+const cdp=await ctx.newCDPSession(pg); await cdp.send('Performance.enable');
+const heap=async()=>{ const m=(await cdp.send('Performance.getMetrics')).metrics; const g=n=>m.find(x=>x.name===n)?.value||0; return Math.round(g('JSHeapUsedSize')/1048576)+' MB heap JS'; };
+const medir=()=>pg.evaluate(async()=>{ const cena=await import(new URL('js/cena.js',location.href).href); const r=cena.renderer, S=cena.scene;
+  const vistos=new Set(); let geoMB=0, inst=0, malhas=0; const porNome={};
+  const cont=(o,raiz)=>{ o.traverse(x=>{ if(!x.geometry) return; malhas++; if(x.isInstancedMesh) inst+=x.count;
+    const g=x.geometry; if(vistos.has(g)) return; vistos.add(g); let b=0; for(const a of Object.values(g.attributes)) b+=a.array.byteLength; if(g.index) b+=g.index.array.byteLength;
+    if(x.instanceMatrix) b+=x.instanceMatrix.array.byteLength; if(x.instanceColor) b+=x.instanceColor.array.byteLength;
+    geoMB+=b; const k=raiz.name||raiz.type; porNome[k]=(porNome[k]||0)+b; }); };
+  for(const c of S.children) cont(c,c);
+  const top=Object.entries(porNome).sort((a,b)=>b[1]-a[1]).slice(0,15).map(([k,v])=>k+' '+(v/1048576).toFixed(1));
+  let texMB=0; const tv=new Set(); S.traverse(x=>{ const ms=[].concat(x.material||[]); for(const m of ms) for(const v of Object.values(m)) if(v&&v.isTexture&&!tv.has(v)){ tv.add(v); const i=v.image; if(i&&i.width) texMB+=i.width*i.height*4*1.33; } });
+  return { geoBuffersMB:+(geoMB/1048576).toFixed(0), texturasMB:+(texMB/1048576).toFixed(0), malhas, instancias:inst, gpu:r.info.memory, tela:[r.domElement.width,r.domElement.height], top };
+});
+const t0=Date.now(); await pg.goto(url,{waitUntil:'domcontentloaded',timeout:120000});
+await pg.waitForFunction(()=>document.getElementById('jogar')?.textContent==='JOGAR',null,{timeout:500000});
+console.log('carregou em',Math.round((Date.now()-t0)/1000),'s;',await heap());
+console.log(JSON.stringify(await medir(),null,1));
+await pg.evaluate(async()=>{ const nv=await import(new URL('js/nuvem.js',location.href).href); nv.nuvem.ok=false; const o=document.getElementById('onlineJog'); if(o) o.checked=false; document.getElementById('jogar').click(); });
+await pg.waitForTimeout(20000);
+console.log('jogando:',await heap()); console.log(JSON.stringify(await medir(),null,1));
+console.log(erros.length?'ERROS\n'+[...new Set(erros)].join('\n'):'sem erros'); await nav.close();
