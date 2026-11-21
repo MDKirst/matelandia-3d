@@ -57,6 +57,7 @@ import { iniciarNegocios, atualizarNegocios, acaoNegocio, pertoDeNegocioMeu } fr
 import { frota, iniciarVeiculos, veiculoPerto, entrar, sair, dirigir, dentroDeVeiculo, frente, esquerda } from './veiculos.js';
 import * as veic from './veiculos.js';
 import { iniciarTransito, atualizarTransito, posicoesTransito, carros } from './transito.js';
+import { efeitosVelocidade } from './velocidade.js';
 
 // borda visível do mundo
 { const m=new THREE.MeshBasicMaterial({color:0xF97316,transparent:true,opacity:.18,side:THREE.DoubleSide,depthWrite:false}), H=45;
@@ -156,6 +157,7 @@ function aoVolante(dt){
   const s=document.createElement('small'); s.textContent=' km/h · '+c.tipo.nome+(c.quebrado?' · QUEBRADO':c.dano>0?` · motor ${Math.round(100-c.dano)}%`:'')+(veic.reforco.turbo>0?' · 🚀 turbo':'');
   $('velo').replaceChildren(String(Math.round(Math.abs(c.v)*3.6)), s);
   if(Math.abs(c.v)*3.6>100) conquista('veloz');
+  efeitosVelocidade(dt,c,(acel<0&&c.v>1)||!!tecla.Space,giro);   // FOV, vento, tremida e fumaça de pneu
 }
 
 // preso: desce do veículo e aparece na frente do posto da PM
@@ -307,7 +309,7 @@ function quadro(){
   $('acoes').style.display=gente&&matchMedia('(pointer:coarse)').matches?'flex':'none';
   $('luta').style.display=!home.aberta&&!veic.dirigindo&&matchMedia('(pointer:coarse)').matches?'flex':'none';
 
-  const D=veic.dirigindo, outros=[[p.x,p.z,D?D.comp/2:0.5,D?D.larg/2:0.5], ...frota.filter(c=>c!==D).map(c=>[c.obj.position.x,c.obj.position.z,c.comp/2,c.larg/2])];
+  const D=veic.dirigindo, outros=[[p.x,p.z,D?D.comp/2:0.5,D?D.larg/2:0.5], ...frota.filter(c=>c!==D).map(c=>[c.obj.position.x,c.obj.position.z,c.comp/2,c.larg/2,Math.abs(c.v||0)<0.5?1:0])];   // 5º: estacionado (o trânsito desvia)
   for(const [x,z] of posicoesPedestres()) outros.push([x,z,0.3,0.3]);   // o trânsito para para pedestre na pista
   for(const [x,z] of posicoesCriancas()) outros.push([x,z,0.8,0.4]);    // e para a criança de bike que cruzou na frente
   outros.push(...obstaculosGangues());                                   // e na barricada das gangues (à noite)

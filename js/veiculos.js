@@ -5,7 +5,7 @@ import * as THREE from 'three';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { MeshoptDecoder } from 'three/addons/libs/meshopt_decoder.module.js';
 import { scene, $ } from './cena.js';
-import { ruas } from './cidade.js';
+import { ruas, pertoCruzamento } from './cidade.js';
 import { bloqueado } from './mundo.js';
 import { LX0, LZ0, LX1, LZ1 } from './geo.js';
 import { fumaca, fogo, explosao } from './efeitos.js';
@@ -31,7 +31,8 @@ const TIPOS = [
 ];
 // 17/11 (pedido do Maicon: "os carros têm que pegar mais velocidade"): velocidade máxima +45% e arrancada +70%
 // para todo veículo dirigível (aplicado nos dados, então velocímetro e som do motor acompanham)
-const MAIS_VELOCIDADE=1.45, MAIS_ARRANCADA=1.7;
+// 21/11 ("quero mais velocidade nos carros"): de +45% para +75% na final e arrancada ×2
+const MAIS_VELOCIDADE=1.75, MAIS_ARRANCADA=2.0;
 const turbinar=lista=>{ for(const T of lista){ T.vmax=+(T.vmax*MAIS_VELOCIDADE).toFixed(1); T.acel=+(T.acel*MAIS_ARRANCADA).toFixed(2); } };
 turbinar(TIPOS);
 const loader = new GLTFLoader(); loader.setMeshoptDecoder(MeshoptDecoder);
@@ -63,22 +64,30 @@ export function dentroDeVeiculo(x,z,folga=0.35){
   return false;
 }
 
-// estaciona em fila na rua com nome mais perto do início, encostado na margem direita
+// estaciona em fila encostado no meio-fio direito das ruas largas de mão dupla mais perto do início.
+// 21/11 (Maicon: "não quero esses carros obstruindo o trânsito"): nunca a menos de 16 m de um
+// cruzamento (antes a fila seguia reto e atravessava a esquina) e bem colado no meio-fio.
 function vagas(n){
-  let melhor=null, md=1e9;
-  for(const r of ruas){ if(r.pe||!r.nome||r.tipo==='motorway') continue;
-    r.pts.forEach((p,i)=>{ const d=Math.hypot(p[0],p[1]); if(d<md&&d>8){ md=d; melhor={r,i}; } }); }
-  if(!melhor) return Array.from({length:n},(_,k)=>({x:6+k*9,z:6,h:0}));
-  // anda pela rua a partir desse ponto e põe um veículo a cada 9 m
-  const {r}=melhor, out=[], dir=melhor.i<r.pts.length-1?1:-1, off=-(r.w/2-0.9); // encostado no meio-fio direito
-  let quer=0, feito=0, h=0;
-  for(let i=melhor.i; out.length<n && i+dir>=0 && i+dir<r.pts.length; i+=dir){
-    const a=r.pts[i], b=r.pts[i+dir], L=Math.hypot(b[0]-a[0],b[1]-a[1])||1e-6;
-    h=Math.atan2(-(b[0]-a[0]),-(b[1]-a[1])); const [ex,ez]=esquerda(h);
-    while(quer<=feito+L && out.length<n){ const t=(quer-feito)/L; out.push({x:a[0]+(b[0]-a[0])*t+ex*off, z:a[1]+(b[1]-a[1])*t+ez*off, h}); quer+=9; }
-    feito+=L;
+  const cand=[];
+  for(const r of ruas){ if(r.pe||!r.nome||r.tipo.startsWith('motorway')||r.mao||r.w<8) continue;
+    let md=1e9, mi=0; r.pts.forEach((p,i)=>{ const d=Math.hypot(p[0],p[1]); if(d<md){ md=d; mi=i; } }); cand.push({r,i:mi,d:md}); }
+  cand.sort((a,b)=>a.d-b.d);
+  const out=[];
+  for(const {r,i:i0} of cand){ if(out.length>=n) break;
+    const off=-(r.w/2-1.15);                                          // meia largura do carro (~0,95) + folga do meio-fio
+    for(const dir of [1,-1]){
+      let quer=4, feito=0;
+      for(let i=i0; out.length<n && i+dir>=0 && i+dir<r.pts.length; i+=dir){
+        const a=r.pts[i], b=r.pts[i+dir], L=Math.hypot(b[0]-a[0],b[1]-a[1])||1e-6;
+        const h=Math.atan2(-(b[0]-a[0]),-(b[1]-a[1])), [ex,ez]=esquerda(h);
+        while(quer<=feito+L && out.length<n){ const t=(quer-feito)/L, x=a[0]+(b[0]-a[0])*t+ex*off, z=a[1]+(b[1]-a[1])*t+ez*off;
+          if(!pertoCruzamento(x,z,16)&&!bloqueado(x,z)) out.push({x,z,h}); quer+=out.length&&out[out.length-1].x===x?9:3; }
+        feito+=L;
+      }
+      if(out.length>=n) break;
+    }
   }
-  while(out.length<n){ const u=out[out.length-1]||{x:6,z:6,h}, [fx,fz]=frente(u.h); out.push({x:u.x+fx*9,z:u.z+fz*9,h:u.h}); } // rua curta: segue reto
+  while(out.length<n){ const u=out[out.length-1]||{x:6,z:6,h:0}, [fx,fz]=frente(u.h); out.push({x:u.x+fx*9,z:u.z+fz*9,h:u.h}); }
   return out;
 }
 

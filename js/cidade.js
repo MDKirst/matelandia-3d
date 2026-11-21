@@ -27,7 +27,8 @@ const PAREDES = [0xe8dcc8,0xd9c7a8,0xcfd6da,0xe3b9a0,0xc9d3b5,0xf0e6d6,0xb9c4cf,
 const TELHADOS= [0xa5553a,0x8f4a35,0x9a9a96,0x6f7377,0xb0603f].map(c=>new THREE.Color(c));
 
 export const ruas=[];     // {nome,tipo,pts,bb,w,pe,mao}
-export const predios=[];  // {pts,bb}
+export const predios=[];
+export let pertoCruzamento=()=>false;   // (x,z,raio) → true se há cruzamento por perto (preenchido ao carregar)  // {pts,bb}
 const vistos=new Set();
 let carregando=true, erroRede=false, fonte='OpenStreetMap ao vivo';
 
@@ -98,6 +99,7 @@ function construir(elements){
   for(const v of vias){ const vist=new Set(); for(const p of v.pts){ const c=k(p); if(vist.has(c)) continue; vist.add(c); cont.set(c,(cont.get(c)||0)+1); } }
   const cruz=[]; for(const v of vias) for(const p of v.pts) if(cont.get(k(p))>1) cruz.push(p);
   const pertoCruz=(x,z,r)=>cruz.some(p=>Math.abs(p[0]-x)<r&&Math.abs(p[1]-z)<r&&Math.hypot(p[0]-x,p[1]-z)<r);
+  pertoCruzamento=pertoCruz;
   for(const v of vias){
     if(COM_CALCADA.has(v.tipo)){ fita(v.pts,v.w+2*(CALCADA+GUIA),C); fita(v.pts,v.w+2*GUIA,G); }
     if(v.w>=8) tracejado(v.pts,0.15,3,4,(x,z)=>pertoCruz(x,z,v.w*0.8+2),F);          // eixo amarelo tracejado só nas avenidas

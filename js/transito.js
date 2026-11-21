@@ -51,7 +51,7 @@ const pode = (r,dir)=>!r.mao||r.mao===dir;
 // posição na faixa: centro do trecho + deslocamento para a direita (mão única: no meio)
 function pose(c){
   const a=c.r.pts[c.i], b=c.r.pts[c.i+c.dir], dx=b[0]-a[0], dz=b[1]-a[1], L=Math.hypot(dx,dz)||1e-6, t=Math.min(1,c.s/L);
-  const ux=dx/L, uz=dz/L, off=c.r.mao?0:Math.min(c.r.w/4,2.2);
+  const ux=dx/L, uz=dz/L, off=(c.r.mao?0:Math.min(c.r.w/4,2.2))+(c.desv||0);   // desv: desvio lateral (passar por carro estacionado)
   return { x:a[0]+dx*t-uz*off, z:a[1]+dz*t+ux*off, ux, uz, L };
 }
 
@@ -105,8 +105,8 @@ export async function iniciarTransito(px,pz){
     const tinta=TINTAS[k%TINTAS.length];
     if(md.m.tinta&&tinta!==0xffffff) obj.traverse(o=>{ if(o.isMesh){ o.material=o.material.clone(); o.material.color.setHex(tinta); } });
     scene.add(obj);
-    const c={obj, r:null, i:0, dir:1, s:0, v:0, vAlvo:0, vCruz:7+Math.random()*5, meio:md.meio, larg:md.larg, so:md.m.so, arq:md.m.partes[0].arq, policia:!!md.m.policia};
-    if(md.m.policia){ c.vCruz=6+Math.random()*2; const b=new THREE.Box3().setFromObject(obj);   // giroflex no teto (pisca no atualizarTransito)
+    const c={obj, r:null, i:0, dir:1, s:0, v:0, vAlvo:0, vCruz:11+Math.random()*6, meio:md.meio, larg:md.larg, so:md.m.so, arq:md.m.partes[0].arq, policia:!!md.m.policia};
+    if(md.m.policia){ c.vCruz=10+Math.random()*3; const b=new THREE.Box3().setFromObject(obj);   // giroflex no teto (pisca no atualizarTransito)
       c.giro=[0xff2a2a,0x2a5bff].map((cor,i)=>{ const m=new THREE.Mesh(new THREE.BoxGeometry(0.42,0.15,0.28),new THREE.MeshBasicMaterial({color:cor})); m.position.set(i?0.3:-0.3,b.max.y+0.05,0.15); obj.add(m); return m; }); }
     colocar(c,px,pz); carros.push(c);
   }
@@ -128,12 +128,20 @@ export function atualizarTransito(dt, px, pz, outros){
         if(c.forte&&Math.random()<0.35) fogo(x,1.1,z,0.9); else fumaca(x,1.3,z,c.forte?0.8:0.3); }
       continue; }
     // tem algo até 9 m à frente, na mesma faixa?
-    let livre=true;
+    let livre=true, querDesv=0;
     // rf = meia-largura na frente/trás, rl = meia-largura de lado
-    const testar=(x,z,rf,rl)=>{ const dx=x-P.x, dz=z-P.z, f=dx*P.ux+dz*P.uz, l=Math.abs(-dx*P.uz+dz*P.ux); if(f>0&&f<7+rf&&l<1.3+rl) livre=false; };
-    for(const o of outros) testar(o[0],o[1],o[2],o[3]);
+    const freada=6+c.v*c.v/16;                                // mais rápido = olha mais longe para frear a tempo
+    const testar=(x,z,rf,rl)=>{ const dx=x-P.x, dz=z-P.z, f=dx*P.ux+dz*P.uz, l=Math.abs(-dx*P.uz+dz*P.ux); if(f>0&&f<freada+rf&&l<1.3+rl) livre=false; };
+    // 21/11: veículo ESTACIONADO na beira (o[4]=1) não trava a rua: o carro desvia para o meio e passa (estilo GTA)
+    const desviar=(x,z,rf,rl)=>{ const dx=x-P.x, dz=z-P.z, f=dx*P.ux+dz*P.uz, ls=-dx*P.uz+dz*P.ux+(c.desv||0);
+      if(f<-(rf+c.meio)||f>freada+8+rf) return true;                 // longe (atrás ou muito à frente)
+      const lado=c.r.mao&&ls<0?-1:1, folga=rl+c.larg+0.3-lado*ls;    // quanto falta para passar raspando
+      if(folga<=0) return true; if(folga>1.7||(!c.r.mao&&ls<0)) return false;   // não cabe (ou está na contramão): para
+      if(Math.abs(querDesv)<folga) querDesv=-lado*folga; return true; };
+    for(const o of outros) if(!(o[4]&&desviar(o[0],o[1],o[2],o[3]))) testar(o[0],o[1],o[2],o[3]);
+    c.desv=(c.desv||0)+Math.max(-2*dt,Math.min(2*dt,querDesv-(c.desv||0)));
     for(const d of carros) if(d!==c&&d.r&&d.obj.visible) testar(d.obj.position.x,d.obj.position.z,d.meio+c.meio-2.2,d.larg);
-    const lim=c.r.tipo.startsWith('motorway')?Math.max(c.vCruz,16):c.vCruz;
+    const lim=c.r.tipo.startsWith('motorway')?Math.max(c.vCruz,24):c.vCruz;
     const lomb=lombadas.some(o=>{ const dx=o.x-P.x, dz=o.z-P.z, f=dx*P.ux+dz*P.uz; return f>-2&&f<16&&Math.abs(-dx*P.uz+dz*P.ux)<4; });
     c.vAlvo=livre?(lomb?Math.min(lim,3.5):lim):0;   // reduz antes do quebra-mola
     // preso há mais de 6 s (veículo estacionado na faixa, rua travada): longe do jogador some e
@@ -149,7 +157,8 @@ export function atualizarTransito(dt, px, pz, outros){
     if(!c.r) continue;
     P=pose(c);
     // trava final: o passo não pode terminar em cima de ninguém (curva, troca de rua, faixa)
-    const ocupado=outros.some(o=>Math.hypot(o[0]-P.x,o[1]-P.z)<Math.max(o[2],o[3])+c.meio-0.3) ||
+    const ocupado=outros.some(o=>o[4]?(Math.abs((o[0]-P.x)*P.ux+(o[1]-P.z)*P.uz)<o[2]+c.meio-0.3&&Math.abs(-(o[0]-P.x)*P.uz+(o[1]-P.z)*P.ux)<o[3]+c.larg-0.1)
+                                      :Math.hypot(o[0]-P.x,o[1]-P.z)<Math.max(o[2],o[3])+c.meio-0.3) ||
       carros.some(d=>d!==c&&d.r&&d.obj.visible&&Math.hypot(d.obj.position.x-P.x,d.obj.position.z-P.z)<(c.meio+d.meio)*0.7&&Math.hypot(d.obj.position.x-c.obj.position.x,d.obj.position.z-c.obj.position.z)>=Math.hypot(d.obj.position.x-P.x,d.obj.position.z-P.z));
     if(ocupado){ Object.assign(c,antes); c.v=0; P=pose(c); }
     c.obj.position.set(P.x,alturaLombada(P.x,P.z),P.z);
