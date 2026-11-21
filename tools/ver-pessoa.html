@@ -22,8 +22,10 @@ const rotulo=(t,x)=>{ const cv=document.createElement('canvas'); cv.width=256; c
 const por=(g,x,clip)=>{ const o=clone(g.scene); o.position.x=x; s.add(o);
   if(clip){ const m=new THREE.AnimationMixer(o); m.clipAction(clip).play(); mixers.push(m); }
   o.updateMatrixWorld(true); const b=new THREE.Box3().setFromObject(o,true); window.__info.push({x,clip:clip?.name,alt:+(b.max.y-b.min.y).toFixed(2),pe:+b.min.y.toFixed(2)}); };
-L.load(`../assets/pessoas/${nome}.glb`,g=>{
-  const cl=g.animations; cl.forEach((a,i)=>{ const x=(i-(cl.length-1)/2)*1.4; por(g,x,a); rotulo(a.name,x); });
+const arq=`../assets/pessoas/${nome}.glb`;   // o Maicon fica em assets/: ?m=../maicon-animado
+const golpes=q.get('g')?await new Promise(ok=>L.load('../assets/pessoas/golpes.glb',g=>ok(g.animations))):[];   // &g=1: socos emprestados (avatar.js)
+L.load(arq,g=>{
+  const cl=golpes.length?golpes:g.animations; cl.forEach((a,i)=>{ const x=(i-(cl.length-1)/2)*1.4; por(g,x,a); rotulo(a.name,x); });
   if(comp) L.load(`../assets/pessoas/${comp}.glb`,h=>{ const x=(cl.length+1)/2*1.4; por(h,x,h.animations.find(a=>a.name==='parado')); rotulo(comp,x); });
 });
 let ang=0; const relogio=new THREE.Clock();

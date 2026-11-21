@@ -55,6 +55,7 @@ function carregarGLB(buf){
       const acena=achar(/acenar|wave|clap/i);
       av.acoes={parado:A(parado), andar:A(andar||correr||unico), correr:A(correr||andar||unico), acenar:A(acena)};   // acenar: só quem tem o gesto
       av.golpes=acoesDeGolpe(mixer,gltf.animations);
+      if(!av.golpes.soco.length&&m.getObjectByName('mixamorigHips')) emprestarGolpes(m,mixer);
     }
   },err=>{ console.error(err); $('status').textContent='Erro ao ler o GLB: '+(err.message||err); });
 }
@@ -65,6 +66,18 @@ export function acoesDeGolpe(mixer, anims){
   const lista=re=>anims.filter(c=>re.test(c.name)).sort((a,b)=>a.name.localeCompare(b.name)).map(c=>{
     const a=mixer.clipAction(c); a.setLoop(THREE.LoopOnce,1); a.clampWhenFinished=true; a.golpe=true; return a; });
   return { soco:lista(/^soco\d*$/i), chute:lista(/^chute\d*$/i) };
+}
+// Personagem do Mixamo sem golpe próprio (Maicon, Valdir, Policial, pilotos…) pega emprestados os socos do Fortão
+// (assets/pessoas/golpes.glb, feito por tools/golpes-glb.mjs: só giro dos ossos mixamorig*, sem malha). 20/11.
+let golpesGLB=null;
+function emprestarGolpes(m,mixer){
+  golpesGLB??=new Promise(ok=>gltfLoader.load('assets/pessoas/golpes.glb',g=>ok(g.animations),undefined,()=>ok([])));
+  golpesGLB.then(anims=>{
+    if(av.mixer!==mixer||!anims.length) return;                            // trocou de personagem enquanto baixava
+    const tem=new Set(); m.traverse(o=>tem.add(o.name));
+    const meus=anims.map(c=>new THREE.AnimationClip(c.name,c.duration,c.tracks.filter(t=>tem.has(t.name.split('.')[0]))));   // só ossos que este boneco tem (sem aviso de osso faltando)
+    const g=acoesDeGolpe(mixer,meus); av.golpes={ soco:g.soco, chute:av.golpes.chute?.length?av.golpes.chute:g.chute };
+  });
 }
 // o golpe visível dura até 1,5× o tempo do golpe no jogo (o clipe do Mixamo é acelerado para caber)
 export function velocidadeGolpe(a, tipo){ return Math.max(1, a.getClip().duration/(DUR[tipo]*1.5)); }

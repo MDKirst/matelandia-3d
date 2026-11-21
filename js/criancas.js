@@ -11,7 +11,7 @@ import { clone as clonarEsqueleto } from 'three/addons/utils/SkeletonUtils.js';
 import { scene } from './cena.js';
 import { ruas } from './cidade.js';
 import { bloqueado } from './mundo.js';
-import { horaJogo, fatorPessoas } from './ceu.js';
+import { horaJogo, fatorPessoas, posteEm } from './ceu.js';
 import { carregarModelo, falar } from './pedestres.js';
 import { prepararRodas, girarRodas, sentar, URBANA } from './moto.js';
 
@@ -72,7 +72,7 @@ function nascer(c,px,pz){
     const v=sorteia(vias), s=sorte()*v.L, q=naVia(v,s), d=Math.hypot(q.x-px,q.z-pz);
     if(d<PERTO_MIN||d>PERTO_MAX) continue;
     const lado=sorte()<0.5?-1:1, lat=lado*calcada(v);
-    if(bloqueado(q.x-q.uz*lat,q.z+q.ux*lat)) continue;
+    if(trombaria(q.x-q.uz*lat,q.z+q.ux*lat,Math.atan2(-q.ux,-q.uz))) continue;
     Object.assign(c,{ via:v, s, dir:sorte()<0.5?-1:1, lat, latAlvo:lat, vl:0, cai:0, cruzar:1+sorte()*5 });
     c.bike.visible=c.corpo.visible=true; c.posada=false; return true;
   }
@@ -123,12 +123,15 @@ function mover(c,dt,jog){
   if(!jog.dirigindo){ const dx=jog.x-c.x, dz=jog.z-c.z; if(Math.hypot(dx,dz)<1.6&&dx*fx+dz*fz>0) alvo=0; }
   c.v+=Math.max(-8*dt,Math.min(3*dt,alvo-c.v));
   c.vl=Math.max(-3.8,Math.min(3.8,(c.latAlvo-c.lat)*2.2));
+  // olha 2,5 m à frente: árvore/poste/muro na linha dela → desvia antes, para a beira do asfalto (20/11)
+  if(Math.abs(c.lat)>v.r.w/2-0.6){ const sa=c.s+c.dir*2.5;
+    if(sa>0&&sa<v.L){ const qa=naVia(v,sa); if(trombaria(qa.x-qa.uz*c.lat,qa.z+qa.ux*c.lat,c.h)) c.latAlvo=Math.sign(c.lat)*(v.r.w/2-0.5); } }
   const s0=c.s, l0=c.lat;
   c.s+=c.dir*c.v*dt; c.lat+=c.vl*dt;
   if(c.s<0||c.s>v.L){ virarEsquina(c); return mover(c,0,jog); }
   let q=naVia(c.via,c.s), x=q.x-q.uz*c.lat, z=q.z+q.ux*c.lat;
-  if(bloqueado(x,z)){                                                                 // calçada estreita (muro, casa): vai pra beira do asfalto
-    c.s=s0; c.lat=l0; c.latAlvo=Math.sign(c.latAlvo||1)*(v.r.w/2-0.5);
+  if(trombaria(x,z,c.h)){                                                                 // calçada estreita (muro, casa): vai pra beira do asfalto
+    c.s=s0; c.latAlvo=Math.sign(c.latAlvo||1)*(v.r.w/2-0.5);   // não anda pra frente, mas segue indo pro lado (senão ficava presa encostada)
     q=naVia(c.via,c.s); x=q.x-q.uz*c.lat; z=q.z+q.ux*c.lat; }
   // rumo = direção do movimento (frente + lateral)
   const mx=q.ux*c.dir*c.v-q.uz*c.vl, mz=q.uz*c.dir*c.v+q.ux*c.vl;
@@ -136,6 +139,13 @@ function mover(c,dt,jog){
     c.h+=d*Math.min(1,dt*6); c.bike.rotation.z=THREE.MathUtils.lerp(c.bike.rotation.z,-d*0.6,Math.min(1,dt*5)); }
   c.x=x; c.z=z;
   girarRodas(c,dt); posar(c);
+}
+// a bike tem ~1,5 m: conferir só o meio deixava frente/traseira atravessar tronco de árvore (o tronco é fino, 20/11)
+function trombaria(x,z,h){
+  const [fx,fz]=frente(h), [ex,ez]=esquerda(h);
+  for(const [a,b] of [[0,0],[0.8,0],[-0.8,0],[0.4,0.35],[0.4,-0.35],[-0.4,0.35],[-0.4,-0.35]])
+    if(bloqueado(x+fx*a+ex*b, z+fz*a+ez*b)||posteEm(x+fx*a+ex*b, z+fz*a+ez*b)) return true;
+  return false;
 }
 function posar(c){
   c.bike.position.set(c.x,0,c.z); c.bike.rotation.y=c.h;
