@@ -245,6 +245,7 @@ function montarCasa(l,T){
     for(let u=Math.floor(PX0);u<Math.ceil(PX1);u++) for(let v=Math.floor(PZ0);v<Math.ceil(PZ1);v++) cel(u,v);
     for(let v=0;v<24;v++){ cel(0,v); cel(11,v); }
     for(let u=0;u<12;u++){ cel(u,23); if(u<4||u>=8) cel(u,0); } }
+  else if((l.d||24)<21){ for(let u=0;u<12;u++) if(u<Math.floor(xm-1.8)||u>=Math.ceil(xm+1.8)) cel(u,0); }   // terreno pequeno: sem a árvore do fundo
   else { cx3(g,madeira,9.6,9.9,0,2.2,19,19.3);
     const copa=new THREE.Mesh(new THREE.IcosahedronGeometry(1.5,0),new THREE.MeshLambertMaterial({color:0x3f6e2f,flatShading:true})); copa.position.set(9.75,3.2,19.15); g.add(copa);
     for(let u=0;u<12;u++) if(u<Math.floor(xm-1.8)||u>=Math.ceil(xm+1.8)) cel(u,0); }
@@ -452,12 +453,15 @@ function abrirCardapio(l){
     const i=document.createElement('div'); i.className='ic'; i.textContent=T.ic;
     const tx=document.createElement('div'); const nm=document.createElement('b'); nm.textContent=T.nome;
     const pr=document.createElement('span'); pr.textContent=T.hora?`${fmt(T.preco)} · rende ${fmt(T.hora)}/h`+(T.residencial?' de aluguel':''):`${fmt(T.preco)} · para morar: V descansa`; tx.append(nm,pr); b.append(i,tx);
-    b.disabled=salvo.saldo<T.preco; b.title=b.disabled?'Saldo insuficiente':'';
+    b.disabled=salvo.saldo<T.preco||!cabe(l,id); b.title=!cabe(l,id)?'Não cabe neste terreno (pequeno)':b.disabled?'Saldo insuficiente':''; if(!cabe(l,id)) pr.textContent+=' · não cabe aqui';
     b.onclick=()=>escolher(l,id); g.append(b); }
-  $('negTit').textContent='🏗️ O que construir no seu terreno?';
+  $('negTit').textContent=`🏗️ O que construir no seu terreno (${l.w}×${l.d} m)?`;
   $('negInfo').textContent=`Saldo: ${fmt(salvo.saldo)}. O comércio aparece pronto, com atendente, e os clientes da cidade compram. Fora do jogo o caixa junta até ${MAX_HORAS} h de renda.`+(l.blocos.size?` Atenção: os ${l.blocos.size} blocos que você construiu aqui serão retirados.`:'');
   $('negAcoes').replaceChildren(); $('negocio').classList.add('on');
 }
+// fundo de terreno que cada construção pede (terreno pequeno tem 16 m: bar, sobrado e casa de luxo não cabem)
+const fundoPede=id=>id==='bar'?23:/^casa_l/.test(id)?24:/^casa_g/.test(id)?18:16;
+const cabe=(l,id)=>(l.d||24)>=fundoPede(id);
 // escolha da casa para morar: tamanho × estilo (o preço já mostra o que dá para pagar)
 function abrirCasas(l){
   const g=$('negLista'); g.replaceChildren();
@@ -468,13 +472,14 @@ function abrirCasas(l){
       const i=document.createElement('div'); i.className='ic'; i.textContent=['','🏡','🏛️','🏢'][e];
       const tx=document.createElement('div'); const nm=document.createElement('b'); nm.textContent=ESTILOS[e].nome; const pr=document.createElement('span');
       pr.textContent=`${fmt(T.preco)} · ${['','telhado de duas águas','telhado de quatro águas, janela colorida','laje plana, painel de madeira'][e]}`; tx.append(nm,pr); b.append(i,tx);
-      b.disabled=salvo.saldo<T.preco; b.title=b.disabled?'Saldo insuficiente':''; b.onclick=()=>escolher(l,id); g.append(b); } }
+      b.disabled=salvo.saldo<T.preco||!cabe(l,id); b.title=!cabe(l,id)?'Não cabe neste terreno (pequeno)':b.disabled?'Saldo insuficiente':''; if(!cabe(l,id)) pr.textContent+=' · não cabe neste terreno';
+      b.onclick=()=>escolher(l,id); g.append(b); } }
   $('negTit').textContent='🏡 Escolha a sua casa';
   $('negInfo').textContent=`Saldo: ${fmt(salvo.saldo)}. A casa aparece pronta no terreno; V dentro dele para descansar (energia cheia).`;
   const a=$('negAcoes'); a.replaceChildren(); const v=document.createElement('button'); v.className='sec'; v.textContent='← Voltar'; v.onclick=()=>abrirCardapio(l); a.append(v);
 }
 async function escolher(l,tipo){
-  const T=TIPOS[tipo]; if(salvo.saldo<T.preco||!meu(l)) return;
+  const T=TIPOS[tipo]; if(salvo.saldo<T.preco||!meu(l)||!cabe(l,tipo)) return;
   if(l.blocos.size&&!confirm(`Seu terreno tem ${l.blocos.size} blocos construídos.
 Para construir (${T.nome}) eles serão retirados (a construção pronta fica no lugar).
 

@@ -11,6 +11,7 @@ import { jogador } from './avatar.js';
 import { carregarModelo } from './pedestres.js';
 import { membros, mirar } from './moto.js';
 import { LEVE } from './config.js';
+import { iniciarPostoVida, atualizarPostoVida } from './posto-vida.js';
 
 const MAX_HORAS=8;
 const lamb=c=>new THREE.MeshLambertMaterial({color:c});
@@ -153,6 +154,7 @@ export function iniciarEspeciais(){
     l.grupo.add(m.g); m.lg.position.copy(l.grupo.position); m.lg.rotation.copy(l.grupo.rotation); porLuz(m.lg);
     prontos.push({ l, ...m });
     if(meu(l)) reg(l); }   // dono: começa a contar a renda
+  iniciarPostoVida(lotes);                                               // frentistas, carros/motos na bomba e conveniência (posto-vida.js)
   return prontos.length;
 }
 /* ───────── gente na balada: carrega só quando o jogador chega perto ─────────
@@ -208,6 +210,7 @@ ganchos.musicaEspecial=()=>dentroBalada?'balada':null;
 export function atualizarEspeciais(dt){
   t+=dt; const h=horaJogo(), noite=h>=18.5||h<6, jx=jogador.position.x, jz=jogador.position.z;
   dentroBalada=false;
+  atualizarPostoVida(dt,jx,jz);
   for(const p of prontos){
     if(p.balada){ const B=p.balada, d=Math.hypot(p.l.cx-jx,p.l.cz-jz), perto=d<85;
       if(perto&&!p.gente&&!p.enchendo){ p.enchendo=true; encherBalada(p).catch(e=>console.warn('balada',e)); }
