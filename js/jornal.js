@@ -6,7 +6,8 @@ import { nuvem, conectarNuvem, ouvirJornal, postarJornal } from './nuvem.js';
 import { ruaMaisProxima } from './mundo.js';
 import { jogador } from './avatar.js';
 
-const NEG = { padaria:['🥖','Padaria'], lanchonete:['🍔','Lanchonete'], mercado:['🛒','Mercado'], roupas:['👕','Loja de Roupas'], farmacia:['💊','Farmácia'], oficina:['🔧','Oficina'], bar:['🍻','Bar'] };
+const NEG = { padaria:['🥖','Padaria'], lanchonete:['🍔','Lanchonete'], mercado:['🛒','Mercado'], roupas:['👕','Loja de Roupas'], farmacia:['💊','Farmácia'], oficina:['🔧','Oficina'], bar:['🍻','Bar'],
+  sorveteria:['🍦','Sorveteria'], petshop:['🐶','Pet Shop'], barbearia:['💈','Barbearia'], acougue:['🥩','Açougue'], kitnet:['🏘️','Kitnets'] };
 const na = r=>r?` na ${r}`:'';
 function manchete(e){
   const n=e.nome||'Visitante', r=e.rua||'';
