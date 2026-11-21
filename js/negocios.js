@@ -19,6 +19,7 @@ import { sortearPersona } from './personas.js';
 import { estacionarMoto } from './veiculos.js';
 import { musicaLoja } from './som.js';
 import { acalmarCaes } from './caes.js';
+import { vida } from './luta.js';
 
 // curvas de movimento por hora (as mesmas ideias do rotina.js)
 const C_PADARIA=[[0,0],[5.5,0.05],[6.3,1],[9,0.5],[11,0.3],[15,0.5],[16.5,0.9],[18.5,0.6],[20,0.1],[24,0]];
@@ -40,8 +41,15 @@ export const TIPOS = {
   petshop:   { nome:'Pet Shop',    ic:'🐶', preco:7500, hora:1150, venda:[20,120], cor:0x0284c7, piso:'#eef6fb', prod:[0xf59e0b,0x16a34a,0xdc2626,0x7c3aed,0x0ea5e9], curva:C_LOJA, fala:'Tem ração pro meu cachorro?' },
   barbearia: { nome:'Barbearia',   ic:'💈', preco:7000, hora:1100, venda:[30,70],  cor:0x1e3a8a, piso:'#e5e7eb', prod:[0x111827,0xdc2626,0x2563eb,0xf5f5f4], curva:C_LOJA, fala:'Só um degradê, por favor.', mesas:true },
   acougue:   { nome:'Açougue',     ic:'🥩', preco:9500, hora:1450, venda:[30,160], cor:0xb91c1c, piso:'#f1f5f9', prod:[0xb91c1c,0xef4444,0xfca5a5,0xfef3c7,0x7f1d1d], curva:C_LOJA, fala:'Me vê 2 kg de picanha pro churrasco!' },
+  pizzaria:  { nome:'Pizzaria',    ic:'🍕', preco:9000, hora:1400, venda:[25,90],  cor:0x15803d, piso:'#f5efe6', prod:[0xdc2626,0xfacc15,0x16a34a,0xf5f5f4,0x7c2d12], curva:C_COMIDA, fala:'Uma pizza grande de calabresa!', mesas:true },
+  floricultura:{ nome:'Floricultura', ic:'🌷', preco:6000, hora:900, venda:[20,90], cor:0xdb2777, piso:'#f0fdf4', prod:[0xf43f5e,0xfacc15,0xa855f7,0xffffff,0x22c55e,0xfb923c], curva:C_LOJA, fala:'Um buquê de rosas, por favor.' },
+  eletronicos:{ nome:'Eletrônicos', ic:'📱', preco:12000, hora:1800, venda:[60,400], cor:0x1f2937, piso:'#f3f4f6', prod:[0x111827,0x6b7280,0x2563eb,0xe5e7eb,0x0ea5e9], curva:C_LOJA, fala:'Quanto tá esse celular?' },
+  papelaria: { nome:'Papelaria',   ic:'📚', preco:5500, hora:850,  venda:[5,40],   cor:0xca8a04, piso:'#fefce8', prod:[0x2563eb,0xdc2626,0x16a34a,0xfacc15,0xffffff,0x7c3aed], curva:C_LOJA, fala:'Tem caderno de 10 matérias?' },
+  // moradia (21/11): casa para morar (sem renda; V descansa e enche a energia) e casa de aluguel (rende o aluguel)
+  casa:      { nome:'Casa',        ic:'🏡', preco:20000, hora:0,    venda:[0,0], cor:0xf97316, piso:'#e7e5e4', prod:[0xffffff], curva:C_LOJA, fala:'', casa:true, residencial:true },
+  aluguel:   { nome:'Casa de aluguel', ic:'🏠', preco:14000, hora:1000, venda:[0,0], cor:0x2563eb, piso:'#e7e5e4', prod:[0xffffff], curva:C_LOJA, fala:'', casa:true, residencial:true, alugada:true },
   // kitnet: prédio de 2 andares com 6 apartamentos para alugar; sem balcão nem clientes, rende o aluguel
-  kitnet:    { nome:'Kitnets',     ic:'🏘️', preco:30000, hora:2400, venda:[0,0], cor:0x0f766e, piso:'#e7e5e4', prod:[0xffffff], curva:C_LOJA, fala:'', kitnet:true, unidades:6 },
+  kitnet:    { nome:'Kitnets',     ic:'🏘️', preco:30000, hora:2400, venda:[0,0], cor:0x0f766e, piso:'#e7e5e4', prod:[0xffffff], curva:C_LOJA, fala:'', kitnet:true, residencial:true, unidades:6 },
 };
 const MAX_HORAS=8;
 // o que aparece nos cartazes e no quadro de preços (desenhado aqui, com emoji)
@@ -57,6 +65,10 @@ const MENU = {
   petshop:   [['🦴','Petisco','10'],['🥫','Ração 15 kg','139'],['🛁','Banho e tosa','60'],['🧸','Brinquedo','25'],['🦮','Coleira','35']],
   barbearia: [['💈','Corte','35'],['🧔','Barba','25'],['✂️','Corte + barba','50'],['🧴','Pomada','30'],['👦','Corte infantil','25']],
   acougue:   [['🥩','Picanha','79/kg'],['🍖','Costela','35/kg'],['🌭','Linguiça','25/kg'],['🍗','Frango','14/kg'],['🔥','Carvão 5 kg','22']],
+  pizzaria:  [['🍕','Calabresa','49'],['🍕','Marguerita','45'],['🧀','Quatro queijos','55'],['🍫','Pizza doce','42'],['🥤','Refri 2 L','12']],
+  floricultura:[['🌹','Buquê de rosas','60'],['🌻','Girassol','15'],['🪴','Vaso','35'],['🌵','Cacto','18'],['💐','Arranjo','90']],
+  eletronicos:[['📱','Celular','1.299'],['🎧','Fone','89'],['🔌','Carregador','49'],['🔋','Power bank','119'],['💡','Lâmpada LED','15']],
+  papelaria: [['📒','Caderno','25'],['✏️','Lápis','2'],['🖊️','Caneta','3'],['🎒','Mochila','89'],['📐','Régua','4']],
 };
 function texCartaz([ic,nome,preco],cor){
   const cv=document.createElement('canvas'); cv.width=256; cv.height=320; const k=cv.getContext('2d');
@@ -143,9 +155,53 @@ function montarKitnet(l,T){
   return g;
 }
 
+/* ───────── casa (21/11): térrea, telhado de duas águas, varanda, muro com portão, quintal com grama, árvore e
+   canteiro. Casa para morar (placa com o nome) ou de aluguel (placa ALUGADA). Cor da parede pelo lote. ───────── */
+const CORES_CASA=[0xfde68a,0xbfdbfe,0xfecaca,0xbbf7d0,0xf5f5f4,0xe9d5ff,0xfed7aa];
+function montarCasa(l,T){
+  const g=new THREE.Group(), hs=[...l.id].reduce((a,c)=>a*31+c.charCodeAt(0)|0,7), parede=lamb(CORES_CASA[Math.abs(hs)%CORES_CASA.length]);
+  const telha=lamb(0xb45309), grama=lamb(0x4d7c3a), branco=lamb(0xf8fafc), HX0=2, HX1=10, HZ0=6, HZ1=15, HH=3, janelas=[];
+  // quintal e caminho de pedra até a porta
+  const q=new THREE.Mesh(new THREE.PlaneGeometry(11.4,23.4).rotateX(-Math.PI/2),grama); q.position.set(6,0.025,12); g.add(q);
+  cx3(g,lamb(0xa8a29e),5.4,6.6,0,0.04,0.5,HZ0);
+  // muro baixo na frente com portão de grade no meio
+  for(const [a,b] of [[0.3,4.2],[7.8,11.7]]){ cx3(g,parede,a,b,0,1.1,0.3,0.5); cx3(g,branco,a,b,1.1,1.18,0.28,0.52); }
+  for(let x=4.3;x<7.75;x+=0.18) cx3(g,MAT.escuro,x,x+0.04,0,1.3,0.38,0.42);
+  cx3(g,MAT.escuro,4.2,7.8,1.26,1.32,0.36,0.44);
+  // paredes (oca), porta, janelas
+  cx3(g,parede,HX0,HX0+0.2,0,HH,HZ0,HZ1); cx3(g,parede,HX1-0.2,HX1,0,HH,HZ0,HZ1); cx3(g,parede,HX0,HX1,0,HH,HZ1-0.2,HZ1);
+  for(const [a,b] of [[HX0,5.4],[6.6,HX1]]){ cx3(g,parede,a,b,0,0.9,HZ0,HZ0+0.2); cx3(g,parede,a,b,2.3,HH,HZ0,HZ0+0.2);
+    const ja=a+0.6, jb=b-0.6; cx3(g,parede,a,ja,0.9,2.3,HZ0,HZ0+0.2); cx3(g,parede,jb,b,0.9,2.3,HZ0,HZ0+0.2);
+    cx3(g,branco,ja,jb,0.9,2.3,HZ0-0.04,HZ0+0.02); cx3(g,MAT.vidro,ja+0.08,jb-0.08,0.98,2.22,HZ0-0.07,HZ0-0.03); janelas.push([(ja+jb)/2,1.6]); }
+  cx3(g,parede,5.4,6.6,2.2,HH,HZ0,HZ0+0.2); cx3(g,MAT.madeira,5.45,6.55,0,2.2,HZ0-0.03,HZ0+0.05); cx3(g,MAT.metal,6.3,6.4,1.0,1.1,HZ0-0.08,HZ0-0.03);
+  // telhado de duas águas (cumeeira ao longo da frente) e oitões
+  const ab=0.55, larg=HX1-HX0+0.8, meia=(HZ1-HZ0)/2+0.5, alt=1.7, L=Math.hypot(meia,alt), ang=Math.atan2(alt,meia), zm=(HZ0+HZ1)/2;
+  for(const sg of [-1,1]){ const p=new THREE.Mesh(new THREE.BoxGeometry(larg,0.14,L),telha); p.position.set((HX0+HX1)/2,HH+alt/2,zm+sg*meia/2); p.rotation.x=sg*ang; g.add(p); }
+  const tri=new THREE.Shape([new THREE.Vector2(-(HZ1-HZ0)/2,0),new THREE.Vector2((HZ1-HZ0)/2,0),new THREE.Vector2(0,alt-0.1)]);
+  for(const x of [HX0+0.1,HX1-0.1]){ const o=new THREE.Mesh(new THREE.ShapeGeometry(tri),parede); o.material=parede.clone(); o.material.side=THREE.DoubleSide; o.rotation.y=Math.PI/2; o.position.set(x,HH,zm); g.add(o); }
+  // varanda na porta
+  cx3(g,telha,4.4,7.6,2.55,2.67,4.6,HZ0); for(const x of [4.5,7.4]) cx3(g,branco,x,x+0.12,0,2.55,4.65,4.77);
+  // árvore no quintal, canteiro de flores, caixa de correio
+  cx3(g,MAT.madeira,9.6,9.9,0,2.2,19,19.3); const copa=new THREE.Mesh(new THREE.IcosahedronGeometry(1.5,0),new THREE.MeshLambertMaterial({color:0x3f6e2f,flatShading:true})); copa.position.set(9.75,3.2,19.15); g.add(copa);
+  cx3(g,MAT.madeira,2.2,4.8,0,0.25,HZ0-1.0,HZ0-0.4);
+  [0xf43f5e,0xfacc15,0xa855f7,0xffffff,0xfb923c,0xf43f5e].forEach((c,i)=>{ const f=new THREE.Mesh(new THREE.SphereGeometry(0.13,6,5),lamb(c)); f.position.set(2.45+i*0.42,0.36,HZ0-0.7); g.add(f); });
+  cx3(g,MAT.escuro,8.4,8.47,0,1.0,0.6,0.67); cx3(g,lamb(T.cor),8.2,8.7,1.0,1.3,0.5,0.8);
+  // placa no muro: nome da família ou ALUGADA
+  const placa=new THREE.Mesh(new THREE.PlaneGeometry(3.2,0.5),new THREE.MeshBasicMaterial({map:T.alugada?texLetreiro('Alugada','🔑',0x2563eb):texLetreiro(nomeNeg(l),T.ic,T.cor)}));
+  placa.position.set(2.25,0.75,0.27); placa.rotation.y=Math.PI; g.add(placa);
+  // colisão: casa e muro (o portão fica aberto)
+  const oc=new Set(), cel=(u,v)=>oc.add(u+','+v);
+  for(let u=HX0;u<HX1;u++) for(let v=HZ0;v<HZ1;v++) cel(u,v);
+  for(let u=0;u<12;u++) if(u<4||u>=8) cel(u,0);
+  l.ocupaNeg=oc; l.balcao=HZ0+2;
+  Object.assign(g.userData,{ letreiro:placa.material.map, fundo:HZ1, lamps:[], porta:[X0,X1], janelas:janelas.map(([x,y])=>[x,y]), janZ:HZ0, letLuz:[3.2,0.5,2.25,0.75,0.25] });
+  return g;
+}
+
 function montarPredio(l){
   const T=TIPOS[l.negocio], g=new THREE.Group(), cor=lamb(T.cor);
   if(T.kitnet) return montarKitnet(l,T);
+  if(T.casa) return montarCasa(l,T);
   const Z1=T.fundo||15;                                                        // fundo do prédio (o bar é mais comprido)
   // piso
   const piso=new THREE.Mesh(new THREE.PlaneGeometry(X1-X0,Z1-Z0,3,5).rotateX(-Math.PI/2),new THREE.MeshLambertMaterial({map:texPiso(T.piso)}));
@@ -235,10 +291,12 @@ function abrirNaTela(l){
   const g=montarPredio(l); l.grupo.add(g);
   const n={ l, g, atendente:null, clientes:[], prox:2+Math.random()*4 };
   { const lg=new THREE.Group(), F=g.userData.fundo; lg.position.copy(l.grupo.position); lg.rotation.copy(l.grupo.rotation);   // à noite: letreiro aceso, salão iluminado e luz na calçada
-    const s=luzExtra(new THREE.PlaneGeometry(X1-X0,g.userData.letY?0.8:1.1),{map:g.userData.letreiro,forca:0.9}); s.position.set((X0+X1)/2,g.userData.letY||H-0.6,Z0-(g.userData.letY?0.23:0.07)); s.rotation.y=Math.PI; lg.add(s);
-    for(const [x,y] of g.userData.janelas||[]) if(Math.random()<0.75){ const j=luzExtra(new THREE.PlaneGeometry(1.4,1.15),{cor:0xffd9a0,forca:0.55}); j.position.set(x,y,Z0-0.09); j.rotation.y=Math.PI; lg.add(j); }   // kitnet: janelas acesas
-    const ch=luzExtra(new THREE.PlaneGeometry(X1-X0+3,F-Z0+3).rotateX(-Math.PI/2),{map:TEX_QUENTE,forca:0.55}); ch.position.set((X0+X1)/2,0.06,(Z0+F)/2); lg.add(ch);
+    const LL=g.userData.letLuz||[X1-X0, g.userData.letY?0.8:1.1, (X0+X1)/2, g.userData.letY||H-0.6, Z0-(g.userData.letY?0.23:0.07)];   // [larg, alt, x, y, z] do letreiro
+    const s=luzExtra(new THREE.PlaneGeometry(LL[0],LL[1]),{map:g.userData.letreiro,forca:0.9}); s.position.set(LL[2],LL[3],LL[4]); s.rotation.y=Math.PI; lg.add(s);
+    for(const [x,y] of g.userData.janelas||[]) if(Math.random()<0.75){ const j=luzExtra(new THREE.PlaneGeometry(1.4,1.15),{cor:0xffd9a0,forca:0.55}); j.position.set(x,y,(g.userData.janZ??Z0)-0.09); j.rotation.y=Math.PI; lg.add(j); }   // kitnet/casa: janelas acesas
     const cal=luzExtra(new THREE.PlaneGeometry(11,6).rotateX(-Math.PI/2),{map:TEX_QUENTE,forca:0.5}); cal.position.set((X0+X1)/2,0.07,Z0-1.5); lg.add(cal);
+    if(!TIPOS[l.negocio].residencial){                                   // moradia: só janelas e letreiro (a luz de salão vazaria pelas paredes)
+    const ch=luzExtra(new THREE.PlaneGeometry(X1-X0+3,F-Z0+3).rotateX(-Math.PI/2),{map:TEX_QUENTE,forca:0.55}); ch.position.set((X0+X1)/2,0.06,(Z0+F)/2); lg.add(ch);
     // luz de dentro: cada luminária brilha, as paredes e o teto ficam claros e a vitrine acende vista da rua
     const dupla=m=>{ m.material.side=THREE.DoubleSide; return m; };
     for(const [x,z] of g.userData.lamps){ const b=dupla(luzExtra(new THREE.PlaneGeometry(2.2,1.1).rotateX(Math.PI/2),{map:TEX_QUENTE,forca:1})); b.position.set(x,H-0.1,z); lg.add(b); }
@@ -246,10 +304,10 @@ function abrirNaTela(l){
     const fu=luzExtra(new THREE.PlaneGeometry(X1-X0,H-0.3),{map:TEX_QUENTE,forca:0.3}); fu.position.set((X0+X1)/2,(H-0.3)/2+0.15,F-0.22); fu.rotation.y=Math.PI; lg.add(fu);
     const pt=g.userData.porta;
     for(const [a,b] of [[X0,pt[0]],[pt[1],X1]]){ if(b-a<0.3) continue;
-      const v=luzExtra(new THREE.PlaneGeometry(b-a,2.3),{cor:0xffd9a0,forca:0.3}); v.position.set((a+b)/2,1.75,Z0-0.01); v.rotation.y=Math.PI; lg.add(v); }
+      const v=luzExtra(new THREE.PlaneGeometry(b-a,2.3),{cor:0xffd9a0,forca:0.3}); v.position.set((a+b)/2,1.75,Z0-0.01); v.rotation.y=Math.PI; lg.add(v); } }
     n.tiraLuz=porLuz(lg); }
   abertos.set(l.id,n);
-  if(!TIPOS[l.negocio].kitnet) carregarMoldes().then(()=>{ if(abertos.get(l.id)!==n||n.atendente) return; const b=boneco(); if(!b) return;
+  if(!TIPOS[l.negocio].residencial) carregarMoldes().then(()=>{ if(abertos.get(l.id)!==n||n.atendente) return; const b=boneco(); if(!b) return;
     b.obj.position.set(6,b.pe,l.balcao+1.5); b.obj.rotation.y=Math.PI; g.add(b.obj); animar(b,'parado'); n.atendente=b; });
   if(l.negocio==='oficina') carroNoConserto(n);
   if(l.negocio==='oficina'&&meu(l)){ const x=l.A[0]+l.t[0]*2.8+l.n[0]*1.0, z=l.A[1]+l.t[1]*2.8+l.n[1]*1.0;   // na frente da porta, de lado para a rua
@@ -321,13 +379,17 @@ export function caixa(l){ const T=TIPOS[l.negocio]; if(!T||!meu(l)) return 0; co
 let loteUI=null;
 function abrirCardapio(l){
   loteUI=l; const g=$('negLista'); g.replaceChildren();
-  for(const [id,T] of Object.entries(TIPOS)){ const b=document.createElement('button'); b.className='neg';
+  const secao=t=>{ const h=document.createElement('div'); h.textContent=t; h.style.cssText='grid-column:1/-1;font-weight:800;margin:6px 2px 0;opacity:.85'; g.append(h); };
+  const ordem=Object.entries(TIPOS).sort((a,b)=>(!!b[1].residencial)-(!!a[1].residencial));
+  let sec=null;
+  for(const [id,T] of ordem){ const s2=T.residencial?'🏠 Moradia':'🏪 Comércio'; if(s2!==sec){ sec=s2; secao(s2); }
+    const b=document.createElement('button'); b.className='neg';
     const i=document.createElement('div'); i.className='ic'; i.textContent=T.ic;
     const tx=document.createElement('div'); const nm=document.createElement('b'); nm.textContent=T.nome;
-    const pr=document.createElement('span'); pr.textContent=`${fmt(T.preco)} · rende ${fmt(T.hora)}/h`; tx.append(nm,pr); b.append(i,tx);
+    const pr=document.createElement('span'); pr.textContent=T.hora?`${fmt(T.preco)} · rende ${fmt(T.hora)}/h`+(T.residencial?' de aluguel':''):`${fmt(T.preco)} · para morar: V descansa`; tx.append(nm,pr); b.append(i,tx);
     b.disabled=salvo.saldo<T.preco; b.title=b.disabled?'Saldo insuficiente':'';
     b.onclick=()=>escolher(l,id); g.append(b); }
-  $('negTit').textContent='🏪 Abrir um negócio ou construir kitnets no seu terreno';
+  $('negTit').textContent='🏗️ O que construir no seu terreno?';
   $('negInfo').textContent=`Saldo: ${fmt(salvo.saldo)}. O comércio aparece pronto, com atendente, e os clientes da cidade compram. Fora do jogo o caixa junta até ${MAX_HORAS} h de renda.`+(l.blocos.size?` Atenção: os ${l.blocos.size} blocos que você construiu aqui serão retirados.`:'');
   $('negAcoes').replaceChildren(); $('negocio').classList.add('on');
 }
@@ -352,6 +414,19 @@ function abrirPainel(l){
   $('negInfo').textContent=T.kitnet?`Aluguel a receber: ${fmt(cx)}. São ${T.unidades} kitnets alugadas, rendendo ${fmt(T.hora)}/h juntas (junta até ${MAX_HORAS} h).`
     :`Caixa: ${fmt(cx)} (rende ${fmt(T.hora)}/h, junta até ${MAX_HORAS} h). Vendas no balcão com você por perto: ${reg(l).vendas||0}.`;
   const a=$('negAcoes'); a.replaceChildren();
+  if(T.casa&&!T.hora){                                                    // casa para morar: descansar e demolir
+    $('negInfo').textContent='Sua casa. Descansar enche a energia. No mapa ela aparece com 🏡.';
+    const dor=document.createElement('button'); dor.textContent='😴 Descansar (energia cheia)'; dor.disabled=vida.e>=99.5;
+    dor.onclick=()=>{ vida.e=100; fecharUI(); avisar('😴 Você descansou em casa: energia cheia'); };
+    const dem=document.createElement('button'); dem.className='sec'; dem.textContent='Demolir a casa';
+    dem.onclick=async()=>{ if(!confirm('Demolir a sua casa? O terreno fica vazio e o dinheiro gasto não volta.')) return;
+      if(!await fecharNegocioNuvem(l.id)){ avisar('Não deu para demolir agora'); return; }
+      delete salvo.negocios[l.id]; salvar(); l.negNome=''; dispatchEvent(new CustomEvent('matelandia:fechou',{detail:{tipo:l.negocio}})); l.negocio=null; fecharNaTela(l); fecharUI(); avisar('Casa demolida'); };
+    const ren0=document.createElement('button'); ren0.className='sec'; ren0.textContent='✏️ Mudar nome da placa';
+    ren0.onclick=()=>{ const r=prompt('Nome na placa (até 24 letras). Vazio volta ao padrão.', l.negNome||''); if(r===null) return;
+      const nm=limparNomeNeg(r); l.negNome=nm; renomearNegocioNuvem(l.id,nm); abrirNaTela(l); fecharUI(); avisar(`Placa: ${nomeNeg(l)}`); };
+    a.append(dor,ren0,dem); $('negocio').classList.add('on'); return; }
+  if(T.casa) $('negInfo').textContent=`Aluguel a receber: ${fmt(cx)} (a casa rende ${fmt(T.hora)}/h, junta até ${MAX_HORAS} h). No mapa ela aparece com 🏠.`;
   const rec=document.createElement('button'); rec.textContent=`💰 Recolher ${fmt(cx)}`; rec.disabled=cx<=0;
   rec.onclick=()=>{ const v=caixa(l); ganhar(v); reg(l).coleta=Date.now(); salvar(); fecharUI(); avisar(`Caixa recolhido: +${fmt(v)}`); };
   const fec=document.createElement('button'); fec.className='sec'; fec.textContent='Fechar o negócio';
@@ -389,12 +464,13 @@ export function comprarRemedio(vida){
   ganhar(-PRECO_REMEDIO); vida.e=100; avisar(`💊 Remédio tomado: energia cheia (−${fmt(PRECO_REMEDIO)})`);
 }
 // para o mapa grande: todos os negócios abertos, com ícone
-export const pontosNegocios=()=>lotes.filter(l=>l.negocio&&TIPOS[l.negocio]).map(l=>({ x:l.A[0]+l.t[0]*6-l.n[0]*2, z:l.A[1]+l.t[1]*6-l.n[1]*2, ic:TIPOS[l.negocio].ic, nome:nomeNeg(l), tipo:meu(l)?'meuNegocio':l.negocio==='farmacia'?'farmacia':'negocio' }));
+export const pontosNegocios=()=>lotes.filter(l=>l.negocio&&TIPOS[l.negocio]).map(l=>({ x:l.A[0]+l.t[0]*6-l.n[0]*2, z:l.A[1]+l.t[1]*6-l.n[1]*2, ic:TIPOS[l.negocio].ic, nome:nomeNeg(l), tipo:meu(l)?(TIPOS[l.negocio].residencial?'minhaCasa':'meuNegocio'):l.negocio==='farmacia'?'farmacia':'negocio' }));
 export const pertoDeNegocioMeu=(x,z)=>{ const l=loteEm(x,z,1); return !!(l&&meu(l)); };
+ganchos.icone=l=>l.negocio&&TIPOS[l.negocio]?TIPOS[l.negocio].ic:null;   // minimapa (terrenos.js → desenhoLote)
 ganchos.dica=l=>{
   if(!l.negocio) return '';
   const T=TIPOS[l.negocio];
-  if(meu(l)){ const c=caixa(l); return `${T.ic} ${nomeNeg(l)} · V caixa ${fmt(c)}`; }
+  if(meu(l)){ if(T.casa&&!T.hora) return `${T.ic} Sua casa · V descansar`; const c=caixa(l); return `${T.ic} ${nomeNeg(l)} · V ${T.residencial?'aluguel':'caixa'} ${fmt(c)}`; }
   return `${T.ic} ${nomeNeg(l)} · aberto`;
 };
 
@@ -414,7 +490,7 @@ export function atualizarNegocios(dt, px, pz){
     const l=n.l, d=Math.hypot(l.cx-px,l.cz-pz);
     if(d>160){ for(const b of n.clientes) n.g.remove(b.obj); n.clientes.length=0; continue; }   // longe: sem clientes
     const T=TIPOS[l.negocio], mov=perfil(h,T.curva);
-    if(T.kitnet) continue;                                              // kitnet: sem balcão nem clientes
+    if(T.residencial) continue;                                         // kitnet/casa: sem balcão nem clientes
     { const dx=px-l.A[0], dz=pz-l.A[1], u=dx*l.t[0]+dz*l.t[1], v=dx*l.n[0]+dz*l.n[1]; if(u>X0&&u<X1&&v>Z0&&v<(T.fundo||Z1)) dentro=l.negocio; }   // jogador dentro da loja
     n.prox-=dt;
     if(n.prox<=0&&moldes.length){ n.prox=(5+Math.random()*7)/Math.max(0.15,mov); if(mov>0.08&&n.clientes.length<3) novoCliente(n); }
@@ -442,10 +518,14 @@ export const PRODUTOS={
   petshop:   [['🦴','Petiscos para os cachorros',12,{caes:300}], ['🥫','Ração (cachorros amigos 15 min)',40,{caes:900}]],
   barbearia: [['💈','Corte novo (disfarce)',35,{disfarce:true}], ['🧔','Barba feita',25,{e:10}]],
   acougue:   [['🔥','Espetinho na brasa',12,{e:25}], ['🍖','Churrasco completo',55,{e:80}]],
+  pizzaria:  [['🍕','Pedaço de pizza',9,{e:15}], ['🍕','Pizza inteira',49,{e:90}]],
+  floricultura:[['🌻','Girassol',15,{e:5}], ['💐','Arranjo (dá ânimo)',60,{e:20,corrida:60}]],
+  eletronicos:[['🔋','Power bank (energia)',119,{e:30}], ['🎧','Fone com música (corre mais)',89,{corrida:180}]],
+  papelaria: [['📒','Caderno',25,{e:3}], ['🍬','Bala',2,{e:4}]],
 };
 // jogador dentro de um negócio aberto (de qualquer jogador)?
 export function lojaAqui(x,z){
-  for(const n of abertos.values()){ const l=n.l, T=TIPOS[l.negocio]; if(!T||T.kitnet) continue;
+  for(const n of abertos.values()){ const l=n.l, T=TIPOS[l.negocio]; if(!T||T.residencial) continue;
     const dx=x-l.A[0], dz=z-l.A[1], u=dx*l.t[0]+dz*l.t[1], v=dx*l.n[0]+dz*l.n[1];
     if(u>X0&&u<X1&&v>Z0&&v<(T.fundo||Z1)) return n; }
   return null;

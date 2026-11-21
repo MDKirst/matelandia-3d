@@ -40,10 +40,14 @@ export function minimapa(px,pz,rumo,veiculos=[],transito=[],alvo=null,jogadores=
   mm.fillStyle='#22d3ee'; mm.strokeStyle='#083344'; mm.lineWidth=2;
   for(const [x,z] of jogadores){ mm.beginPath(); mm.arc(x,z,5.5,0,Math.PI*2); mm.fill(); mm.stroke(); }
   mm.restore();
-  // 🏠 em cada terreno seu (na borda do mapa quando longe)
+  // ícone em cada terreno seu (na borda do mapa quando longe): 🏡 casa, 🏠 casa de aluguel, 🏘️ kitnet, o do comércio, 📍 vazio (21/11)
+  const marca=(x,z,ic)=>{ let dx=(x-px)*ESC, dz=(z-pz)*ESC; const d=Math.hypot(dx,dz), lim=MMS/2-18; if(d>lim){ dx*=lim/d; dz*=lim/d; }
+    mm.fillStyle='#F97316'; mm.strokeStyle='#111'; mm.lineWidth=3; mm.beginPath(); mm.arc(MMS/2+dx,MMS/2+dz,13,0,Math.PI*2); mm.fill(); mm.stroke();
+    mm.font='16px system-ui'; mm.textAlign='center'; mm.fillText(ic,MMS/2+dx,MMS/2+dz+6); };
+  for(const pts of terrenos?.casas?.minhas||[]){ let x=0,z=0; for(const q of pts){ x+=q[0]; z+=q[1]; } marca(x/pts.length,z/pts.length,'🏡'); }   // casas compradas na rua
   for(const l of terrenos?.meus||[]){ let dx=(l.centro[0]-px)*ESC, dz=(l.centro[1]-pz)*ESC; const d=Math.hypot(dx,dz), lim=MMS/2-18; if(d>lim){ dx*=lim/d; dz*=lim/d; }
     mm.fillStyle='#F97316'; mm.strokeStyle='#111'; mm.lineWidth=3; mm.beginPath(); mm.arc(MMS/2+dx,MMS/2+dz,13,0,Math.PI*2); mm.fill(); mm.stroke();
-    mm.font='16px system-ui'; mm.textAlign='center'; mm.fillText('🏠',MMS/2+dx,MMS/2+dz+6); }
+    mm.font='16px system-ui'; mm.textAlign='center'; mm.fillText(l.ic||'📍',MMS/2+dx,MMS/2+dz+6); }
   mm.save(); mm.translate(MMS/2,MMS/2); mm.rotate(-rumo);
   mm.fillStyle='#F97316'; mm.strokeStyle='#111'; mm.lineWidth=3;
   mm.beginPath(); mm.moveTo(0,18); mm.lineTo(11,-12); mm.lineTo(0,-5); mm.lineTo(-11,-12); mm.closePath(); mm.fill(); mm.stroke(); mm.restore();

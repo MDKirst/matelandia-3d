@@ -7,12 +7,15 @@ import { ruaMaisProxima } from './mundo.js';
 import { jogador } from './avatar.js';
 
 const NEG = { padaria:['🥖','Padaria'], lanchonete:['🍔','Lanchonete'], mercado:['🛒','Mercado'], roupas:['👕','Loja de Roupas'], farmacia:['💊','Farmácia'], oficina:['🔧','Oficina'], bar:['🍻','Bar'],
-  sorveteria:['🍦','Sorveteria'], petshop:['🐶','Pet Shop'], barbearia:['💈','Barbearia'], acougue:['🥩','Açougue'], kitnet:['🏘️','Kitnets'] };
+  sorveteria:['🍦','Sorveteria'], petshop:['🐶','Pet Shop'], barbearia:['💈','Barbearia'], acougue:['🥩','Açougue'], kitnet:['🏘️','Kitnets'],
+  pizzaria:['🍕','Pizzaria'], floricultura:['🌷','Floricultura'], eletronicos:['📱','Loja de Eletrônicos'], papelaria:['📚','Papelaria'], casa:['🏡','Casa'], aluguel:['🏠','Casa de aluguel'] };
 const na = r=>r?` na ${r}`:'';
 function manchete(e){
   const n=e.nome||'Visitante', r=e.rua||'';
   switch(e.tipo){
-    case 'abriu':   { const [ic,nm]=NEG[e.neg]||['🏪','Negócio']; return `${ic} ${nm} de ${n} abre as portas${na(r)}`; }
+    case 'abriu':   { const [ic,nm]=NEG[e.neg]||['🏪','Negócio'];
+      if(['casa','aluguel','kitnet'].includes(e.neg)) return `${ic} ${n} constrói ${e.neg==='kitnet'?'kitnets':'uma '+nm.toLowerCase()}${na(r)}`;
+      return `${ic} ${nm} de ${n} abre as portas${na(r)}`; }
     case 'fechou':  { const [,nm]=NEG[e.neg]||['','Negócio']; return `🔒 ${nm} de ${n} fecha as portas`; }
     case 'preso':   return `🚔 ${n} é preso pela polícia${na(r)}`;
     case 'surra':   return `🥊 ${n} avacalha e apanha da turma${na(r)}`;

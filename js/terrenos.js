@@ -353,11 +353,11 @@ async function ligarNuvem(){
 export const lotesMeus=()=>lotes.filter(meu);
 // para o minimapa e o "ir ao terreno": cantos do lote, centro e um ponto na calçada da frente
 const desenhoLote=l=>{ const c=(u,v)=>[l.A[0]+l.t[0]*u+l.n[0]*v, l.A[1]+l.t[1]*u+l.n[1]*v];
-  return { id:l.id, cantos:[c(0,0),c(l.w,0),c(l.w,l.d),c(0,l.d)], centro:c(l.w/2,l.d/2), frente:c(l.w/2,-1.5), esp:l.especial?.tipo||null }; };
+  return { id:l.id, cantos:[c(0,0),c(l.w,0),c(l.w,l.d),c(0,l.d)], centro:c(l.w/2,l.d/2), frente:c(l.w/2,-1.5), esp:l.especial?.tipo||null, ic:ganchos.icone?.(l)||null }; };
 export const terrenosNoMapa=()=>({ meus:lotes.filter(meu).map(desenhoLote), outros:lotes.filter(l=>l.dono&&!meu(l)).map(desenhoLote), livres:lotes.filter(l=>!l.dono&&!meu(l)).map(desenhoLote) });
 export { avisar as avisarTerreno };
 // para o negocios.js (sem import circular: ele registra a dica aqui)
-export const ganchos={ dica:null, especial:null, acaoEspecial:null };
+export const ganchos={ dica:null, especial:null, acaoEspecial:null, icone:null };
 // tira todos os blocos do terreno (para abrir um negócio no lugar)
 export function limparBlocos(l){ if(!meu(l)) return; for(const k of [...l.blocos.keys()]) tirarBloco(l.id,k); l.blocos.clear(); refazer(l); }
 export { sairObra };
