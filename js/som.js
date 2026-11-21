@@ -46,6 +46,16 @@ export function somTiro(dist=10){                                      // estamp
   if(!ctx) return; const t=ctx.currentTime, k=Math.max(0.12,1-dist/90);
   baque(t,170,55,0.14,0.85*k); rajada(t,0.2,0.75*k,'highpass',1100); rajada(t+0.02,0.35,0.25*k,'lowpass',500);
 }
+// latido: dois "au" curtos (tom que cai, passado por um filtro de voz) + sopro; husky mais grave. 20/11
+export function somLatido(dist=5, grave=false){
+  if(!ctx) return; const t=ctx.currentTime, k=Math.max(0.1,1-dist/40), f0=grave?520:700;
+  for(const d of [0,0.22]){ const t0=t+d+Math.random()*0.03;
+    const o=ctx.createOscillator(); o.type='sawtooth'; o.frequency.setValueAtTime(f0,t0); o.frequency.exponentialRampToValueAtTime(f0*0.55,t0+0.12);
+    const f=ctx.createBiquadFilter(); f.type='bandpass'; f.frequency.value=grave?900:1200; f.Q.value=1.4;
+    const g=ctx.createGain(); g.gain.setValueAtTime(0.0001,t0); g.gain.exponentialRampToValueAtTime(0.45*k,t0+0.015); g.gain.exponentialRampToValueAtTime(0.001,t0+0.16);
+    o.connect(f).connect(g).connect(mestre); o.start(t0); o.stop(t0+0.2);
+    rajada(t0,0.1,0.15*k,'bandpass',1500,1); }
+}
 export function somPancada(){
   if(!ctx) return; const t=ctx.currentTime; baque(t,95,45,0.22,0.8); rajada(t,0.12,0.35,'lowpass',600);
 }
