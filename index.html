@@ -231,6 +231,8 @@
     #online:empty{display:none}
     #top:not(.fechado) #btns{flex-basis:100%;display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px;margin:6px 0 2px}
     #top:not(.fechado) #btns button{min-height:42px;padding:6px 4px;font-size:12px;white-space:normal}
+    /* menu aberto: o que mora logo abaixo da barra (rua, minimapa, missão, chat fechado) ficava por cima dos botões — some até fechar */
+    body:has(#top:not(.fechado)) :is(#street,#mini,#missao,#guia,#trabalho,#gps,#chat:not(.aberto)){visibility:hidden}
     /* minimapa no canto de cima; o canto de baixo à esquerda fica livre para o polegar */
     #mini{left:auto;right:max(10px,env(safe-area-inset-right,0px));top:calc(env(safe-area-inset-top,0px) + 74px);bottom:auto;width:96px;height:96px;border-width:2px}
     #missao,#guia,#trabalho,#gps{top:calc(env(safe-area-inset-top,0px) + 100px);bottom:auto;left:12px;right:118px;transform:none;padding:6px 10px}
