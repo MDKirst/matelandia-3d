@@ -13,10 +13,11 @@ const na = r=>r?` na ${r}`:'';
 function manchete(e){
   const n=e.nome||'Visitante', r=e.rua||'';
   switch(e.tipo){
-    case 'abriu':   { const [ic,nm]=NEG[e.neg]||['🏪','Negócio'];
-      if(['casa','aluguel','kitnet'].includes(e.neg)) return `${ic} ${n} constrói ${e.neg==='kitnet'?'kitnets':'uma '+nm.toLowerCase()}${na(r)}`;
+    case 'abriu':   { const [ic,nm]=NEG[/^casa_/.test(e.neg||'')?'casa':e.neg]||['🏪','Negócio'];
+      if(/^casa_l/.test(e.neg||'')) return `🏡 ${n} constrói uma casa de luxo com piscina${na(r)}`;
+      if(['casa','aluguel','kitnet'].includes(e.neg)||/^casa_/.test(e.neg||'')) return `${ic} ${n} constrói ${e.neg==='kitnet'?'kitnets':'uma '+nm.toLowerCase()}${na(r)}`;
       return `${ic} ${nm} de ${n} abre as portas${na(r)}`; }
-    case 'fechou':  { const [,nm]=NEG[e.neg]||['','Negócio']; return `🔒 ${nm} de ${n} fecha as portas`; }
+    case 'fechou':  { const [,nm]=NEG[/^casa_/.test(e.neg||'')?'casa':e.neg]||['','Negócio']; return `🔒 ${nm} de ${n} fecha as portas`; }
     case 'preso':   return `🚔 ${n} é preso pela polícia${na(r)}`;
     case 'surra':   return `🥊 ${n} avacalha e apanha da turma${na(r)}`;
     case 'fugiu':   return `🏃 ${n} despista a polícia e some${na(r)}`;
