@@ -23,7 +23,7 @@ const por=(g,x,clip)=>{ const o=clone(g.scene); o.position.x=x; s.add(o);
   if(clip){ const m=new THREE.AnimationMixer(o); m.clipAction(clip).play(); mixers.push(m); }
   o.updateMatrixWorld(true); const b=new THREE.Box3().setFromObject(o,true); window.__info.push({x,clip:clip?.name,alt:+(b.max.y-b.min.y).toFixed(2),pe:+b.min.y.toFixed(2)}); };
 const arq=`../assets/pessoas/${nome}.glb`;   // o Maicon fica em assets/: ?m=../maicon-animado
-const golpes=q.get('g')?await new Promise(ok=>L.load('../assets/pessoas/golpes.glb',g=>ok(g.animations))):[];   // &g=1: socos emprestados (avatar.js)
+const golpes=q.get('g')?await new Promise(ok=>L.load(`../assets/pessoas/${q.get('g')==='2'?'chutes':'golpes'}.glb`,g=>ok(g.animations))):[];   // &g=1 socos, &g=2 chutes emprestados (avatar.js)
 L.load(arq,g=>{
   const cl=golpes.length?golpes:g.animations; cl.forEach((a,i)=>{ const x=(i-(cl.length-1)/2)*1.4; por(g,x,a); rotulo(a.name,x); });
   if(comp) L.load(`../assets/pessoas/${comp}.glb`,h=>{ const x=(cl.length+1)/2*1.4; por(h,x,h.animations.find(a=>a.name==='parado')); rotulo(comp,x); });
@@ -33,5 +33,7 @@ addEventListener('keydown',e=>{ if(e.key==='ArrowLeft') ang-=0.3; if(e.key==='Ar
 (function f(){ requestAnimationFrame(f); const dt=relogio.getDelta(); mixers.forEach(m=>m.update(dt)); const R=10; c.position.set(Math.sin(ang)*R,2,Math.cos(ang)*R); c.lookAt(0,0.9,0); r.render(s,c); })();
 window.__ang=a=>{ ang=a; };
 // painel escondido pausa o rAF: __quadro(t) põe todos os clipes no tempo t (s) e desenha uma vez
-window.__quadro=(t,a=ang)=>{ mixers.forEach(m=>m.setTime(t)); const R=10; c.position.set(Math.sin(a)*R,2,Math.cos(a)*R); c.lookAt(0,0.9,0); r.render(s,c); return r.domElement.toDataURL('image/jpeg',0.8); };
+window.__cena=s;
+const ajustar=()=>{ r.setSize(innerWidth,innerHeight); c.aspect=innerWidth/innerHeight; c.updateProjectionMatrix(); }; addEventListener('resize',ajustar);
+window.__quadro=(t,a=ang)=>{ if(!r.domElement.width) ajustar(); mixers.forEach(m=>m.setTime(t)); const R=10; c.position.set(Math.sin(a)*R,2,Math.cos(a)*R); c.lookAt(0,0.9,0); r.render(s,c); return r.domElement.toDataURL('image/jpeg',0.8); };
 </script></body></html>
