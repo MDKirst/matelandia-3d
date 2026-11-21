@@ -162,7 +162,9 @@ export async function iniciarPedestres(lugares, px, pz){
   lojas = publicos.map(l=>toXZ(l.lat,l.lon));
   prenderLugares(publicos);
   // carrega aos poucos: os 6 primeiros já povoam, o resto entra conforme chega
-  const fila=[...PESSOAS].sort(()=>Math.random()-0.5);
+  // link de teste ?pessoa=dona-maria: a rua inteira só com esse modelo (para conferir um pedestre novo)
+  const so=new URLSearchParams(location.search).get('pessoa');
+  const fila=PESSOAS.includes(so)?[so]:[...PESSOAS].sort(()=>Math.random()-0.5);
   const primeiros=await Promise.all(fila.slice(0,6).map(carregarModelo)); moldes.push(...primeiros.filter(Boolean));
   (async()=>{ for(const n of fila.slice(6)){ const m=await carregarModelo(n); if(m) moldes.push(m); } })();
   for(let k=0;k<QTD;k++){ const p={}; nascer(p,px,pz); gente.push(p); }
