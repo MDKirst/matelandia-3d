@@ -18,7 +18,11 @@ import { grupoDe, movimento, peso, nomeGrupo, perfil, PRACA, saudacao, FALA_LUGA
 import { ALCANCE, naMira } from './tiro.js';
 
 export const PESSOAS = ['male-casual','female-casual','male-shirt','female-dress','male-long-sleeve','female-tank-top','male-suit','female-alternative',
-  'male-casual-2-24','female-casual-2-24','male-worker-24','female-worker-24','male-farmer-24','female-formal-24','male-casual-hoodie-24','female-suit-24','male-beach-24','male-suit-24','male-punk-24','female-jeans'];
+  'male-casual-2-24','female-casual-2-24','male-worker-24','female-worker-24','male-farmer-24','female-formal-24','male-casual-hoodie-24','female-suit-24','male-beach-24','male-suit-24','male-punk-24','female-jeans','dona-maria'];
+// quem anda diferente do resto (feitos por IA + Mixamo): vel = fator da velocidade, passo = quanto acelerar o clipe 'andar'
+// para o pé não patinar (Dona Maria: caminhada curtinha do Mixamo, ~0,25 m/s no clipe original)
+const RITMO = { 'dona-maria': { vel:0.4, passo:4.3 } };
+const ritmo = p=>RITMO[p.modelo?.nome]||{vel:1,passo:1};
 const COM_CALCADA = new Set(['primary','secondary','tertiary','residential','unclassified','living_street','primary_link','secondary_link','tertiary_link']);
 const QTD = porModo(34,14), RAIO_NASCE = [25, 140], RAIO_SOME = 190, RAIO_ANIMA = porModo(90,45);   // leve (celular): menos gente, animação só de perto
 // praças (centro e raio aproximados, em metros locais): grupinhos conversando
@@ -108,7 +112,7 @@ function nascer(p, px, pz){
       if(sorte()<0.55){ const a=(sorte()-0.5)*7, f=0.4+sorte()*0.9;
         p.modo='conversa'; p.x=l.sx+l.ux*a+l.nx*f; p.z=l.sz+l.uz*a+l.nz*f; p.rumo=sorte()*Math.PI*2; p.t=10+sorte()*25; p.r=null; return true; }
       const Lseg=Math.hypot(l.r.pts[l.i+1][0]-l.r.pts[l.i][0],l.r.pts[l.i+1][1]-l.r.pts[l.i][1]), dir=sorte()<0.5?1:-1;
-      Object.assign(p,{modo:'voltar', r:l.r, dir, i:dir===1?l.i:l.i+1, s:(dir===1?l.t0:1-l.t0)*Lseg, lado:l.lado, vel:(1.1+sorte()*0.5)*p.persona.vel, t:0, espera:0, visto:new Set(['L'+l.id])});
+      Object.assign(p,{modo:'voltar', r:l.r, dir, i:dir===1?l.i:l.i+1, s:(dir===1?l.t0:1-l.t0)*Lseg, lado:l.lado, vel:(1.1+sorte()*0.5)*p.persona.vel*ritmo(p).vel, t:0, espera:0, visto:new Set(['L'+l.id])});
       p.x=l.sx+l.nx*2.4; p.z=l.sz+l.nz*2.4; p.rumo=Math.atan2(-l.nx,-l.nz); return true; } }
   // praça perto: grupinho (mais gente no fim da tarde)
   const pr=PRACAS.find(q=>Math.hypot(q.c[0]-px,q.c[1]-pz)<RAIO_NASCE[1]);
@@ -125,7 +129,7 @@ function nascer(p, px, pz){
     if(!comercio&&sorte()<0.55) continue;
     const dir=sorte()<0.5?1:-1;
     const Lseg=Math.hypot(b[0]-a[0],b[1]-a[1]);
-    vestir(p,m); Object.assign(p,{modo:'andar', r, dir, i:dir===1?i:i+1, s:(dir===1?t0:1-t0)*Lseg, lado:sorte()<0.5?1:-1, vel:(1.1+sorte()*0.5)*p.persona.vel, t:0, espera:0, visto:new Set()}); ladoCerto(p);
+    vestir(p,m); Object.assign(p,{modo:'andar', r, dir, i:dir===1?i:i+1, s:(dir===1?t0:1-t0)*Lseg, lado:sorte()<0.5?1:-1, vel:(1.1+sorte()*0.5)*p.persona.vel*ritmo(p).vel, t:0, espera:0, visto:new Set()}); ladoCerto(p);
     const c=naCalcada(p); p.x=c.x; p.z=c.z; p.rumo=Math.atan2(c.ux,c.uz); return true;
   }
   return false;
@@ -206,7 +210,7 @@ export function atualizarPedestres(dt, jog, veiculos=[]){
       if(p.t<=0) p.modo=p.r?'voltar':'conversa', p.t=p.r?0:6;
     } else if(p.modo==='voltar'){                       // volta para a calçada depois do susto
       const c=naCalcada(p), ax=c.x-p.x, az=c.z-p.z, l=Math.hypot(ax,az);
-      if(l<0.3) p.modo='andar'; else { p.x+=ax/l*1.4*dt; p.z+=az/l*1.4*dt; p.rumo=Math.atan2(ax,az); animar(p,'andar'); }
+      if(l<0.3) p.modo='andar'; else { p.x+=ax/l*1.4*dt; p.z+=az/l*1.4*dt; p.rumo=Math.atan2(ax,az); animar(p,'andar',ritmo(p).passo); }
     } else if(p.modo==='andar'){
       // jogador a pé bem na frente: para e acena
       const fx=Math.sin(p.rumo), fz=Math.cos(p.rumo), fr=(px-p.x)*fx+(pz-p.z)*fz;
@@ -223,7 +227,7 @@ export function atualizarPedestres(dt, jog, veiculos=[]){
         } else p.espera=0;
         p.x=c.x; p.z=c.z;
         const alvo=Math.atan2(c.ux,c.uz); let d=alvo-p.rumo; d=Math.atan2(Math.sin(d),Math.cos(d)); p.rumo+=d*Math.min(1,dt*6);
-        if(!p.espera) animar(p,'andar',p.vel/1.3);
+        if(!p.espera) animar(p,'andar',p.vel/1.3*ritmo(p).passo);
         // loja do lado da calçada: às vezes para olhando a vitrine
         for(const l of lojas){ if(Math.abs(l[0]-p.x)>7||Math.abs(l[1]-p.z)>7) continue; const k=l[0]+'_'+l[1]; if(p.visto.has(k)) continue; p.visto.add(k);
           if(sorte()<p.persona.vitrine){ p.modo='vitrine'; p.t=3+sorte()*7; p.rumo=Math.atan2(l[0]-p.x,l[1]-p.z); } break; }
@@ -235,7 +239,7 @@ export function atualizarPedestres(dt, jog, veiculos=[]){
       const l=p.lugar, tx=l.sx+l.nx*3.5, tz=l.sz+l.nz*3.5, ax=tx-p.x, az=tz-p.z, d=Math.hypot(ax,az), nx=p.x+ax/(d||1)*1.2*dt, nz=p.z+az/(d||1)*1.2*dt;
       p.t-=dt;
       if(d<0.4||p.t<=0||bloqueado(nx,nz)){ nascer(p,px,pz); if(!p.obj) continue; }   // chegou na porta: entrou
-      else { p.x=nx; p.z=nz; p.rumo=Math.atan2(ax,az); animar(p,'andar'); }
+      else { p.x=nx; p.z=nz; p.rumo=Math.atan2(ax,az); animar(p,'andar',ritmo(p).passo); }
     } else if(p.modo==='vitrine'){
       animar(p, p.acoes.mexer&&p.t%4<1.5?'mexer':'parado'); p.t-=dt; if(p.t<=0) p.modo='andar';
     } else if(p.modo==='turma'){                         // avacalhou: a turma vai atrás e bate
@@ -380,3 +384,5 @@ export const quantosSeguem=()=>gente.filter(o=>o.modo==='seguir'||(o.modo==='pap
 export function posicoesPedestres(){ return gente.filter(p=>p.obj).map(p=>[p.x,p.z]); }
 // para conferir no console: quantos em cada modo e em que tipo de lugar
 export function estadoRotina(){ const c={}; for(const p of gente){ if(!p.obj) continue; const k=p.modo+(p.lugar?':'+(p.lugar.praca?'praca':nomeGrupo(p.lugar)):''); c[k]=(c[k]||0)+1; } return { lugares:pontos.length, ...c }; }
+// teste (tools/teste/dona-maria.mjs): quem está na rua, por modelo
+export const pedestresVivos=()=>gente.filter(p=>p.obj);

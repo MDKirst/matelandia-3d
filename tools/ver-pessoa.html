@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html lang="pt-BR"><head><meta charset="utf-8"><title>Estúdio de pessoas</title>
+<style>html,body{margin:0;height:100%;background:#cfd8dc;font-family:system-ui}#l{position:fixed;top:8px;left:8px;background:#0009;color:#fff;padding:6px 10px;border-radius:6px;font-size:13px}</style>
+<script type="importmap">{"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js","three/addons/":"https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"}}</script>
+</head><body><div id="l">?m=dona-maria&amp;c=female-jeans — uma cópia por clipe, lado a lado (em ../assets/pessoas/). Setas giram.</div>
+<script type="module">
+// Uso: tools/ver-pessoa.html?m=dona-maria&c=female-jeans — cada clipe do GLB num boneco; "c" = pessoa de comparação (altura)
+import * as THREE from 'three';
+import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+import { MeshoptDecoder } from 'three/addons/libs/meshopt_decoder.module.js';
+import { clone } from 'three/addons/utils/SkeletonUtils.js';
+const q=new URLSearchParams(location.search), nome=q.get('m')||'dona-maria', comp=q.get('c');
+const r=new THREE.WebGLRenderer({antialias:true,preserveDrawingBuffer:true}); r.setSize(innerWidth,innerHeight); r.outputColorSpace=THREE.SRGBColorSpace; document.body.appendChild(r.domElement);
+const s=new THREE.Scene(); s.background=new THREE.Color(0xcfd8dc);
+s.add(new THREE.HemisphereLight(0xffffff,0x777766,2)); const d=new THREE.DirectionalLight(0xffffff,1.5); d.position.set(3,5,2); s.add(d);
+s.add(new THREE.GridHelper(40,40,0x555555,0x999999));
+const c=new THREE.PerspectiveCamera(35,innerWidth/innerHeight,0.1,200);
+const L=new GLTFLoader(); L.setMeshoptDecoder(MeshoptDecoder);
+const mixers=[]; window.__info=[];
+const rotulo=(t,x)=>{ const cv=document.createElement('canvas'); cv.width=256; cv.height=64; const k=cv.getContext('2d'); k.font='bold 36px system-ui'; k.fillStyle='#111'; k.textAlign='center'; k.fillText(t,128,46);
+  const sp=new THREE.Sprite(new THREE.SpriteMaterial({map:new THREE.CanvasTexture(cv)})); sp.scale.set(1.6,0.4,1); sp.position.set(x,2.2,0); s.add(sp); };
+const por=(g,x,clip)=>{ const o=clone(g.scene); o.position.x=x; s.add(o);
+  if(clip){ const m=new THREE.AnimationMixer(o); m.clipAction(clip).play(); mixers.push(m); }
+  o.updateMatrixWorld(true); const b=new THREE.Box3().setFromObject(o,true); window.__info.push({x,clip:clip?.name,alt:+(b.max.y-b.min.y).toFixed(2),pe:+b.min.y.toFixed(2)}); };
+L.load(`../assets/pessoas/${nome}.glb`,g=>{
+  const cl=g.animations; cl.forEach((a,i)=>{ const x=(i-(cl.length-1)/2)*1.4; por(g,x,a); rotulo(a.name,x); });
+  if(comp) L.load(`../assets/pessoas/${comp}.glb`,h=>{ const x=(cl.length+1)/2*1.4; por(h,x,h.animations.find(a=>a.name==='parado')); rotulo(comp,x); });
+});
+let ang=0; const relogio=new THREE.Clock();
+addEventListener('keydown',e=>{ if(e.key==='ArrowLeft') ang-=0.3; if(e.key==='ArrowRight') ang+=0.3; });
+(function f(){ requestAnimationFrame(f); const dt=relogio.getDelta(); mixers.forEach(m=>m.update(dt)); const R=10; c.position.set(Math.sin(ang)*R,2,Math.cos(ang)*R); c.lookAt(0,0.9,0); r.render(s,c); })();
+window.__ang=a=>{ ang=a; };
+// painel escondido pausa o rAF: __quadro(t) põe todos os clipes no tempo t (s) e desenha uma vez
+window.__quadro=(t,a=ang)=>{ mixers.forEach(m=>m.setTime(t)); const R=10; c.position.set(Math.sin(a)*R,2,Math.cos(a)*R); c.lookAt(0,0.9,0); r.render(s,c); return r.domElement.toDataURL('image/jpeg',0.8); };
+</script></body></html>
