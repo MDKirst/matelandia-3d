@@ -1,4 +1,5 @@
-// Enxuga os cachorros da Quaternius (CC0, Poly Pizza: Shiba Inu y4wdQpg767, Husky wcWiuEqwzq) para o jogo (20/11):
+// Enxuga os bichos da Quaternius (CC0, Poly Pizza) para o jogo: cachorros (Shiba Inu y4wdQpg767, Husky wcWiuEqwzq, 20/11),
+// cavalo (White Horse bEdE4rmZy9) e gato (Cat 2f54vbV0In, 21/11). Uso também: node tools/otimizar-cao.mjs ia/animais/usar assets/animais
 //  - fica só o que o jogo usa, com nomes iguais nos dois conjuntos:
 //    parado, farejar, andar, correr, comer, latir (Attack), apanhar (as outras animações saem);
 //  - resample tira quadro-chave redundante; dedup/prune limpam o resto;
@@ -14,7 +15,9 @@ import { MeshoptEncoder } from 'meshoptimizer';
 const [fonte, saida] = process.argv.slice(2);
 if (!fonte || !saida) { console.error('uso: node tools/otimizar-cao.mjs <pasta> assets/caes'); process.exit(1); }
 // nome original (sem o prefixo "AnimalArmature|", que vem em dobro) → nome no jogo
-const USADAS = { Idle:'parado', Idle_2_HeadLow:'farejar', Walk:'andar', Gallop:'correr', Eating:'comer', Attack:'latir', Idle_HitReact_Left:'apanhar' };
+const USADAS = { Idle:'parado', Idle_2_HeadLow:'farejar', Walk:'andar', Gallop:'correr', Eating:'comer', Attack:'latir', Idle_HitReact_Left:'apanhar',
+  // 21/11: cavalo (Quaternius "White Horse", bEdE4rmZy9: coice = latir) e gato (Quaternius "Cat", 2f54vbV0In: mordida = latir, sem corrida)
+  Idle_Headlow:'farejar', Attack_Kick:'latir', Bite_Front:'latir', HitRecieve:'apanhar', Jump:'pular' };
 
 await MeshoptEncoder.ready;
 const io = new NodeIO().registerExtensions([...ALL_EXTENSIONS]).registerDependencies({ 'meshopt.encoder': MeshoptEncoder });

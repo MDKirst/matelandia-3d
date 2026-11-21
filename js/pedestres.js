@@ -17,6 +17,7 @@ import { ehComercio } from './comercio.js';
 import { grupoDe, movimento, peso, nomeGrupo, perfil, PRACA, saudacao, FALA_LUGAR } from './rotina.js';
 import { ALCANCE, naMira } from './tiro.js';
 import { iniciarCaes, atualizarCaes } from './caes.js';
+import { iniciarAnimais, atualizarAnimais } from './animais.js';
 
 export const PESSOAS = ['male-casual','female-casual','male-shirt','female-dress','male-long-sleeve','female-tank-top','male-suit','female-alternative',
   'male-casual-2-24','female-casual-2-24','male-worker-24','female-worker-24','male-farmer-24','female-formal-24','male-casual-hoodie-24','female-suit-24','male-beach-24','male-suit-24','male-punk-24','female-jeans','dona-maria'];
@@ -170,6 +171,7 @@ export async function iniciarPedestres(lugares, px, pz){
   (async()=>{ for(const n of fila.slice(6)){ const m=await carregarModelo(n); if(m) moldes.push(m); } })();
   for(let k=0;k<QTD;k++){ const p={}; nascer(p,px,pz); gente.push(p); }
   iniciarCaes(falar).catch(e=>console.warn('cachorros',e));   // cachorros nascem junto dos pedestres (caes.js)
+  iniciarAnimais(falar).catch(e=>console.warn('gatos/cavalos',e));   // gatos na calçada e cavalos nos terrenos baldios (animais.js)
 }
 
 // avisa quem quiser saber (a polícia) que alguém foi atropelado
@@ -181,6 +183,7 @@ export function atualizarPedestres(dt, jog, veiculos=[]){
   const {x:px, z:pz}=jog;
   const hora=horaJogo(), limite=Math.round(QTD*fatorPessoas(hora));       // de madrugada a rua esvazia
   atualizarCaes(dt, jog, gente, fatorPessoas(hora));
+  atualizarAnimais(dt, jog, gente, fatorPessoas(hora));
   for(const [k,p] of gente.entries()){
     if(!p.obj||Math.hypot(p.x-px,p.z-pz)>RAIO_SOME){
       if(k>=limite){ if(p.obj){ scene.remove(p.obj); p.mixer.stopAllAction(); p.obj=null; } continue; }   // sobra: não renasce
