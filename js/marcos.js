@@ -165,6 +165,38 @@ function bloco(x0,x1,z0,z1,and,telhado){
   poe(t,cx,H+alt/2,cz,ry,telhado==='ceramica'?0xb05a3a:0x8fa0b4);
   ret(x0,x1,z0,z1);
 }
+// grade branca sobre mureta, com pilar a cada 2,5 m (como a da frente do colégio)
+function gradeBranca(xa,za,xb,zb,L,ry){
+  const BR=0xf3f3ef, cx=(xa+xb)/2, cz=(za+zb)/2, at=(t,y,w,hh,d)=>caixa(w,hh,d,xa+(xb-xa)*t,y,za+(zb-za)*t,BR,-ry);
+  caixa(L,0.6,0.22,cx,0,cz,BR,-ry);                                                  // mureta
+  caixa(L,0.06,0.06,cx,0.95,cz,BR,-ry); caixa(L,0.08,0.08,cx,2.15,cz,BR,-ry);        // travessas
+  for(let s=0;s<=L;s+=0.16) at(s/L,0.6,0.035,1.6,0.035);                             // barras
+  for(let s=0;s<=L;s+=2.5) at(s/L,0,0.3,2.35,0.3);                                    // pilares
+  if(Math.abs(xb-xa)>Math.abs(zb-za)) ret(Math.min(xa,xb),Math.max(xa,xb),za-0.15,za+0.15); else ret(xa-0.15,xa+0.15,Math.min(za,zb),Math.max(za,zb));
+}
+// palmeira: tronco fino e 9 folhas compridas caindo em arco
+function palmeira(x,z,h){
+  const t=new THREE.CylinderGeometry(0.13,0.2,h,6); poe(t,x,h/2,z,0,0x9a8f7c);
+  for(let k=0;k<9;k++){ const a=k/9*Math.PI*2+x;
+    for(const [l0,l1,y0,dr] of [[0,1.5,0,0.25],[1.4,2.9,-0.33,0.75]]){                 // folha em 2 pedaços: sobe e cai
+      const g=new THREE.BoxGeometry(0.55,0.04,l1-l0); g.translate(0,0,(l1-l0)/2); g.rotateX(dr); g.translate(0,y0,l0*Math.cos(0.25)); g.rotateY(a);
+      g.translate(x,h,z); por(g,k%2?0x4f7f2a:0x5d8f33); } }
+  circulo(x,z,0.25,8);
+}
+// bloco da esquina (Napoleão Laureano × Av. Paraná): fachada oeste com placas cinza-claras e frisos,
+// janelas de moldura azul com painel branco e faixa vermelha, portão cinza escuro e placa de proibido estacionar
+function fachadaEsquina(xf,z0,z1,xRua){
+  const W=z1-z0, cz=(z0+z1)/2, H=3.4+0.6;
+  caixa(0.08,H-0.9,W,xf-0.04,0.9,cz,0xcfcac0);                                        // revestimento (o barrado azul fica embaixo)
+  for(let y=1.6;y<H;y+=0.7) caixa(0.1,0.04,W,xf-0.05,y,cz,0xa9a49a);                   // frisos
+  for(const zj of [z0+2.2,z0+4.8,z0+7.4]){ caixa(0.12,1.7,1.7,xf-0.07,1.15,zj,0x1d4fa8);
+    caixa(0.14,1.3,1.3,xf-0.08,1.35,zj,0xf5f5f5); caixa(0.15,0.3,1.3,xf-0.09,1.85,zj,0xc0262d); }
+  caixa(0.16,2.9,3.4,xf-0.08,0,z1-3.2,0x4b5058);                                       // portão
+  const px=xRua+0.9, pz=z1-6; caixa(0.07,2.3,0.07,px,0,pz,0x6b7280);                   // placa no gramado, junto da grade
+  const disco=(r,d,cor,dx)=>{ const g=new THREE.CylinderGeometry(r,r,d,20); g.rotateZ(Math.PI/2); poe(g,px+dx,2.45,pz,0,cor); };
+  disco(0.34,0.03,0xc0262d,-0.05); disco(0.27,0.035,0x2557b8,-0.06);
+  const traco=new THREE.BoxGeometry(0.04,0.06,0.5); traco.rotateX(Math.PI/4); poe(traco,px-0.09,2.45,pz,0,0xc0262d);
+}
 function colegio(ruaLonge){
   for(const b of BLOCOS) bloco(...b);
   // ginásio de esportes do CEEC: paredes + cobertura em arco
@@ -184,16 +216,24 @@ function colegio(ruaLonge){
   for(let k=0;k<40&&!(livre((L0+L1)/2,M1)&&livre(L0+8,M1)&&livre(L1-8,M1));k++) M1-=0.5;
   const h=2.6, e=0.25, portao=[-752,-740], CINZA=0xb3b2ab;
   // muro alto de placas de concreto com pilar a cada 2 m
-  const muro=(xa,za,xb,zb)=>{
+  const muro=(xa,za,xb,zb,tipo='concreto')=>{
     // corta o trecho que cair em cima de rua (esquinas)
     const N=Math.ceil(Math.hypot(xb-xa,zb-za)), ok=[]; for(let s=0;s<=N;s++){ const t=s/N; ok.push(livre(xa+(xb-xa)*t,za+(zb-za)*t)); }
     let s0=ok.indexOf(true), s1=ok.lastIndexOf(true); if(s0<0) return;
     const A=[xa+(xb-xa)*s0/N,za+(zb-za)*s0/N], B=[xa+(xb-xa)*s1/N,za+(zb-za)*s1/N]; [xa,za,xb,zb]=[A[0],A[1],B[0],B[1]];
     const L=Math.hypot(xb-xa,zb-za), ry=Math.atan2(zb-za,xb-xa); if(L<1) return;
+    if(tipo==='grade') gradeBranca(xa,za,xb,zb,L,ry); else {
     caixa(L,h,e,(xa+xb)/2,0,(za+zb)/2,CINZA,-ry);
-    for(let s=0;s<=L;s+=2){ const t=s/L; caixa(0.32,h+0.12,0.4,xa+(xb-xa)*t,0,za+(zb-za)*t,0x9d9c95,-ry); }
+    for(let s=0;s<=L;s+=2){ const t=s/L; caixa(0.32,h+0.12,0.4,xa+(xb-xa)*t,0,za+(zb-za)*t,0x9d9c95,-ry); } }
     if(Math.abs(xb-xa)>Math.abs(zb-za)) ret(Math.min(xa,xb),Math.max(xa,xb),za-e,za+e); else ret(xa-e,xa+e,Math.min(za,zb),Math.max(za,zb)); };
-  muro(L0,M0,L1,M0); muro(L0,M0,L0,M1); muro(L1,M0,L1,M1); muro(L0,M1,portao[0],M1); muro(portao[1],M1,L1,M1);
+  // 21/11 (fotos do Street View que o Maicon mandou, só como referência): na Av. Paraná (sul) é mureta
+  // branca com grade branca e palmeiras; na esquina com a Napoleão Laureano fica a portaria
+  const G0=165;                                                                     // da Napoleão Laureano: grade de G0 até a esquina
+  muro(L0,M0,L1,M0); muro(L0,M0,L0,G0); muro(L0,G0,L0,M1,'grade'); muro(L1,M0,L1,M1);
+  muro(L0,M1,portao[0],M1,'grade'); muro(portao[1],M1,L1,M1,'grade');
+  fachadaEsquina(-780,169,186,L0);                                                    // o bloco de telhado de barro da esquina
+  for(let x=L0+3;x<=L1-3;x+=7) if(x<portao[0]-2||x>portao[1]+2) if(livre(x,M1+1)) palmeira(x,M1-1.6,5.2+((x*13)%7)/7*1.6);   // palmeiras atrás da grade
+  for(let z=G0+3;z<=M1-3;z+=7) palmeira(L0+1.6,z,5.4);
   // placa
   for(const dx of [-3,3]) caixa(0.25,3.2,0.25,(portao[0]+portao[1])/2+dx+8,0,M1+2,0x4b5563);
   placa('COLÉGIO ESTADUAL', 'EUCLIDES DA CUNHA', (portao[0]+portao[1])/2+8, 3.6, M1+2.15);
