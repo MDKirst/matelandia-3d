@@ -9,7 +9,7 @@ await pg.goto('http://localhost:8737/?sala=teste-auto&hora=10',{waitUntil:'domco
 await pg.waitForFunction(()=>document.getElementById('jogar')?.textContent==='JOGAR',null,{timeout:500000});
 await pg.evaluate(async()=>{ const nv=await import('/js/nuvem.js'); nv.nuvem.ok=false; const o=document.getElementById('onlineJog'); if(o) o.checked=false; document.getElementById('jogar').click(); });
 await pg.waitForFunction(()=>window.__jogo,null,{timeout:200000});
-const tiros=[['colegio-esquina',-791,201,13,0.18,-0.7],['colegio-portaria',-792,178,10,0.12,-1.5]];
+const tiros=[['cemiterio-portao',-1175,499,15,0.2,1.35],['cemiterio-cima',-1180,470,70,0.75,0.6],['cemiterio-dentro',-1215,505,10,0.3,1.7]];
 for(const [nome,x,z,d,p,y] of tiros){
   await pg.evaluate(([x,z,d,p,y])=>{ const J=window.__jogo; J.jogador.position.set(x,0,z); J.cam(d,p,y); for(const k of ['hint','ajuda','atalhos']){ const e=document.getElementById(k); if(e) e.style.display='none'; } },[x,z,d,p,y]);
   await pg.waitForTimeout(6000);

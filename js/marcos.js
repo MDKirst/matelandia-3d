@@ -13,7 +13,10 @@ const PRACA_MUNICIPAL = [[-111.7,-94.5],[6.3,-83.1],[-3.5,16.2],[-119.3,6.4]];  
 const PRACA_BIAZUS    = [[-611.0,105.6],[-553.9,111.1],[-560.1,211.4],[-617.6,204.4]];
 const IGREJA = { c:[-636,156.5], r:17.5 };              // contorno de 12 lados do Overture, ~37 m de diâmetro
 const LOTE_COLEGIO = [-788,-675,85,196];                 // x0,x1,z0,z1 (OSM: amenity=school, desenhado como "prédio")
-const PREFEITURA = [[255.8,-22.1],[247.7,40.0],[289.1,44.4],[294.6,-19.3]];   // OSM amenity=townhall (contorno do terreno inteiro)
+const PREFEITURA = [[255.8,-22.1],[247.7,40.0],[289.1,44.4],[294.6,-19.3]];
+// Cemitério Municipal: quadra entre R. Souza Naves (N), R. Munhoz da Rocha (L), Av. Vital Brasil (S) e R. Lino Dal Pozzo (O),
+// pelos cruzamentos do OSM. Os túmulos vinham do Overture como dezenas de "casinhas" com janela (21/11, fotos do Maicon)
+const CEMITERIO = [[-1297,418],[-1178,425],[-1189,545],[-1304,532]];   // OSM amenity=townhall (contorno do terreno inteiro)
 // prédios do OSM que o marco substitui mas que os terrenos continuam enxergando (para nenhum terreno mudar de lugar)
 export const ocultosMarcos = [];
 
@@ -23,6 +26,7 @@ function dentroPoly(x,z,pts){ let c=false; for(let i=0,j=pts.length-1;i<pts.leng
 // fonte: 'osm' | 'overture'; A = área em m²
 export function substituidoPorMarco(x,z,fonte,A){
   if(dentroPoly(x,z,PREFEITURA)) return fonte==='osm'?'oculto':true;
+  if(dentroPoly(x,z,CEMITERIO)) return fonte==='osm'?'oculto':true;
   if(Math.hypot(x-IGREJA.c[0],z-IGREJA.c[1])<IGREJA.r+4) return true;
   if(x>=LOTE_COLEGIO[0]&&x<=LOTE_COLEGIO[1]&&z>=LOTE_COLEGIO[2]&&z<=LOTE_COLEGIO[3]) return true;
   if(dentroPoly(x,z,PRACA_MUNICIPAL)) return fonte==='muro' || (fonte==='overture' && A<150);   // quiosques/palco saem; quadra coberta fica; praça sem muro
@@ -335,8 +339,76 @@ function arvoresDeRua(predios, ruaLonge){
   return n;
 }
 
+/* ───────── Cemitério Municipal (21/11, pedido do Maicon com prints do Street View só como referência) ─────────
+   Muro branco com a parte de cima azul-clara, portão de grade com arco azul na R. Munhoz da Rocha,
+   túmulos-capela coloridos em fileiras, paredes de gavetas encostadas no muro e caminho central. */
+function recuar(poly,d){                       // polígono (sentido horário na tela) recuado d metros para dentro
+  const n=poly.length, L=[];
+  for(let i=0;i<n;i++){ const a=poly[i], b=poly[(i+1)%n]; let dx=b[0]-a[0], dz=b[1]-a[1]; const l=Math.hypot(dx,dz); dx/=l; dz/=l;
+    const nx=-dz, nz=dx;                                                             // normal para dentro (x leste, z sul)
+    L.push([a[0]+nx*d,a[1]+nz*d,dx,dz]); }
+  return L.map((p,i)=>{ const q=L[(i+n-1)%n], den=p[2]*q[3]-p[3]*q[2], t=((q[0]-p[0])*q[3]-(q[1]-p[1])*q[2])/den; return [p[0]+p[2]*t,p[1]+p[3]*t]; });
+}
+function cemiterio(){
+  const P=recuar(CEMITERIO,7);                       // meia rua (3,5) + calçada
+  const BRANCO=0xf4f4f1, AZUL=0xa9cbe8, AZUL_ARCO=0x3f7fc4, GRADE=0x5b6470;
+  const portaoZ=499, PW=5;                                                            // nº 208 da Munhoz da Rocha
+  const muroSeg=(a,b)=>{ const L=Math.hypot(b[0]-a[0],b[1]-a[1]); if(L<0.5) return; const ry=-Math.atan2(b[1]-a[1],b[0]-a[0]), cx=(a[0]+b[0])/2, cz=(a[1]+b[1])/2;
+    caixa(L,1.3,0.25,cx,0,cz,BRANCO,ry); caixa(L,0.7,0.25,cx,1.3,cz,AZUL,ry); caixa(L+0.1,0.08,0.35,cx,2.0,cz,BRANCO,ry);
+    for(let s=0;s<=L;s+=3){ const t=s/L; caixa(0.4,2.15,0.4,a[0]+(b[0]-a[0])*t,0,a[1]+(b[1]-a[1])*t,BRANCO,ry); }
+    retGirado(cx,cz,L,0.3,ry); };
+  for(let i=0;i<4;i++){ const a=P[i], b=P[(i+1)%4];
+    if(i!==1){ muroSeg(a,b); continue; }                                              // lado leste: abre o portão
+    const t=(portaoZ-a[1])/(b[1]-a[1]), L=Math.hypot(b[0]-a[0],b[1]-a[1]), dt=PW/2/L, ux=(b[0]-a[0])/L, uz=(b[1]-a[1])/L;
+    const g0=[a[0]+(b[0]-a[0])*(t-dt),a[1]+(b[1]-a[1])*(t-dt)], g1=[a[0]+(b[0]-a[0])*(t+dt),a[1]+(b[1]-a[1])*(t+dt)];
+    muroSeg(a,g0); muroSeg(g1,b);
+    const gx=(g0[0]+g1[0])/2, gz=(g0[1]+g1[1])/2, ry=-Math.atan2(uz,ux);
+    for(const g of [g0,g1]) caixa(0.6,2.4,0.6,g[0],0,g[1],BRANCO,ry);                // pilares do portão
+    const arco=new THREE.TorusGeometry(PW/2+0.3,0.16,8,28,Math.PI); poe(arco,gx,2.3,gz,ry,AZUL_ARCO);
+    const nx=-uz, nz=ux, ca=Math.cos(1.13), sa=Math.sin(1.13), w=PW/2-0.25;          // folhas abertas ~65° para dentro (oeste)
+    for(const [g,sg] of [[g0,1],[g1,-1]]){
+      const dx=ux*sg*ca+nx*sa, dz=uz*sg*ca+nz*sa, ang=-Math.atan2(dz,dx), ox=g[0]+dx*w/2, oz=g[1]+dz*w/2;
+      caixa(w,0.06,0.05,ox,1.9,oz,GRADE,ang); caixa(w,0.06,0.05,ox,0.2,oz,GRADE,ang);
+      for(let k=0;k<=w;k+=0.14){ const f=k/w-0.5; caixa(0.03,1.75,0.03,ox+dx*w*f,0.2,oz+dz*w*f,GRADE,ang); } }
+  }
+  // caminho central, do portão para oeste
+  const [ox,oz]=[(P[1][0]+P[2][0])/2,portaoZ], wx=(P[0][0]+P[3][0])/2;
+  caminho([[ox+1,oz],[wx+3,oz+(P[3][1]-P[0][1])*0.0]],4);
+  // gavetas (ossuário) encostadas no muro leste e norte: bloco cinza com a grade das tampas
+  const gavetas=(a,b)=>{ const L=Math.hypot(b[0]-a[0],b[1]-a[1]), ux=(b[0]-a[0])/L, uz=(b[1]-a[1])/L, nx=-uz, nz=ux, ry=-Math.atan2(uz,ux);
+    const cx=(a[0]+b[0])/2+nx*0.9, cz=(a[1]+b[1])/2+nz*0.9; caixa(L,2.4,1.2,cx,0,cz,0x9a958e,ry); caixa(L+0.2,0.12,1.5,cx,2.4,cz,0xd6d3cc,ry);
+    for(let y=0.5;y<2.4;y+=0.5) caixa(L,0.05,0.04,cx+nx*0.61,y,cz+nz*0.61,0xcfcac2,ry);
+    for(let s=0.35;s<L;s+=0.7) caixa(0.05,2.3,0.04,a[0]+ux*s+nx*1.51,0.05,a[1]+uz*s+nz*1.51,0xcfcac2,ry);
+    retGirado(cx,cz,L,1.2,ry); };
+  { const a=P[1], b=P[2], L=Math.hypot(b[0]-a[0],b[1]-a[1]), t=(portaoZ-a[1])/(b[1]-a[1]);
+    const lerp=u=>[a[0]+(b[0]-a[0])*u,a[1]+(b[1]-a[1])*u];
+    gavetas(lerp(0.04),lerp(t-6/L)); gavetas(lerp(t+6/L),lerp(0.96)); }
+  { const a=P[0], b=P[1]; const lerp=u=>[a[0]+(b[0]-a[0])*u,a[1]+(b[1]-a[1])*u]; gavetas(lerp(0.08),lerp(0.92)); }
+  // túmulos-capela em fileiras (frente para o corredor), alguns com cruz
+  const CORES=[0xf4f4f1,0xf4f4f1,0xe9b7c9,0xb9d4ea,0xc9c9c9,0xefe3c6,0xc9b7e0,0xf4f4f1], TETOS=[0x9aa3ad,0xb05a3a,0xd9d6cf];
+  const I=recuar(P,3.2), u0=I[0], uu=[I[1][0]-I[0][0],I[1][1]-I[0][1]], Lu=Math.hypot(...uu), ux=uu[0]/Lu, uz=uu[1]/Lu, vx=-uz, vz=ux;
+  const ry=-Math.atan2(uz,ux); let r=11;
+  const sorte=()=>{ r=(r*1103515245+12345)%2147483648; return r/2147483648; };
+  for(let v=2;v<140;v+=4.6){
+    let fila=null; const fecha=(s1)=>{ if(fila){ const s0=fila, cx=u0[0]+ux*(s0+s1)/2+vx*v, cz=u0[1]+uz*(s0+s1)/2+vz*v; retGirado(cx,cz,s1-s0,2.6,ry); fila=null; } };
+    for(let s=1;s<Lu+20;s+=1.9){
+      const x=u0[0]+ux*s+vx*v, z=u0[1]+uz*s+vz*v;
+      const ok=dentroPoly(x,z,I)&&Math.abs(z-portaoZ)>3.2&&sorte()>0.1;
+      if(!ok){ fecha(s-0.95); continue; } if(fila===null) fila=s-0.95;
+      const w=1.5, d=2.5, h=1.3+sorte()*0.9, c=CORES[(sorte()*CORES.length)|0];
+      caixa(w,h,d,x,0,z,c,ry); caixa(w+0.3,0.15,d+0.3,x,0,z,0xd9d6cf,ry);
+      const t=new THREE.CylinderGeometry(w*0.62,w*0.62,d+0.2,3); t.rotateZ(Math.PI/2); t.rotateX(-Math.PI/2); t.scale(1,0.55,1); t.rotateY(Math.PI/2);
+      poe(t,x,h+0.18,z,ry,TETOS[(sorte()*TETOS.length)|0]);
+      if(sorte()<0.35){ const cy=h+0.55; caixa(0.08,0.75,0.08,x,cy,z,0xf4f4f1,ry); caixa(0.45,0.08,0.08,x,cy+0.45,z,0xf4f4f1,ry); }
+    }
+    fecha(Lu+20);
+  }
+  // árvores da calçada (sibipirunas) do lado da Munhoz da Rocha, como nas fotos
+  { const a=CEMITERIO[1], b=CEMITERIO[2]; for(let k=1;k<10;k++){ const t=k/10, x=a[0]+(b[0]-a[0])*t+5.4, z=a[1]+(b[1]-a[1])*t; if(Math.abs(z-portaoZ)>4) arvore(x-10.3,z,1.15); } }
+}
+
 export function construirMarcos(predios, ruaLonge){
-  igreja(); colegio(ruaLonge); pracaMunicipal(ruaLonge); pracaBiazus(ruaLonge); prefeitura();
+  igreja(); colegio(ruaLonge); pracaMunicipal(ruaLonge); pracaBiazus(ruaLonge); prefeitura(); cemiterio();
   const deRua=arvoresDeRua(predios, ruaLonge);
   const g=mergeGeometries(geos,false); geos.forEach(x=>x.dispose());
   if(g) scene.add(new THREE.Mesh(g,new THREE.MeshLambertMaterial({vertexColors:true,side:THREE.DoubleSide})));
