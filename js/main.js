@@ -97,7 +97,7 @@ function aPe(dt){
   let iy=(tecla.KeyW||tecla.ArrowUp?1:0)-(tecla.KeyS||tecla.ArrowDown?1:0);
   let correndo=tecla.ShiftLeft||tecla.ShiftRight;
   if(toque.joy){ ix=toque.joy.x; iy=-toque.joy.y; if(Math.hypot(ix,iy)>0.92) correndo=true; }
-  if(vida.caido>0||golpe.tipo||detido>0){ ix=0; iy=0; }                          // desmaiado ou no meio do golpe: parado
+  if(vida.caido>0||golpe.tipo||detido>0||policia.cena){ ix=0; iy=0; }           // desmaiado, no meio do golpe ou sendo preso: parado
   const forca=Math.min(1,Math.hypot(ix,iy)); let estado='parado';
   { const quer=(tecla.Space&&!pulo.antes)||pedido.pulo; pulo.antes=!!tecla.Space; pedido.pulo=false;
     if(quer&&pulo.y===0&&vida.caido<=0&&!golpe.tipo&&detido<=0&&!casa.dentro) pulo.v=5.4;           // ~1 m de altura
@@ -114,6 +114,7 @@ function aPe(dt){
     const a=Math.atan2(vx,vz); let d=a-rumo; d=Math.atan2(Math.sin(d),Math.cos(d)); rumo+=d*Math.min(1,dt*10);
     estado=correndo?'correr':'andar'; passo+=dt*(correndo?13:8);
   }
+  if(policia.cena?.andando){ estado='andar'; passo+=dt*8; rumo=policia.cena.rumo; }  // algemado, levado até o camburão
   p.x=Math.max(LX0+3,Math.min(LX1-3,p.x)); p.z=Math.max(LZ0+3,Math.min(LZ1-3,p.z));
   jogador.rotation.y=rumo; suporte.rotation.order='YXZ'; suporte.rotation.y=av.giroExtra;
   suporte.rotation.x=-vida.queda*Math.PI/2; suporte.position.y=vida.queda*0.12+pulo.y;   // pulando sobe; desmaiado: deitado de costas

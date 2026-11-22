@@ -13,6 +13,9 @@ import { ruas } from './cidade.js';
 import { bloqueado } from './mundo.js';
 import { carregarModelo } from './pedestres.js';
 import { LEVE } from './config.js';
+import { jogador, suporte } from './avatar.js';
+import { vida, poseGolpe } from './luta.js';
+import { somPancada } from './som.js';
 
 const MAX_ESTRELAS=5;
 const VIATURAS=[0,1,3,4,5,5];                 // viaturas atrás do jogador por nº de estrelas
@@ -23,7 +26,7 @@ const velPM=()=>8.6+0.4*policia.estrelas;     // m/s a pé: ★ 9 … ★★★�
 
 const loader=new GLTFLoader(); loader.setMeshoptDecoder(MeshoptDecoder);
 let molde=null, moldeSuv=null, moldeGuarda=null, posto=[0,0];
-export const policia={ estrelas:0, carros:[], heli:null };
+export const policia={ estrelas:0, carros:[], heli:null, cena:null };   // cena: prisão em andamento (main.js trava o jogador)
 let semVer=0, aviso=0, espera=0, fuga=0;
 
 export async function iniciarPolicia(lugares){
@@ -96,7 +99,7 @@ function rota(x0,z0,x1,z1){
 function tirar(c){ scene.remove(c.obj); for(const g of c.guardas) scene.remove(g.obj); c.guardas=[]; }
 // roupa nova (disfarce) ou fim da perseguição: some com as estrelas e as viaturas atrás
 export function perdoar(){ if(!policia.estrelas) return false; limpar(); return true; }
-function limpar(){ for(const c of policia.carros) tirar(c); policia.carros=[]; tirarHeli(); policia.estrelas=0; semVer=0; fuga=0; hud(); }
+function limpar(){ if(policia.cena){ tirarAlgemas(policia.cena); policia.cena=null; fade(0,0.5); } for(const c of policia.carros) tirar(c); policia.carros=[]; tirarHeli(); policia.estrelas=0; semVer=0; fuga=0; hud(); }
 
 // descem os PMs: motorista, carona e os dois de trás
 function descerGuardas(c){
@@ -159,9 +162,76 @@ function atualizarHeli(dt,jog,pisca){
   return Math.hypot(jog.x-H.x,jog.z-H.z);
 }
 
+/* ───────── cena da prisão (22/11, pedido do Maicon): os PMs derrubam o jogador, algemam e
+   levam até o camburão; a tela escurece e ele aparece detido na delegacia (prender do main.js) ───────── */
+const MAO_D=/(RightHand|Hand\.?R|Wrist\.?R|hand_r)$/i, MAO_E=/(LeftHand|Hand\.?L|Wrist\.?L|hand_l)$/i;   // Mixamo, Quaternius (MiddleHandR, WristR)
+const matAlgema=new THREE.MeshLambertMaterial({color:0xb8bec7,emissive:0x222222});
+function comecarPrisao(c,prender){
+  const p=jogador.position, gs=c.guardas;
+  gs.sort((a,b)=>Math.hypot(a.x-p.x,a.z-p.z)-Math.hypot(b.x-p.x,b.z-p.z));
+  policia.cena={ t:0, c, prender, gs, batidas:0, algema:null, corrente:null, andando:false, rumo:0, fade:null };
+  avisar('🚔 Polícia! Mão na cabeça!',2.5);
+}
+function ponAlgemas(cena){
+  cena.algema=[]; let d=null, e=null;                                                   // o personagem (GLB) fica dentro do suporte
+  suporte.traverse(o=>{ if(!d&&MAO_D.test(o.name)) d=o; if(!e&&MAO_E.test(o.name)) e=o; });
+  const aneis=[]; const v=new THREE.Vector3();
+  for(const osso of [d,e]){ if(!osso) continue; osso.updateWorldMatrix(true,false); osso.getWorldScale(v);
+    const a=new THREE.Mesh(new THREE.TorusGeometry(0.05,0.013,6,14),matAlgema); a.scale.setScalar(1/(v.x||1)); a.rotation.x=Math.PI/2; osso.add(a); aneis.push(a); }
+  const corrente=new THREE.Mesh(new THREE.CylinderGeometry(0.008,0.008,1,5),matAlgema); scene.add(corrente);
+  cena.algema=aneis; cena.corrente=aneis.length===2?corrente:null; if(aneis.length<2) scene.remove(corrente);
+}
+function tirarAlgemas(cena){ for(const a of cena.algema||[]) a.parent?.remove(a); if(cena.corrente) scene.remove(cena.corrente); cena.algema=null; cena.corrente=null; }
+const pa=new THREE.Vector3(), pb=new THREE.Vector3();
+function correnteEntreMaos(cena){
+  if(!cena.corrente) return; cena.algema[0].getWorldPosition(pa); cena.algema[1].getWorldPosition(pb);
+  const L=pa.distanceTo(pb); cena.corrente.position.copy(pa).add(pb).multiplyScalar(0.5); cena.corrente.scale.set(1,Math.max(0.05,L),1);
+  cena.corrente.quaternion.setFromUnitVectors(new THREE.Vector3(0,1,0),pb.sub(pa).normalize());
+}
+function fade(alvo,seg){
+  let f=document.getElementById('fadePrisao');
+  if(!f){ f=document.createElement('div'); f.id='fadePrisao'; f.style.cssText='position:fixed;inset:0;background:#000;opacity:0;pointer-events:none;z-index:9;transition:opacity .6s'; document.body.append(f); }
+  f.style.transitionDuration=seg+'s'; f.style.opacity=alvo;
+}
+function andarPM(g,tx,tz,vel,dt){ const ax=tx-g.x, az=tz-g.z, d=Math.hypot(ax,az); if(d>0.05){ const k=Math.min(d,vel*dt); g.x+=ax/d*k; g.z+=az/d*k; g.obj.rotation.y=Math.atan2(ax,az); } return d; }
+function atualizarPrisao(dt,jog){
+  const cena=policia.cena, p=jogador.position, c=cena.c, gs=cena.gs; cena.t+=dt; const t=cena.t;
+  const pisca=(performance.now()/180|0)%2; atualizarHeli(dt,jog,pisca);
+  for(const o of policia.carros){ o.luz[0].material.color.setHex(pisca?0xff2a2a:0x400808); o.luz[1].material.color.setHex(pisca?0x10204a:0x2a5bff); }
+  // posição de cada PM em volta do jogador (o 1º e o 2º chegam perto)
+  const alvo=(i)=>{ const a=(gs[i]?.cerco??i*1.6)+Math.PI, r=i<2?0.95:1.7; return [p.x+Math.cos(a)*r,p.z+Math.sin(a)*r]; };
+  if(t<4.2){
+    gs.forEach((g,i)=>{ const [tx,tz]=alvo(i), d=andarPM(g,tx,tz,4,dt); animarGuarda(g,d>0.15?'correr':'parado');
+      if(d<=0.15) g.obj.rotation.y=Math.atan2(p.x-g.x,p.z-g.z); g.obj.position.set(g.x,g.pe,g.z); g.mixer.update(dt); });
+    // 2 golpes (um de cada PM da frente) e o jogador cai
+    for(const [k,ini] of [[0,0.35],[1,0.95]]){ const g=gs[k]; if(!g) continue; const u=(t-ini)/0.5;
+      if(u>=0&&u<=1){ const fx=p.x-g.x, fz=p.z-g.z, l=Math.hypot(fx,fz)||1; poseGolpe(g.obj,'soco',u,fx/l,fz/l);
+        if(u>=0.45&&cena.batidas<=k){ cena.batidas=k+1; somPancada(); if(k===1||gs.length<2){ vida.caido=99; } } } }
+    if(cena.batidas>=Math.min(2,gs.length)&&!(vida.caido>0)) vida.caido=99;
+    if(t>1.9&&!cena.algema){ ponAlgemas(cena); avisar('🔗 Algemado!',2); }
+  } else if(!cena.fade){
+    // levanta algemado e vai andando com um PM até a traseira da viatura
+    if(vida.caido>0){ vida.caido=0; }                                                // direto a 0: não chama o "acordou no hospital"
+    const fx=-Math.sin(c.h), fz=-Math.cos(c.h), tx=c.x-fx*(c.meio+1.1), tz=c.z-fz*(c.meio+1.1);
+    const ax=tx-p.x, az=tz-p.z, d=Math.hypot(ax,az);
+    if(t>4.9&&d>0.4&&t<16){ const k=Math.min(d,1.7*dt); p.x+=ax/d*k; p.z+=az/d*k; cena.andando=true; cena.rumo=Math.atan2(ax,az); }
+    else { cena.andando=false; if(t>4.9){ cena.fade=t; fade(1,0.6); avisar('🚓 Para o camburão!',2); } }
+    gs.forEach((g,i)=>{ const lx=Math.cos(cena.rumo), lz=-Math.sin(cena.rumo);            // escolta: 1º ao lado, os outros atrás
+      const [tx2,tz2]=i===0?[p.x+lx*0.8,p.z+lz*0.8]:[p.x-Math.sin(cena.rumo)*(1.4+i*0.7)+lx*(i%2?0.6:-0.6),p.z-Math.cos(cena.rumo)*(1.4+i*0.7)+lz*(i%2?0.6:-0.6)];
+      const dd=andarPM(g,tx2,tz2,2.2,dt); animarGuarda(g,dd>0.2?'andar':'parado'); g.obj.position.set(g.x,g.pe,g.z); g.mixer.update(dt); });
+  } else if(t-cena.fade>0.8){
+    // tela preta: vai para a delegacia (multa e 15 s detido no main.js) e clareia
+    tirarAlgemas(cena); const prender=cena.prender; policia.cena=null; cena.andando=false;
+    avisar('PRESO! Multa de M$ 500',2.5); prender(posto); limpar(); fade(0,0.9);
+    return;
+  }
+  correnteEntreMaos(cena);
+}
+
 // jog: {x,z,dirigindo,v}; prender(): o jogo leva o jogador para o posto
 export function atualizarPolicia(dt, jog, prender){
   if(aviso>0){ aviso-=dt; if(aviso<=0) $('aviso').style.opacity=0; }
+  if(policia.cena){ atualizarPrisao(dt,jog); return; }
   if(!policia.estrelas) return;
   const quer=VIATURAS[policia.estrelas];
   if(policia.carros.length<quer){ espera-=dt; if(espera<=0){ novaViatura(jog.x,jog.z); espera=policia.estrelas>=2?1.5:3; } }
@@ -180,7 +250,7 @@ export function atualizarPolicia(dt, jog, prender){
       const sp=velPM();
       for(let i=c.guardas.length-1;i>=0;i--){ const g=c.guardas[i];
         const ax0=jog.x-g.x, az0=jog.z-g.z, dg=Math.hypot(ax0,az0);
-        if(dg<1.5&&parado){ avisar('PRESO! Multa de M$ 500',2); prender(posto); limpar(); return; }
+        if(dg<1.5&&parado){ if(jog.dirigindo){ avisar('PRESO! Multa de M$ 500',2); prender(posto); limpar(); } else comecarPrisao(c,prender); return; }
         if(dg>55){ scene.remove(g.obj); c.guardas.splice(i,1); continue; }          // ficou para trás: volta para a viatura
         const k=dg>4?Math.min(1,(dg-4)/10)*2.5:0;                                     // de longe abre o cerco, de perto vai reto
         const tx=jog.x+Math.cos(g.cerco)*k, tz=jog.z+Math.sin(g.cerco)*k, ax=tx-g.x, az=tz-g.z, da=Math.hypot(ax,az)||1;
