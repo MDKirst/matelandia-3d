@@ -18,12 +18,13 @@ const MAX_ESTRELAS=5;
 const VIATURAS=[0,1,3,4,5,5];                 // viaturas atrás do jogador por nº de estrelas
 const PMS_POR_CARRO=LEVE?2:4;                // celular fraco: 2 PMs por carro
 const velViatura=()=>24+2*policia.estrelas;   // m/s: ★ 26 … ★★★★★ 34 (era 22)
+const SOBE_A_CADA=35;                       // s de fuga com a polícia vendo: +1 estrela (como no GTA)
 const velPM=()=>8.6+0.4*policia.estrelas;     // m/s a pé: ★ 9 … ★★★★★ 10,6 (era 5,2; o jogador corre a 10)
 
 const loader=new GLTFLoader(); loader.setMeshoptDecoder(MeshoptDecoder);
 let molde=null, moldeSuv=null, moldeGuarda=null, posto=[0,0];
 export const policia={ estrelas:0, carros:[], heli:null };
-let semVer=0, aviso=0, espera=0;
+let semVer=0, aviso=0, espera=0, fuga=0;
 
 export async function iniciarPolicia(lugares){
   const pm=lugares.find(l=>/police|pol[ií]cia|\bPM\b/i.test((l.cat||'')+' '+l.n)); if(pm) posto=toXZ(pm.lat,pm.lon);
@@ -41,7 +42,7 @@ function hud(){ $('procurado').textContent=policia.estrelas?'★'.repeat(policia
 
 // algo grave aconteceu perto (atropelamento, batida forte): sobe o nível de procurado
 export function crime(peso=1, motivo=''){
-  const antes=policia.estrelas; policia.estrelas=Math.min(MAX_ESTRELAS,policia.estrelas+peso); semVer=0; hud();
+  const antes=policia.estrelas; policia.estrelas=Math.min(MAX_ESTRELAS,policia.estrelas+peso); semVer=0; fuga=0; hud();
   if(!antes) avisar(motivo?`${motivo} · a polícia está vindo!`:'A polícia está vindo!');
   else if(policia.estrelas>=4&&antes<4) avisar('🚁 Helicóptero da polícia no ar!');
   espera=Math.min(espera||1.5,1.5);   // a primeira viatura chega rápido
@@ -95,7 +96,7 @@ function rota(x0,z0,x1,z1){
 function tirar(c){ scene.remove(c.obj); for(const g of c.guardas) scene.remove(g.obj); c.guardas=[]; }
 // roupa nova (disfarce) ou fim da perseguição: some com as estrelas e as viaturas atrás
 export function perdoar(){ if(!policia.estrelas) return false; limpar(); return true; }
-function limpar(){ for(const c of policia.carros) tirar(c); policia.carros=[]; tirarHeli(); policia.estrelas=0; semVer=0; hud(); }
+function limpar(){ for(const c of policia.carros) tirar(c); policia.carros=[]; tirarHeli(); policia.estrelas=0; semVer=0; fuga=0; hud(); }
 
 // descem os PMs: motorista, carona e os dois de trás
 function descerGuardas(c){
@@ -210,6 +211,10 @@ export function atualizarPolicia(dt, jog, prender){
   // (com helicóptero só despista indo além de 260 m dele: rua com moto rápida ou turbo)
   const visto=menorDist<=230||dHeli<260;
   if(policia.carros.length&&!visto){ semVer+=dt; if(semVer>12){ limpar(); avisar('Você despistou a polícia'); } } else semVer=0;
+  // fugindo com a polícia na cola: a perseguição esquenta sozinha (22/11, pedido do Maicon)
+  if(visto&&policia.estrelas<MAX_ESTRELAS){ fuga+=dt; if(fuga>=SOBE_A_CADA){ fuga=0; const antes=policia.estrelas; policia.estrelas++; hud(); espera=Math.min(espera,1.5);
+    avisar(policia.estrelas>=4&&antes<4?'🚁 A perseguição esquentou: helicóptero no ar!':'🚨 A perseguição esquentou! Mais viaturas a caminho'); } }
+  else if(!visto) fuga=Math.max(0,fuga-dt);
 }
 // viatura e PM para a batida no ponto das gangues (gangues.js)
 export const moldesPolicia=()=>({ carro:molde, suv:moldeSuv, pm:moldeGuarda });
