@@ -15,6 +15,7 @@ import { horaJogo, fatorPessoas } from './ceu.js';
 import { sortearPersona } from './personas.js';
 import { ehComercio } from './comercio.js';
 import { grupoDe, movimento, peso, nomeGrupo, perfil, PRACA, saudacao, FALA_LUGAR } from './rotina.js';
+import { abrirMorador, atualizarMoradores } from './moradores.js';
 import { ALCANCE, naMira } from './tiro.js';
 import { iniciarCaes, atualizarCaes } from './caes.js';
 import { iniciarAnimais, atualizarAnimais } from './animais.js';
@@ -184,6 +185,7 @@ export function atualizarPedestres(dt, jog, veiculos=[]){
   const hora=horaJogo(), limite=Math.round(QTD*fatorPessoas(hora));       // de madrugada a rua esvazia
   atualizarCaes(dt, jog, gente, fatorPessoas(hora));
   atualizarAnimais(dt, jog, gente, fatorPessoas(hora));
+  atualizarMoradores(dt, jog);                                             // conversa aberta + final na Prefeitura
   for(const [k,p] of gente.entries()){
     if(!p.obj||Math.hypot(p.x-px,p.z-pz)>RAIO_SOME){
       if(k>=limite){ if(p.obj){ scene.remove(p.obj); p.mixer.stopAllAction(); p.obj=null; } continue; }   // sobra: não renasce
@@ -325,7 +327,7 @@ export function interagir(acao, jx, jz){
   const p=pedestrePerto(jx,jz); if(!p) return false;
   const parar=(t,gesto)=>{ if(p.modo!=='papo'&&p.modo!=='seguir') p.antes=p.modo==='vitrine'||p.modo==='fugir'||p.modo==='voltar'||p.modo==='entrar'?'andar':p.modo; p.modo='papo'; p.t=p.tMax=t; p.gesto=gesto; };
   const h=horaJogo(), doLugar=p.lugar?FALA_LUGAR[p.lugar.praca?'praca':nomeGrupo(p.lugar)]:(h<5||h>=23?FALA_LUGAR.madrugada:null);
-  if(acao==='conversar'){ const seguia=p.modo==='seguir'; parar(5,false); falar(p,sorteia(doLugar&&sorte()<0.6?doLugar:sorte()<0.45?p.persona.falas:FALAS.conversa),4.5); if(seguia) p.antes='seguir'; }
+  if(acao==='conversar'){ const seguia=p.modo==='seguir'; parar(5,false); if(!abrirMorador(p,falar)) falar(p,sorteia(doLugar&&sorte()<0.6?doLugar:sorte()<0.45?p.persona.falas:FALAS.conversa),4.5); if(seguia) p.antes='seguir'; }
   else if(acao==='cumprimentar'){ const seguia=p.modo==='seguir'; parar(3,true); falar(p,sorteia(sorte()<0.6?saudacao(h):FALAS.oi),2.5); if(seguia) p.antes='seguir'; }
   else if(acao==='seguir'){
     if(p.modo==='seguir'||(p.modo==='papo'&&p.antes==='seguir')){ p.modo=p.r?'voltar':'conversa'; p.t=8; falar(p,sorteia(FALAS.tchau)); }
