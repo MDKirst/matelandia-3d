@@ -166,7 +166,7 @@ export { frente, esquerda };
 
 /* ───────── dano: fumaça cinza > fumaça preta > fogo > quebra ───────── */
 export function danificar(c, impacto){
-  if(c.quebrado) return;
+  if(c.quebrado||c.semDano) return;
   if(c.tipo.moto){ c.dano=Math.min(80, c.dano+(impacto-3.5)*3); return; }      // moto: soltar fumaça sim, quebrar não (senão trava no lugar)
   c.dano=Math.min(100, c.dano+(impacto-3.5)*7);
   // a lataria escurece conforme apanha
@@ -199,23 +199,27 @@ const DO_TRANSITO={
   onibus:{nome:'Ônibus',vmax:18,acel:2.6,entre:6,cam:15}, ambulancia:{nome:'Ambulância',vmax:26,acel:5.5,entre:3.4,cam:10},
   'caminhonete-policia':{nome:'Viatura',vmax:29,acel:7,entre:3,cam:9.5}, 'viatura-suv':{nome:'Viatura',vmax:29,acel:7,entre:2.9,cam:9.5},
   cavalo:{nome:'Cavalo mecânico',vmax:17,acel:2.8,entre:4.2,cam:13}, cavalinho:{nome:'Carreta',vmax:16,acel:2.2,entre:7,cam:17},
-  bike:{nome:'Bike elétrica',vmax:7.5,acel:3,entre:1.1,cam:5,moto:true},   // roubada de criança (criancas.js); ~47 km/h depois do turbinar
+  bike:{nome:'Bike elétrica',vmax:7.5,acel:3,entre:1.1,cam:5,moto:true},
+  montaria:{nome:'Cavalo',vmax:9.5,acel:3.5,entre:2.2,cam:7.5,moto:true,montaria:true},   // cavalo montado (animais.js); ~60 km/h a galope   // roubada de criança (criancas.js); ~47 km/h depois do turbinar
 };
 turbinar(Object.values(DO_TRANSITO));
 const ID_PAGA={ suv2:'suv', picape2:'picape', 'caminhonete-policia':'viatura', 'viatura-suv':'viatura', cavalinho:'carreta' };
-export function adotar({obj, arq, x, z, h, esc=1}){
+export function adotar({obj, arq, x, z, h, esc=1, bicho=null, assento=null}){
   const base=DO_TRANSITO[arq]||DO_TRANSITO.sedan, tipo={ id:ID_PAGA[arq]||arq, ...base };
   const ry=obj.rotation.y; obj.rotation.set(0,0,0); obj.updateMatrixWorld(true);
   const tam=new THREE.Box3().setFromObject(obj).getSize(new THREE.Vector3());
   obj.rotation.order='YXZ'; obj.position.set(x,0,z); obj.rotation.y=h??ry; scene.add(obj);
   const mats=[]; obj.traverse(o=>{ if(o.isMesh){ o.material=o.material.clone(); mats.push([o.material,o.material.color.clone()]); } });
   const c={tipo, obj, h:h??ry, v:0, comp:tam.z, larg:tam.x, alt:tam.y, dano:0, quebrado:false, acum:0, queima:0, mats, solto:true};
+  if(base.montaria){ Object.assign(c,{ montaria:true, bicho, assento, solto:false, semDano:true }); c.larg=Math.min(c.larg,0.9); frota.push(c); return c; }   // cavalo: some da frota ao desmontar (liberar)
   if(base.moto){ const rodas=prepararRodas(obj); rodas.raio*=esc; Object.assign(c,rodas); c.larg=Math.min(c.larg,0.9); c.assento=URBANA; }
   frota.push(c);
   const soltos=frota.filter(o=>o.solto&&o!==c&&o!==dirigindo);
   while(soltos.length>3){ const o=soltos.shift(); scene.remove(o.obj); frota.splice(frota.indexOf(o),1); }
   return c;
 }
+// tira da frota sem apagar o objeto (cavalo desmontado volta a ser bicho)
+export function liberar(c){ const i=frota.indexOf(c); if(i>=0) frota.splice(i,1); }
 // os soltos largados longe do jogador somem (não enchem a cidade)
 export function recolherSoltos(px,pz){
   for(let i=frota.length-1;i>=0;i--){ const c=frota[i]; if(!c.solto||c===dirigindo) continue;

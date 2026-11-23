@@ -59,8 +59,8 @@ export function sentar(jogador, moto, montar, M=CHOPPER){
   const r=membros(jogador);
   for(const s of [-1,1]){ const m=r[s]; if(!m.coxa) continue;
     // pernas: joelho à frente do banco, pé na pedaleira avançada (comando à frente, jeito de chopper)
-    mirar(m.coxa,m.canela,ponto(moto,s*0.24,M.banco+0.06,M.pe+0.2));
-    mirar(m.canela,m.pe,ponto(moto,s*0.3,0.36,M.pe));
+    mirar(m.coxa,m.canela,ponto(moto,s*(M.joelhoX??0.24),M.joelhoY??M.banco+0.06,M.pe+0.2));   // cavalo: joelho aberto e pé pendurado (M.joelhoX/peX/peY)
+    mirar(m.canela,m.pe,ponto(moto,s*(M.peX??0.3),M.peY??0.36,M.pe));
     // braços: cotovelo meio aberto, mão na manopla do guidão alto
     const [gy,gz]=M.guidao, mao=ponto(moto,s*M.manopla,gy,gz);
     mirar(m.braco,m.ante,ponto(moto,s*(M.manopla-0.04),gy-0.28,(gz+M.selim)/2));

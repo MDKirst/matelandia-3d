@@ -97,6 +97,7 @@ export function atualizarAnimais(dt, jog, gente, fator=1){
   const caes=posicoesCaes(), quota={ gato:Math.round(ESPECIES.gato.qtd*(fator<0.5?1:0.6)), cavalo:ESPECIES.cavalo.qtd }, conta={ gato:0, cavalo:0 };
   for(const b of bichos){
     const k=conta[b.esp]++;
+    if(b.montado) continue;                                                     // montado: quem move é o jogador (main.js / veiculos.js)
     if(!b.obj||Math.hypot(b.x-jog.x,b.z-jog.z)>170||(b.cerca&&!baldio(b.cerca))){
       if(k>=quota[b.esp]){ sumir(b); continue; }
       sumir(b); if(!nascer(b,gente,jog.x,jog.z)) continue; }
@@ -146,4 +147,35 @@ function moverCavalo(b, dt, jog){
   if(b.modo==='andar'){ if(!andar(b,Math.sin(b.rumo)*1.1*dt,Math.cos(b.rumo)*1.1*dt)) b.rumo+=Math.PI*(0.5+sorte()); animar(b,'andar'); }
   else animar(b,b.modo);
 }
-export const posicoesAnimais=()=>bichos.filter(b=>b.obj).map(b=>[b.x,b.z,b.esp]);
+export const posicoesAnimais=()=>bichos.filter(b=>b.obj&&!b.montado).map(b=>[b.x,b.z,b.esp]);
+
+/* ───────── montar no cavalo (23/11, pedido do Maicon): E perto do cavalo ───────── */
+// O cavalo vira um "veículo" do jogador (veiculos.adotar, tipo montaria): vai para dentro de um grupo virado 180°
+// (o modelo olha para +Z e os veículos para −Z). O assento é medido no próprio modelo (raio de cima para baixo no lombo).
+export function cavaloPerto(x,z,r=2.6){
+  let m=null, md=r; for(const b of bichos){ if(b.esp!=='cavalo'||!b.obj||b.montado||b.modo==='coice') continue; const d=Math.hypot(b.x-x,b.z-z); if(d<md){ md=d; m=b; } } return m;
+}
+const ray=new THREE.Raycaster(), V1=new THREE.Vector3(), V2=new THREE.Vector3(0,-1,0);
+function lombo(g,z){ g.updateMatrixWorld(true); V1.set(0,6,z); g.localToWorld(V1); ray.set(V1,V2); ray.far=8;
+  const h=ray.intersectObject(g,true)[0]; return h?g.worldToLocal(h.point.clone()).y:null; }
+export function montar(b){
+  b.montado=true; b.modo='parado'; animar(b,'parado');
+  scene.remove(b.obj); const g=new THREE.Group(); g.rotation.order='YXZ'; g.add(b.obj);
+  b.obj.position.set(0,b.pe,0); b.obj.rotation.set(0,Math.PI,0);
+  g.position.set(b.x,0,b.z); g.rotation.y=b.rumo+Math.PI; scene.add(g); b.grupo=g;
+  const alt=ESPECIES.cavalo.alt[0], banco=lombo(g,0.15)??alt*0.72;                 // lombo logo atrás do meio
+  const assento={ banco, selim:0.15, guidao:[banco+0.32,-0.55], manopla:0.2, pe:-0.05, joelhoX:0.34, joelhoY:banco-0.15, peX:0.32, peY:Math.max(0.3,banco-0.85) };
+  return { obj:g, x:b.x, z:b.z, h:b.rumo+Math.PI, bicho:b, assento };
+}
+export function desmontar(b){
+  const g=b.grupo; if(!g) return; g.updateMatrixWorld(true);
+  b.x=g.position.x; b.z=g.position.z; b.rumo=g.rotation.y-Math.PI;
+  scene.remove(g); g.remove(b.obj); b.obj.position.set(b.x,b.pe,b.z); b.obj.rotation.set(0,b.rumo,0); scene.add(b.obj);
+  Object.assign(b,{ grupo:null, montado:false, cerca:null, modo:'parado', t:2, coice:3 });   // solto fora do terreno: passeia e some quando o jogador vai longe
+}
+// anda/galopa conforme a velocidade (m/s)
+export function animarMontaria(b,v,dt){
+  const a=Math.abs(v);
+  animar(b, a>5.5?'correr':a>0.4?'andar':'comer', a>5.5?Math.max(0.7,a/10):a>0.4?Math.max(0.6,a/1.6):1);
+  b.mixer.update(dt);
+}

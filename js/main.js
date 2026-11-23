@@ -21,7 +21,7 @@ import { atualizarEfeitos } from './efeitos.js';
 import { danificar, efeitosVeiculos } from './veiculos.js';
 import { baterNoCarro } from './transito.js';
 import { quandoAtropelar, interagir, pedestrePerto, atualizarBaloes, quantosSeguem, pedestresDePe } from './pedestres.js';
-import { posicoesAnimais } from './animais.js';
+import { posicoesAnimais, cavaloPerto, montar, desmontar, animarMontaria } from './animais.js';
 import { iniciarPolicia, atualizarPolicia, crime, posicoesPolicia } from './policia.js';
 import { somBatida, somExplosao, somPancada, somSirene, somMundo, somTiro } from './som.js';
 import { desenharTiro, bocaDaArma, atualizarTiros } from './tiro.js';
@@ -203,6 +203,7 @@ function aoVolante(dt){
   atualizarEmpina(dt,c,acel,giro);
   if(empina.ang>0){ const r=c.comp*0.36;                                          // gira em volta da roda de trás (frente = -Z, trás = +Z)
     c.obj.rotation.x+=empina.ang; p.y+=r*Math.sin(empina.ang); }
+  if(c.montaria) animarMontaria(c.bicho,c.v,dt);
   if(c.tipo.moto) sentar(jogador,c.obj,false,c.assento);                                      // piloto no banco (anda e inclina com a moto)
   // câmera vem para trás do veículo quando ele anda (parado, dá para olhar em volta)
   if(Math.abs(c.v)>0.6){ let d=c.h-cam.yaw; d=Math.atan2(Math.sin(d),Math.cos(d)); cam.yaw+=d*Math.min(1,dt*2.5); }
@@ -288,10 +289,13 @@ function trocarVeiculo(){
   if(veic.dirigindo){
     const era=veic.dirigindo, [x,z,h]=sair(); jogador.position.set(x,0,z); jogador.visible=true; rumo=h-Math.PI/2;
     if(era.tipo.moto){ descer(jogador); era.obj.rotation.z=0.12; }
+    if(era.montaria){ veic.liberar(era); desmontar(era.bicho); }                     // cavalo volta a pastar/passear
     cam.dist=distAPe;                                                              // câmera volta para perto (a pé)
     $('velo').style.display='none';
   } else {
     let c=veiculoPerto(jogador.position.x,jogador.position.z);
+    const cv=!c&&cavaloPerto(jogador.position.x,jogador.position.z);
+    if(cv){ c=veic.adotar({...montar(cv), arq:'montaria'}); avisarTerreno('🐎 Você montou no cavalo! E para descer'); }
     const bk=!c&&bikePerto(jogador.position.x,jogador.position.z);
     if(bk){ const r=tomarBike(bk); c=veic.adotar({...r, arq:'bike'}); crime(1,'Roubo de bike de criança'); }
     if(!c){ const t=carroDaRuaPerto(jogador.position.x,jogador.position.z); if(!t) return;          // carro da rua: o motorista desce e ele é seu
@@ -351,10 +355,11 @@ function quadro(){
   const p=jogador.position;
 
   // dica de entrar / botão do celular
-  const perto=!veic.dirigindo&&!casa.dentro&&!home.aberta&&(veiculoPerto(p.x,p.z)||(bikePerto(p.x,p.z)&&{rua:true,bike:true,tipo:{id:'bike',nome:'Bike elétrica'}})||(()=>{ const t=carroDaRuaPerto(p.x,p.z); return t&&{rua:true,policia:t.policia,tipo:{id:t.arq,nome:veic.nomeDoTransito(t.arq)}}; })());
+  const perto=!veic.dirigindo&&!casa.dentro&&!home.aberta&&(veiculoPerto(p.x,p.z)||(cavaloPerto(p.x,p.z)&&{rua:true,cavalo:true,tipo:{id:'montaria',nome:'Cavalo'}})||(bikePerto(p.x,p.z)&&{rua:true,bike:true,tipo:{id:'bike',nome:'Bike elétrica'}})||(()=>{ const t=carroDaRuaPerto(p.x,p.z); return t&&{rua:true,policia:t.policia,tipo:{id:t.arq,nome:veic.nomeDoTransito(t.arq)}}; })());
   $('dica').style.display=perto?'block':'none'; if(perto) $('dica').textContent=`E · entrar ${perto.tipo.nome==='SUV'?'no':'na'} ${perto.tipo.nome}`;
   if(perto&&perto.tipo.id==='cavalo') $('dica').textContent='E · subir no cavalo mecânico';
   if(perto&&perto.rua) $('dica').textContent=`E · pegar ${perto.tipo.nome==='SUV'||perto.tipo.nome==='Ônibus'?'o':'a'} ${perto.tipo.nome}`+(perto.policia||perto.bike?' (crime!)':'');
+  if(perto&&perto.cavalo) $('dica').textContent='E · montar no cavalo';
   $('usar').style.display=(perto||veic.dirigindo)&&matchMedia('(pointer:coarse)').matches?'block':'none';
   $('usar').textContent=veic.dirigindo?'Sair':'Entrar';
   // pedestre perto (a pé): mostra as ações
@@ -394,7 +399,7 @@ function quadro(){
   if(!home.aberta){ veic.recolherSoltos(p.x,p.z); passarEfeitos(dt); }
   if(!home.aberta&&!casa.dentro) atualizarGPS(dt,p.x,p.z,camera.position.x,camera.position.z,avisarTerreno); else $('gps').style.display='none';
   // online: manda meu estado e move os outros jogadores
-  if(!home.aberta){ const D2=veic.dirigindo; enviarEstado(dt,{x:p.x,z:p.z,r:rumo,a:D2?'parado':estadoAPe,vt:D2?D2.tipo.id:null,vh:D2?D2.h:null,e:vida.e,c:vida.caido>0,g:[golpe.seq,golpe.tipo||'']}); }
+  if(!home.aberta){ const D2=veic.dirigindo; enviarEstado(dt,{x:p.x,z:p.z,r:rumo,a:D2?'parado':estadoAPe,vt:D2?(D2.tipo.id==='bike'?'urbana':D2.montaria?null:D2.tipo.id):null,vh:D2?D2.h:null,e:vida.e,c:vida.caido>0,g:[golpe.seq,golpe.tipo||'']}); }
   atualizarOnline(dt);
   { let d=null; for(const [x,z] of posicoesPolicia()){ const k=Math.hypot(x-p.x,z-p.z); if(d===null||k<d) d=k; } somSirene(d); }   // sirene pela viatura mais perto
   { const D3=veic.dirigindo, d2=(x,z)=>Math.hypot(x-p.x,z-p.z);                   // motor, trânsito, gente, cidade, passos
