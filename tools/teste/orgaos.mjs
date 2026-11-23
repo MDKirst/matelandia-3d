@@ -16,7 +16,7 @@ const r=await pg.evaluate(async()=>{ const N=await import('/js/numeracao.js'), P
   const C=await import('/js/casas.js'); const naoVende=C.casas.filter(c=>c.qg&&!/^QG/.test(c.qg)).map(c=>c.qg);
   return { naoVende, montagem:window.__publicos, erro, pos, crasConfere:N.endereco(...(()=>{ const p=N.pontoDoEndereco('Avenida Duque de Caxias',699); return [p.x,p.z]; })()) }; });
 console.log(JSON.stringify(r,null,1));
-for(const nome of ['CRAS','UBS CENTRAL','ESCOLA MUNICIPAL DOM BOSCO','UBS VILA NOVA']){ const [x,z,nx,nz]=r.pos[nome];
+for(const nome of ['CRAS','UBS CENTRAL','ESCOLA MUNICIPAL DOM BOSCO','UBS VILA NOVA','CASA DA CULTURA']){ const [x,z,nx,nz]=r.pos[nome];
   for(const k of [0,1]){
     await pg.evaluate(([x,z,nx,nz,k])=>{ __jogo.jogador.position.set(x+nx*16,0,z+nz*16); __jogo.cam(14,0.25,Math.atan2(nx,nz)+k*Math.PI); for(const id of ['hint','ajuda','atalhos']){ const e=document.getElementById(id); if(e) e.style.display='none'; } },[x,z,nx,nz,k]);
     await pg.waitForTimeout(7000); await pg.screenshot({path:join(fotos,'orgao-'+nome.split(' ').slice(0,2).join('-').toLowerCase()+'-'+k+'.png'),timeout:240000}); }

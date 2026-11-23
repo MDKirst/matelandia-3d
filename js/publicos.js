@@ -40,7 +40,7 @@ export const LUGARES = [
   { ll:[-25.2364132,-53.9734061], nome:'UBS JARDIM TROPICAL',                  tipo:'saude', cor:0xf3f4f6, faixa:0x16a34a, h:4.5 },
   { ll:[-25.2434531,-53.9931471], nome:'UBS VILA NOVA',                        tipo:'saude', cor:0xf3f4f6, faixa:0x16a34a, h:4.5 },
   { ll:[-25.2442157,-53.9740316], nome:'UBS VILA PAZZA',                       tipo:'saude', cor:0xf3f4f6, faixa:0x16a34a, h:4.5 },
-  { ll:[-25.2407649,-53.9813966], nome:'CASA DA CULTURA',                      tipo:'publico', cor:0xfef3c7, faixa:0xb45309, h:6 },
+  { ll:[-25.2407649,-53.9813966], nome:'CASA DA CULTURA',                      tipo:'publico', cor:0xfef3c7, faixa:0xb45309, h:6, totem:true },   // prédio virou terreno de jogador: só placa na calçada
   { ll:[-25.2364644,-53.9813846], nome:'SECRETARIA DE ESPORTES',               tipo:'publico', cor:0xf3f4f6, faixa:0x0284c7, h:5 },
   { ll:[-25.2318286,-53.9709548], nome:'SECRETARIA DE AGRICULTURA',            tipo:'publico', cor:0xf3f4f6, faixa:0x65a30d, h:5 },
   { ll:[-25.2373642,-53.9821869], nome:'ESCOLA MUNICIPAL DOM BOSCO',           tipo:'escola', cor:0xfef9c3, faixa:0xea580c, h:5 },
@@ -87,6 +87,23 @@ function predioDe(x,z){
   return m;
 }
 
+// totem na calçada em frente ao ponto (quando o prédio é terreno de jogador): dois postes e a placa virada para a rua
+function totem(L,x,z){
+  let m=null;
+  for(const r of ruas){ if(r.pe||!r.nome) continue; const b=r.bb; if(x<b[0]-40||x>b[2]+40||z<b[1]-40||z>b[3]+40) continue;
+    for(let i=0;i<r.pts.length-1;i++){ const a=r.pts[i], q=r.pts[i+1], vx=q[0]-a[0], vz=q[1]-a[1]; let t=((x-a[0])*vx+(z-a[1])*vz)/(vx*vx+vz*vz||1); t=Math.max(0,Math.min(1,t));
+      const px=a[0]+vx*t, pz=a[1]+vz*t, d=Math.hypot(x-px,z-pz)-r.w/2; if(!m||d<m.d) m={d,px,pz,w:r.w}; } }
+  if(!m) return 'sem rua';
+  const D=Math.hypot(x-m.px,z-m.pz)||1, nx=(x-m.px)/D, nz=(z-m.pz)/D;                    // da rua para o lote
+  const cx=m.px+nx*(m.w/2+1.4), cz=m.pz+nz*(m.w/2+1.4), ry=Math.atan2(-nx,-nz), ex=Math.cos(ry), ez=-Math.sin(ry), W=4.2;
+  for(const s of [-1,1]) caixa(0.16,2.6,0.16,cx+ex*s*(W/2-0.2),0,cz+ez*s*(W/2-0.2),0x3f3f46,ry);    // postes
+  caixa(W+0.2,1.05,0.12,cx,1.7,cz,L.faixa,ry);                                                       // moldura
+  const pl=new THREE.Mesh(new THREE.PlaneGeometry(W,0.85),new THREE.MeshBasicMaterial({map:texPlaca(L.nome,hex(L.faixa),'#ffffff'),side:THREE.DoubleSide}));
+  pl.position.set(cx-nx*0.07,2.22,cz-nz*0.07); pl.rotation.y=ry; placas.push(pl);
+  L.placa=[cx,cz,-nx,-nz];
+  for(const s of [-1,1]){ const px=cx+ex*s*(W/2-0.2), pz=cz+ez*s*(W/2-0.2); solidosTarde.push([[px-0.15,pz-0.15],[px+0.15,pz-0.15],[px+0.15,pz+0.15],[px-0.15,pz+0.15]]); }
+  return 'totem';
+}
 const usados=new Set();                                             // um prédio não leva duas placas
 function montar(L,lotes){
   let x,z;
@@ -97,7 +114,7 @@ function montar(L,lotes){
   const {p,tirado}=achado, pts=p.pts;
   if(usados.has(p)) return 'prédio já usado'; usados.add(p);
   p.publico=L.nome;                                                   // casas.js: órgão público não está à venda
-  if(tirado&&tocaLote(pts,lotes)) return 'virou terreno';
+  if(tirado&&tocaLote(pts,lotes)) return L.totem?totem(L,x,z):'virou terreno';
   const h=Math.max(L.h,(p.h||0)+0.4), k=tirado?1:1.04;            // por cima do prédio que ainda está de pé
   prisma(pts,0,h-1.1,L.cor,k); prisma(pts,h-1.1,h,L.faixa,k+0.01); prisma(pts,h,h+0.25,0xd4d4d4,k+0.02);
   // frente: a parede mais perto de uma rua
