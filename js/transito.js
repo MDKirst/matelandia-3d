@@ -9,6 +9,7 @@ import { scene } from './cena.js';
 import { ruas } from './cidade.js';
 import { lombadas, alturaLombada } from './detalhes.js';
 import { fumaca, fogo } from './efeitos.js';
+import { perfil, altoNaRua } from './aterro.js';
 
 // só modelos gerados por IA 3D, já em metros e com a frente em -Z; peso = chance de sair.
 // suv/picape/cavalo: TRELLIS deste projeto. Os demais vieram do Couro & Asfalto (imagem do Gemini →
@@ -138,9 +139,10 @@ export function atualizarTransito(dt, px, pz, outros){
       const lado=c.r.mao&&ls<0?-1:1, folga=rl+c.larg+0.3-lado*ls;    // quanto falta para passar raspando
       if(folga<=0) return true; if(folga>1.7||(!c.r.mao&&ls<0)) return false;   // não cabe (ou está na contramão): para
       if(Math.abs(querDesv)<folga) querDesv=-lado*folga; return true; };
-    for(const o of outros) if(!(o[4]&&desviar(o[0],o[1],o[2],o[3]))) testar(o[0],o[1],o[2],o[3]);
+    const alto=altoNaRua(c.r,P.x,P.z);                         // na BR alta (trincheira): ignora o que está embaixo e vice-versa
+    for(const o of outros) if(!!o[5]===alto&&!(o[4]&&desviar(o[0],o[1],o[2],o[3]))) testar(o[0],o[1],o[2],o[3]);
     c.desv=(c.desv||0)+Math.max(-2*dt,Math.min(2*dt,querDesv-(c.desv||0)));
-    for(const d of carros) if(d!==c&&d.r&&d.obj.visible) testar(d.obj.position.x,d.obj.position.z,d.meio+c.meio-2.2,d.larg);
+    for(const d of carros) if(d!==c&&d.r&&d.obj.visible&&altoNaRua(d.r,d.obj.position.x,d.obj.position.z)===alto) testar(d.obj.position.x,d.obj.position.z,d.meio+c.meio-2.2,d.larg);
     const lim=c.r.tipo.startsWith('motorway')?Math.max(c.vCruz,24):c.vCruz;
     const lomb=lombadas.some(o=>{ const dx=o.x-P.x, dz=o.z-P.z, f=dx*P.ux+dz*P.uz; return f>-2&&f<16&&Math.abs(-dx*P.uz+dz*P.ux)<4; });
     c.vAlvo=livre?(lomb?Math.min(lim,3.5):lim):0;   // reduz antes do quebra-mola
@@ -157,11 +159,13 @@ export function atualizarTransito(dt, px, pz, outros){
     if(!c.r) continue;
     P=pose(c);
     // trava final: o passo não pode terminar em cima de ninguém (curva, troca de rua, faixa)
-    const ocupado=outros.some(o=>o[4]?(Math.abs((o[0]-P.x)*P.ux+(o[1]-P.z)*P.uz)<o[2]+c.meio-0.3&&Math.abs(-(o[0]-P.x)*P.uz+(o[1]-P.z)*P.ux)<o[3]+c.larg-0.1)
+    const ocupado=outros.some(o=>!!o[5]!==alto?false:o[4]?(Math.abs((o[0]-P.x)*P.ux+(o[1]-P.z)*P.uz)<o[2]+c.meio-0.3&&Math.abs(-(o[0]-P.x)*P.uz+(o[1]-P.z)*P.ux)<o[3]+c.larg-0.1)
                                       :Math.hypot(o[0]-P.x,o[1]-P.z)<Math.max(o[2],o[3])+c.meio-0.3) ||
       carros.some(d=>d!==c&&d.r&&d.obj.visible&&Math.hypot(d.obj.position.x-P.x,d.obj.position.z-P.z)<(c.meio+d.meio)*0.7&&Math.hypot(d.obj.position.x-c.obj.position.x,d.obj.position.z-c.obj.position.z)>=Math.hypot(d.obj.position.x-P.x,d.obj.position.z-P.z));
     if(ocupado){ Object.assign(c,antes); c.v=0; P=pose(c); }
-    c.obj.position.set(P.x,alturaLombada(P.x,P.z),P.z);
+    { const br=c.r.tipo.startsWith('motorway'), m=c.meio*0.8, h=br?perfil(P.x,P.z):0;     // BR em aterro perto das trincheiras: sobe e inclina na rampa
+      c.obj.position.set(P.x,alturaLombada(P.x,P.z)+h,P.z); c.obj.rotation.order='YXZ';
+      c.obj.rotation.x=br&&h>0?Math.atan2(perfil(P.x+P.ux*m,P.z+P.uz*m)-perfil(P.x-P.ux*m,P.z-P.uz*m),2*m):0; }
     // vira suave (os modelos olham para -Z)
     const alvo=Math.atan2(-P.ux,-P.uz); let d=alvo-c.obj.rotation.y; d=Math.atan2(Math.sin(d),Math.cos(d));
     c.obj.rotation.y += d*Math.min(1,dt*6);
@@ -177,7 +181,7 @@ export function baterNoCarro(x,z,impacto){
 }
 
 // para o minimapa e para a colisão do veículo do jogador
-export function posicoesTransito(){ return carros.filter(c=>c.r&&c.obj.visible).map(c=>[c.obj.position.x,c.obj.position.z,c.obj.rotation.y,c.meio,c.larg]); }
+export function posicoesTransito(){ return carros.filter(c=>c.r&&c.obj.visible).map(c=>[c.obj.position.x,c.obj.position.z,c.obj.rotation.y,c.meio,c.larg,altoNaRua(c.r,c.obj.position.x,c.obj.position.z)?1:0]); }   // 6º: na BR alta
 
 // E perto de um carro da rua: o carro mais perto ao alcance (andando devagar ou parado), para o jogador pegar
 export function carroDaRuaPerto(x,z){

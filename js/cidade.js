@@ -7,6 +7,7 @@ import { toXZ } from './geo.js';
 import { LIMITE, OVERPASS, OSM_API, DADOS_CIDADE } from './config.js';
 import { substituidoPorMarco, ocultosMarcos } from './marcos.js';
 import { texAsfalto, texCalcada } from './texturas.js';
+import { perfil, registrarBR, construirAterro } from './aterro.js';
 
 const LARGURA = {motorway:13,trunk:12,primary:10,secondary:9,tertiary:8,residential:7,unclassified:7,living_street:6,
   motorway_link:7,trunk_link:7,primary_link:7,secondary_link:7,tertiary_link:7,service:4,track:3.5,
@@ -19,6 +20,11 @@ const texCalc  = texCalcada();
 const matCalc  = new THREE.MeshBasicMaterial(flat({map:texCalc,side:THREE.DoubleSide}));
 const matPe    = new THREE.MeshBasicMaterial(flat({map:texCalc,color:0xe8dcc6,side:THREE.DoubleSide}));
 const matGuia  = new THREE.MeshBasicMaterial(flat({color:0xd2d0c8,side:THREE.DoubleSide}));   // meio-fio
+// BR-277 (23/11): malha própria COM profundidade — perto das trincheiras ela sobe no aterro (aterro.js) e tem de
+// esconder o que fica atrás/embaixo; as outras ruas são "pintadas" no chão sem profundidade
+const matRuaBR   = new THREE.MeshBasicMaterial({map:texAsfalto(),side:THREE.DoubleSide});
+const matFaixaBR = new THREE.MeshBasicMaterial({color:0xe2b93f,side:THREE.DoubleSide,polygonOffset:true,polygonOffsetFactor:-2,polygonOffsetUnits:-2});
+const matBordaBR = new THREE.MeshBasicMaterial({color:0xe8e6df,side:THREE.DoubleSide,polygonOffset:true,polygonOffsetFactor:-2,polygonOffsetUnits:-2});
 // rua com calçada dos dois lados (rodovia, estradinha e acesso de serviço ficam sem)
 const COM_CALCADA = new Set(['primary','secondary','tertiary','residential','unclassified','living_street','primary_link','secondary_link','tertiary_link']);
 const CALCADA = 2.6, GUIA = 0.3;
@@ -73,6 +79,7 @@ export const bbox = pts=>{ let a=1e9,b=1e9,c=-1e9,d=-1e9; for(const p of pts){ i
 
 function construir(elements){
   const R={pos:[],idx:[]}, F={pos:[],idx:[]}, P={pos:[],idx:[]}, C={pos:[],idx:[]}, G={pos:[],idx:[]}, B={pos:[],idx:[]}, geos=[], vias=[];
+  const RM={pos:[],idx:[]}, FM={pos:[],idx:[]}, BM={pos:[],idx:[]}, pistasBR=[];   // BR-277: malha própria (aterro)
   for(const el of elements){
     if(el.type!=='way'||!el.geometry||vistos.has(el.id)) continue;
     vistos.add(el.id);
@@ -89,7 +96,8 @@ function construir(elements){
       predios.push({pts,bb:bbox(pts),h,osm:true,nome,branco:/prefeitura|c[âa]mara/i.test(nome)});
     } else if(t.highway && LARGURA[t.highway] && t.area!=='yes'){
       const w=LARGURA[t.highway], pe=A_PE.has(t.highway);
-      fita(pts,w,pe?P:R);
+      const br=t.highway==='motorway';
+      fita(pts,w,pe?P:br?RM:R); if(br) pistasBR.push({pts,w});
       if(!pe) vias.push({pts,w,tipo:t.highway});
       // BR-277 (23/11, Maicon: "a maior pista no meio da cidade é a BR 277"): no OSM ela não tem nome, só ref → usa o ref
       ruas.push({nome:t.name||(t.highway.startsWith('motorway')&&t.ref?t.ref.split(';')[0]:''),tipo:t.highway,pts,bb:bbox(pts),w,pe,mao:t.oneway==='yes'||t.highway==='motorway'?1:t.oneway==='-1'?-1:0}); // mao: 1/-1 = mão única
@@ -103,15 +111,21 @@ function construir(elements){
   pertoCruzamento=pertoCruz;
   for(const v of vias){
     if(COM_CALCADA.has(v.tipo)){ fita(v.pts,v.w+2*(CALCADA+GUIA),C); fita(v.pts,v.w+2*GUIA,G); }
-    if(v.w>=8) tracejado(v.pts,0.15,3,4,(x,z)=>pertoCruz(x,z,v.w*0.8+2),F);          // eixo amarelo tracejado só nas avenidas
+    const br=v.tipo==='motorway';
+    if(v.w>=8) tracejado(v.pts,0.15,3,4,(x,z)=>pertoCruz(x,z,v.w*0.8+2),br?FM:F);          // eixo amarelo tracejado só nas avenidas
     if(v.w>=8&&!v.tipo.startsWith('motorway')){                                       // faixa de pedestre zebrada antes de cada cruzamento
       v.pts.forEach((q,i)=>{ if(cont.get(k(q))<2) return;
         for(const o of [v.pts[i-1],v.pts[i+1]]){ if(!o) continue; const dx=o[0]-q[0], dz=o[1]-q[1], L=Math.hypot(dx,dz); if(L<14) continue;
           const ux=dx/L, uz=dz/L, cx=q[0]+ux*7.5, cz=q[1]+uz*7.5;
           for(let s=-v.w/2+0.7; s<=v.w/2-0.6; s+=1.1){ const px=cx-uz*s, pz=cz+ux*s; fita([[px-ux*1.6,pz-uz*1.6],[px+ux*1.6,pz+uz*1.6]],0.55,B); } } }); }
-    if(v.tipo==='motorway'||v.tipo==='trunk'){ fitaDesloc(v.pts,v.w/2-0.4,0.15,B); fitaDesloc(v.pts,-(v.w/2-0.4),0.15,B); } // bordas brancas da rodovia
+    if(v.tipo==='motorway'||v.tipo==='trunk'){ const o=br?BM:B; fitaDesloc(v.pts,v.w/2-0.4,0.15,o); fitaDesloc(v.pts,-(v.w/2-0.4),0.15,o); } // bordas brancas da rodovia
   }
   malha(C,matCalc,-7.5,2); malha(G,matGuia,-7); malha(P,matPe,-6,2); malha(R,matRua,-5,6); malha(F,matFaixa,-4); malha(B,matBorda,-4);
+  // BR: sobe conforme o aterro das trincheiras (0 longe delas) e ganha taludes e paredes da passagem
+  registrarBR(pistasBR);
+  for(const [o,dy] of [[RM,0.03],[FM,0.06],[BM,0.06]]) for(let i=0;i<o.pos.length;i+=3) o.pos[i+1]=perfil(o.pos[i],o.pos[i+2])+dy;
+  malha(RM,matRuaBR,0,6); malha(FM,matFaixaBR,1); malha(BM,matBordaBR,1);
+  construirAterro(pistasBR.map(p=>({pts:densa(p.pts),w:p.w})));
   if(geos.length){ const g=mergeGeometries(geos,false); if(g){ scene.add(new THREE.Mesh(g,matPredio)); } geos.forEach(x=>x.dispose()); }
 }
 

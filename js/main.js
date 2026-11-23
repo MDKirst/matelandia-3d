@@ -9,7 +9,8 @@ import { satelite } from './satelite.js';
 import { ruas, predios, carregarCidade, status } from './cidade.js';
 import { jogador, suporte, av, animar, animarGolpe } from './avatar.js';
 import { tecla, cam, toque, pedido } from './controles.js';
-import { bloqueado, ruaMaisProxima, pontoLivre } from './mundo.js';
+import { bloqueado, ruaMaisProxima, pontoLivre, somarBloqueio } from './mundo.js';
+import { aterro, atualizarNivel, alturaNivel, perfil, bloqueioAterro } from './aterro.js';
 import { carregarPredios, atualizarTelhados } from './predios.js';
 import { construirMarcos } from './marcos.js';
 import { carregarLojas } from './lojas.js';
@@ -71,10 +72,15 @@ import { efeitosVelocidade } from './velocidade.js';
 // parede/no carro (e a câmera via através). Pedestres de pé e cavalos também são sólidos.
 // As listas que mudam a cada quadro (trânsito, polícia, gente, cavalos) são lidas uma vez por quadro em aPe().
 let obst={ transito:[], gente:[], cavalos:[] };
+// BR em aterro nas trincheiras (aterro.js): o jogador está em cima (na BR alta) ou embaixo (chão/passagem)
+somarBloqueio(bloqueioAterro);
+const nivel={ alto:false };
+const jogAlto=(x,z)=>nivel.alto&&perfil(x,z)>1.2;         // em cima de verdade (não só na BR no chão)
 function lerObstaculos(){
-  obst.transito=[...posicoesTransito(),...posicoesPolicia()];
-  obst.gente=pedestresDePe();
-  obst.cavalos=posicoesAnimais().filter(b=>b[2]==='cavalo');
+  const p=jogador.position, eu=jogAlto(p.x,p.z);
+  obst.transito=[...posicoesTransito(),...posicoesPolicia()].filter(o=>!!o[5]===eu);   // carro do outro nível (em cima/embaixo) não conta
+  obst.gente=eu?[]:pedestresDePe();
+  obst.cavalos=eu?[]:posicoesAnimais().filter(b=>b[2]==='cavalo');
 }
 function dentroDoTransito(x,z,folga=0.3,lista=obst.transito){
   for(const [tx,tz,ry,meio=2.2,larg=1.1] of lista){ const dx=x-tx, dz=z-tz; if(Math.abs(dx)>10||Math.abs(dz)>10) continue;
@@ -98,8 +104,9 @@ function pertoLivre(x,z){
 // carro do trânsito na frente do veículo do jogador?
 // (se já estão encostados, deixa se afastar: senão o veículo travava para sempre)
 function bateNoTransito(c,x,z,h){
-  const p=c.obj.position;
-  for(const [tx,tz,,meio=2.2,larg=1.1] of [...posicoesTransito(),...posicoesPolicia()]){
+  const p=c.obj.position, eu=jogAlto(p.x,p.z);
+  for(const [tx,tz,,meio=2.2,larg=1.1,alto] of [...posicoesTransito(),...posicoesPolicia()]){
+    if(!!alto!==eu) continue;                                                       // em cima/embaixo da trincheira
     const enc=(px,pz,ph)=>{ const [fx,fz]=frente(ph), [ex,ez]=esquerda(ph), dx=tx-px, dz=tz-pz;
       return Math.abs(dx*fx+dz*fz)<c.comp/2+meio-0.1 && Math.abs(dx*ex+dz*ez)<c.larg/2+larg; };
     if(!enc(x,z,h)) continue;
@@ -133,7 +140,7 @@ function aPe(dt){
     if(quer&&pulo.y===0&&vida.caido<=0&&!golpe.tipo&&detido<=0&&!casa.dentro) pulo.v=5.4;           // ~1 m de altura
     if(pulo.v||pulo.y){ pulo.v-=15*dt; pulo.y=Math.max(0,pulo.y+pulo.v*dt); if(pulo.y===0) pulo.v=0; } }
   const p=jogador.position;
-  lerObstaculos();
+  lerObstaculos(); aterro.cima=nivel.alto;                                   // a colisão pergunta do nível do jogador
   const n0=batidas(p.x,p.z), pode=(x,z)=>{ const n=batidas(x,z); return n===0||n<n0; };
   if(n0>=4&&!casa.dentro){ const l=pertoLivre(p.x,p.z); if(l){ p.x=l[0]; p.z=l[1]; } }
   if(vida.empurra){ const [ex,ez]=vida.empurra; vida.empurra=null; if(!travado(p.x+ex,p.z+ez)){ p.x+=ex; p.z+=ez; } }
@@ -149,6 +156,7 @@ function aPe(dt){
   }
   if(policia.cena?.andando){ estado='andar'; passo+=dt*8; rumo=policia.cena.rumo; }  // algemado, levado até o camburão
   p.x=Math.max(LX0+3,Math.min(LX1-3,p.x)); p.z=Math.max(LZ0+3,Math.min(LZ1-3,p.z));
+  aterro.cima=false; atualizarNivel(nivel,p.x,p.z); p.y=alturaNivel(nivel,p.x,p.z);   // em cima da BR alta: sobe junto
   jogador.rotation.y=rumo; suporte.rotation.order='YXZ'; suporte.rotation.y=av.giroExtra;
   suporte.rotation.x=-vida.queda*Math.PI/2; suporte.position.y=vida.queda*0.12+pulo.y;   // pulando sobe; desmaiado: deitado de costas
   if(gesto>0){ gesto-=dt; if(estado==='parado') estado='acenar'; }       // acenando para alguém
@@ -185,7 +193,10 @@ function aoVolante(dt){
     volante+=Math.max(-k,Math.min(k,d)); giro=volante; }
   const v0=Math.abs(c.v);
   let crianca=null;
-  if(dirigir(dt, acel, giro, tecla.Space, (c,x,z,h)=>bateNoTransito(c,x,z,h)||bateNoCavalo(c,x,z,h)||!!(crianca=bateNaCrianca(c,x,z,h))) && v0>4){            // bateu: estraga o veículo
+  aterro.cima=nivel.alto; const emCima=jogAlto(c.obj.position.x,c.obj.position.z);
+  const bateu=dirigir(dt, acel, giro, tecla.Space, (c,x,z,h)=>bateNoTransito(c,x,z,h)||(!emCima&&(bateNoCavalo(c,x,z,h)||!!(crianca=bateNaCrianca(c,x,z,h)))));
+  aterro.cima=false; atualizarNivel(nivel,c.obj.position.x,c.obj.position.z);
+  if(bateu && v0>4){            // bateu: estraga o veículo
     if(crianca&&v0>6) crime(1,'Atropelamento');
     const inteiro=!c.quebrado; danificar(c,v0); somBatida(v0); if(inteiro&&c.quebrado) somExplosao();
     const [fx,fz]=frente(c.h), q=c.obj.position, alvoT=baterNoCarro(q.x+fx*c.comp*0.6,q.z+fz*c.comp*0.6,v0);
@@ -199,7 +210,10 @@ function aoVolante(dt){
     c.obj.rotation.z=THREE.MathUtils.lerp(c.obj.rotation.z, giro*Math.min(1,Math.abs(c.v)/10)*0.32*Math.sign(c.v||1), Math.min(1,dt*5)); }
   // quebra-mola: eixo da frente e de trás sobem; quanto mais rápido, maior o pulo
   { const [fx,fz]=frente(c.h), a=c.comp*0.35, yf=alturaLombada(p.x+fx*a,p.z+fz*a), yt=alturaLombada(p.x-fx*a,p.z-fz*a), k=1+Math.max(0,Math.abs(c.v)-6)*0.25;
-    p.y=(yf+yt)/2*k; c.obj.rotation.x=Math.atan2((yf-yt)*k,c.comp); }
+    p.y=(yf+yt)/2*k; c.obj.rotation.x=Math.atan2((yf-yt)*k,c.comp);
+    if(nivel.alto){ const hf=perfil(p.x+fx*a,p.z+fz*a), ht=perfil(p.x-fx*a,p.z-fz*a);    // na rampa do aterro: sobe e inclina
+      p.y+=perfil(p.x,p.z); c.obj.rotation.x+=Math.atan2(hf-ht,2*a); } }
+  c.alto=nivel.alto;
   atualizarEmpina(dt,c,acel,giro);
   if(empina.ang>0){ const r=c.comp*0.36;                                          // gira em volta da roda de trás (frente = -Z, trás = +Z)
     c.obj.rotation.x+=empina.ang; p.y+=r*Math.sin(empina.ang); }
@@ -287,7 +301,7 @@ function passarEfeitos(dt){
 
 function trocarVeiculo(){
   if(veic.dirigindo){
-    const era=veic.dirigindo, [x,z,h]=sair(); jogador.position.set(x,0,z); jogador.visible=true; rumo=h-Math.PI/2;
+    aterro.cima=nivel.alto; const era=veic.dirigindo, [x,z,h]=sair(); aterro.cima=false; jogador.position.set(x,alturaNivel(nivel,x,z),z); jogador.visible=true; rumo=h-Math.PI/2;
     if(era.tipo.moto){ descer(jogador); era.obj.rotation.z=0.12; }
     if(era.montaria){ veic.liberar(era); desmontar(era.bicho); }                     // cavalo volta a pastar/passear
     cam.dist=distAPe;                                                              // câmera volta para perto (a pé)
@@ -371,14 +385,15 @@ function quadro(){
   $('acoes').style.display=gente&&matchMedia('(pointer:coarse)').matches?'flex':'none';
   $('luta').style.display=!home.aberta&&!veic.dirigindo&&matchMedia('(pointer:coarse)').matches?'flex':'none';
 
-  const D=veic.dirigindo, outros=[[p.x,p.z,D?D.comp/2:0.5,D?D.larg/2:0.5], ...frota.filter(c=>c!==D).map(c=>[c.obj.position.x,c.obj.position.z,c.comp/2,c.larg/2,Math.abs(c.v||0)<0.5?1:0])];   // 5º: estacionado (o trânsito desvia)
+  const eu=jogAlto(p.x,p.z);
+  const D=veic.dirigindo, outros=[[p.x,p.z,D?D.comp/2:0.5,D?D.larg/2:0.5,0,eu?1:0], ...frota.filter(c=>c!==D).map(c=>[c.obj.position.x,c.obj.position.z,c.comp/2,c.larg/2,Math.abs(c.v||0)<0.5?1:0,c.alto&&perfil(c.obj.position.x,c.obj.position.z)>1.2?1:0])];   // 6º: em cima da BR alta (trincheira)   // 5º: estacionado (o trânsito desvia)
   for(const [x,z] of posicoesPedestres()) outros.push([x,z,0.3,0.3]);   // o trânsito para para pedestre na pista
   for(const [x,z] of posicoesCriancas()) outros.push([x,z,0.8,0.4]);    // e para a criança de bike que cruzou na frente
   outros.push(...obstaculosGangues());                                   // e na barricada das gangues (à noite)
   atualizarTransito(dt,p.x,p.z,outros);
   if(!casa.dentro) atualizarCriancas(dt,{x:p.x,z:p.z,dirigindo:!!D,v:D?D.v:0});
-  atualizarPedestres(dt,{x:p.x,z:p.z,dirigindo:!!D,v:D?D.v:0, veic:D?{x:D.obj.position.x,z:D.obj.position.z,h:D.h,meio:D.comp/2,larg:D.larg/2,v:D.v}:null},
-    [...frota.filter(c=>c!==D).map(c=>[c.obj.position.x,c.obj.position.z,c.h,c.comp/2,c.larg/2]), ...posicoesTransito(), ...posicoesPolicia()]);   // pedestre não atravessa veículo
+  atualizarPedestres(dt,{x:p.x,z:p.z,dirigindo:!!D,v:D?D.v:0, veic:D&&!eu?{x:D.obj.position.x,z:D.obj.position.z,h:D.h,meio:D.comp/2,larg:D.larg/2,v:D.v}:null},
+    [...frota.filter(c=>c!==D).map(c=>[c.obj.position.x,c.obj.position.z,c.h,c.comp/2,c.larg/2]), ...posicoesTransito().filter(o=>!o[5]), ...posicoesPolicia()]);   // pedestre não atravessa veículo (o da BR alta passa por cima)
   if(!home.aberta) atualizarPolicia(dt,{x:p.x,z:p.z,dirigindo:!!D,v:D?D.v:0},prender);
   if(!home.aberta&&!casa.dentro) atualizarGangues(dt,{x:p.x,z:p.z,y:altura(p.x,p.z),dirigindo:!!D,caido:vida.caido>0||detido>0},
     (dano,fx,fz)=>{ if(levarPancada(dano,fx,fz)) somPancada(); return vida.caido>0; }, avisarTerreno);
@@ -411,18 +426,20 @@ function quadro(){
   if(home.aberta){ orbita+=dt*0.04;                                    // sobrevoo lento da cidade atrás da tela inicial
     const ah=altura(p.x,p.z); alvo.set(p.x,ah,p.z); camera.position.set(p.x+Math.sin(orbita)*170, ah+85, p.z+Math.cos(orbita)*170); camera.lookAt(alvo); }
   else { const {yaw,pitch,dist}=cam;
-    alvo.set(p.x,(veic.dirigindo?1.8:1.45)+altura(p.x,p.z),p.z);
+    alvo.set(p.x,(veic.dirigindo?1.8:1.45)+altura(p.x,p.z)+alturaNivel(nivel,p.x,p.z),p.z);
     camera.position.set(p.x+dist*Math.sin(yaw)*Math.cos(pitch), alvo.y+dist*Math.sin(pitch), p.z+dist*Math.cos(yaw)*Math.cos(pitch));
     { const piso=altura(camera.position.x,camera.position.z)+1.2; if(camera.position.y<piso) camera.position.y=piso; }   // morro atrás: câmera não entra no chão
     { const c=camera.position, ox=alvo.x, oy=alvo.y, oz=alvo.z;       // câmera não entra em prédio/muro/casa (como no GTA): chega mais perto do jogador
       // 23/11: passo de 0,2 m (antes 5% da distância, ~0,45 m, pulava muro fino) e sem distância mínima de 1,6 m
       // (com a parede colada nas costas a câmera ficava do outro lado e via através dela). Dentro de casa: as paredes da casa.
+      aterro.cima=nivel.alto;                                           // embaixo da BR: o aterro segura a câmera; em cima: não
       const L=Math.hypot(c.x-ox,c.y-oy,c.z-oz)||1, parede=casa.dentro?bloqueioCasa:bloqueado, ex=(c.z-oz)/L*0.22, ez=-(c.x-ox)/L*0.22;
       for(let s=0.2;s<=L+0.21;s+=0.2){ const t=Math.min(1,s/L), x=ox+(c.x-ox)*t, y=oy+(c.y-oy)*t, z=oz+(c.z-oz)*t;
         if((casa.dentro||y-altura(x,z)<14)&&(parede(x,z)||parede(x+ex,z+ez)||parede(x-ex,z-ez))){   // a lente tem largura: confere os lados também
           const u=Math.max(0.3,s-0.35)/L; c.set(ox+(c.x-ox)*u, oy+(c.y-oy)*u, oz+(c.z-oz)*u);
           if(!casa.dentro&&s<2) c.y+=(2-s)*0.2;                             // colada na parede: sobe um pouco e olha por cima da cabeça
-          break; } } }
+          break; } }
+      aterro.cima=false; }
     { const c=camera.position;                                          // câmera não entra no poste (tampava a tela toda)
       for(let k=0;k<8;k++){ const bate=postes.some(q=>Math.abs(q[0]-c.x)<0.8&&Math.abs(q[1]-c.z)<0.8&&Math.hypot(q[0]-c.x,q[1]-c.z)<0.8);
         if(!bate||c.y-altura(c.x,c.z)>8) break; c.lerp(alvo,0.12); } }
