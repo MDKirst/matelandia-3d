@@ -12,7 +12,7 @@ import { scene } from './cena.js';
 import { bloqueado } from './mundo.js';
 import { somLatido, somPancada } from './som.js';
 import { dirigindo } from './veiculos.js';
-import { vida } from './luta.js';
+import { vida, levarPancada } from './luta.js';
 
 const QTD = porModo(8,4), RAIO_SOME = 180, RAIO_ANIMA = porModo(80,40);
 const RACAS = [ { nome:'shiba', alt:0.58 }, { nome:'husky', alt:0.78 } ];   // altura total, da pata à ponta da orelha (m)
@@ -22,6 +22,10 @@ const MORDIDAS = ['Nhac!','Grrr… nhac!','Rrrr!'];
 // colado na roda tenta morder (tira energia). Moto rápida deixa o bando para trás; ele desiste e volta.
 const VE_MOTO=16, CHAMA_BANDO=45, CORRE=7.5, DESISTE=6, MORDE_PERTO=1.5;
 let avisoMordida=0, calmo=0;
+// chute/soco num cachorro (23/11, pedido do Maicon): ele gane e o bando vem — até 10 cachorros (chegam correndo
+// de fora da tela se não houver tantos por perto) cercam o jogador a pé e mordem, tirando energia até ele desmaiar.
+// Larga quando ele desmaia, entra num veículo andando, foge para longe (>60 m) ou depois de 40 s.
+const BANDO=10, ATACA=7.2, MORDE=1.15, LARGA=60, DURA_ATAQUE=40;
 // petisco/ração do pet shop (negocios.js): por s segundos os cachorros ficam amigos (não caçam a moto nem latem)
 export function acalmarCaes(seg){ calmo=Math.max(calmo,seg); for(const c of caes) if(c.modo==='moto'){ c.modo='parado'; c.t=1; } }
 const sorte = ()=>Math.random(), sorteia = l=>l[(sorte()*l.length)|0];
@@ -96,7 +100,10 @@ export function atualizarCaes(dt, jog, gente, fator=1){
   if(!moldes.length) return;
   avisoMordida=Math.max(0,avisoMordida-dt); calmo=Math.max(0,calmo-dt);
   const limite=Math.round(QTD*Math.min(1,0.35+fator));
+  for(let i=caes.length-1;i>=QTD;i--){ const c=caes[i];                     // reforços do bando: somem quando o ataque acaba e estão longe
+    if(c.modo!=='ataque'&&c.modo!=='ganir'&&(!c.obj||Math.hypot(c.x-jog.x,c.z-jog.z)>35)){ if(c.obj){ scene.remove(c.obj); c.mixer.stopAllAction(); } caes.splice(i,1); } }
   for(const [k,c] of caes.entries()){
+    if(k>=QTD){ if(!c.obj) continue; mover(c,dt,jog); c.obj.position.set(c.x,c.pe,c.z); c.obj.rotation.y=c.rumo; c.mixer.update(dt); continue; }
     if(!c.obj||Math.hypot(c.x-jog.x,c.z-jog.z)>RAIO_SOME){
       if(k>=limite){ if(c.obj){ scene.remove(c.obj); c.mixer.stopAllAction(); c.obj=null; c.dono=null; } continue; }
       if(!nascer(c,gente,jog.x,jog.z)) continue; }
@@ -116,6 +123,8 @@ function mover(c, dt, jog){
     entrarNaCaca(c);
     for(const o of caes) if(o!==c&&o.obj&&o.modo!=='moto'&&!(o.cansou>0)&&Math.hypot(o.x-c.x,o.z-c.z)<CHAMA_BANDO) entrarNaCaca(o); }
   c.cansou=Math.max(0,(c.cansou||0)-dt);
+  if(c.modo==='ganir'){ animar(c,'apanhar'); c.t-=dt; if(c.t<=0){ c.modo='ataque'; c.t=DURA_ATAQUE; } return; }
+  if(c.modo==='ataque'){ atacar(c,dt,jog,dx,dz,dJog); return; }
   if(c.modo==='moto'){ cacarMoto(c,dt,jog,deMoto,dx,dz,dJog); return; }
   // carro do jogador vindo rápido: sai correndo para longe dele
   if(jog.dirigindo&&!deMoto&&Math.abs(jog.v)>6&&dJog<9&&c.modo!=='fugir'){ c.modo='fugir'; c.t=2; c.antes=c.dono?'dono':'parado'; }
@@ -184,3 +193,57 @@ function cacarMoto(c,dt,jog,deMoto,dx,dz,dJog){
 }
 // para o minimapa/teste
 export const posicoesCaes=()=>caes.filter(c=>c.obj).map(c=>[c.x,c.z]);
+
+/* ───────── chutou o cachorro: o bando ataca ───────── */
+const GANIDOS=['Cain cain cain!','Caiiin!','Ain! Ain!'];
+// golpe do jogador (soco/chute/tiro) logo à frente: acertou um cachorro? Devolve true se acertou.
+export function golpearCao(jx,jz,fx,fz,tipo){
+  let alvo=null, md=tipo==='tiro'?14:1.7;
+  for(const c of caes){ if(!c.obj) continue; const dx=c.x-jx, dz=c.z-jz, d=Math.hypot(dx,dz);
+    if(d<md&&(dx*fx+dz*fz)>d*0.5){ md=d; alvo=c; } }
+  if(!alvo) return false;
+  if(!bloqueado(alvo.x+fx*0.9,alvo.z+fz*0.9)){ alvo.x+=fx*0.9; alvo.z+=fz*0.9; }      // o golpe empurra o cachorro
+  falarFn(alvo,sorteia(GANIDOS),1.6); somLatido(md,alvo.modelo.nome==='husky');
+  alvo.dono=null; alvo.modo='ganir'; alvo.t=0.7; alvo.latiu=0.7;
+  chamarBando(jx,jz);
+  return true;
+}
+function chamarBando(jx,jz){
+  const ja=caes.filter(c=>c.obj&&(c.modo==='ataque'||c.modo==='ganir'));
+  for(const c of caes){ if(ja.length>=BANDO) break; if(!c.obj||ja.includes(c)) continue;
+    if(Math.hypot(c.x-jx,c.z-jz)<70){ entrarNoAtaque(c); ja.push(c); } }
+  // faltou cachorro: chegam correndo de 18–30 m, de vários lados
+  for(let t=0;ja.length<BANDO&&t<80&&moldes.length;t++){
+    const a=sorte()*Math.PI*2, r=18+sorte()*12, x=jx+Math.sin(a)*r, z=jz+Math.cos(a)*r;
+    if(bloqueado(x,z)) continue;
+    const c={ obj:null }; vestir(c,sorteia(moldes));
+    Object.assign(c,{ x, z, rumo:a+Math.PI, dono:null, t:1, vel:0, latiu:0, y:-1.2, ladoDono:1 });
+    c.obj.position.set(x,c.pe,z); caes.push(c); entrarNoAtaque(c); ja.push(c); }
+  dispatchEvent(new CustomEvent('matelandia:bando',{detail:{n:ja.length}}));
+}
+function entrarNoAtaque(c){
+  if(c.modo!=='ganir'){ c.modo='ataque'; c.t=DURA_ATAQUE; }
+  c.dono=null; c.cansou=0; c.mordeu=0.4+sorte()*1.2; c.lado=sorte()*Math.PI*2;
+  if(c.latiu<=0){ falarFn(c,sorteia(LATIDOS),1.4); c.latiu=1+sorte()*2; }
+}
+function atacar(c,dt,jog,dx,dz,dJog){
+  c.t-=dt; c.mordeu-=dt; c.latiu=Math.max(0,c.latiu-dt);
+  const desiste=vida.caido>0||(jog.dirigindo&&Math.abs(jog.v)>3)||dJog>LARGA||c.t<=0;
+  if(desiste){ c.modo='parado'; c.t=2; c.cansou=20; animar(c,'parado'); return; }
+  // cerca: cada um mira um ponto em volta do jogador (lado próprio), a 0,9 m
+  const ax=jog.x-Math.sin(c.lado)*0.9-c.x, az=jog.z-Math.cos(c.lado)*0.9-c.z, d=Math.hypot(ax,az);
+  if(d>0.3){ const v=Math.min(ATACA,d*4); virarPara(c,Math.atan2(ax,az),dt,10);
+    if(!andar(c,Math.sin(c.rumo)*v*dt,Math.cos(c.rumo)*v*dt)) c.lado+=Math.PI/3;
+    if(dJog>MORDE+0.4){ animar(c,'correr',Math.max(0.8,v/5));
+      if(c.latiu<=0&&sorte()<dt*2){ falarFn(c,sorteia(LATIDOS),1.1); somLatido(dJog,c.modelo.nome==='husky'); c.latiu=1.2+sorte()*2; }
+      return; } }
+  else virarPara(c,Math.atan2(dx,dz),dt,10);
+  if(dJog<=MORDE+0.4&&c.mordeu<=0&&!jog.dirigindo){                       // colado: morde
+    c.mordeu=0.9+sorte()*0.9; animar(c,'latir',1.5);
+    const dano=3+((sorte()*3)|0), l=dJog||1;
+    if(levarPancada(dano,dx/l,dz/l)){ vida.empurra=[dx/l*0.15,dz/l*0.15]; somPancada(); if(sorte()<0.5) falarFn(c,sorteia(MORDIDAS),1); }
+    if(avisoMordida<=0){ dispatchEvent(new CustomEvent('matelandia:mordida',{detail:{dano}})); avisoMordida=4; }
+    return; }
+  if(d<=0.3) animar(c,'latir');
+}
+export const atacandoCaes=()=>caes.filter(c=>c.obj&&(c.modo==='ataque'||c.modo==='ganir')).length;

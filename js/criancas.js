@@ -20,6 +20,7 @@ const MODELOS=['male-casual-hoodie-24','female-casual','male-casual','female-jea
 const CORES=[0xff4fa3,0x2fb5ff,0x7dff4f,0xffd23f,0xb06bff,0xff7a2f];
 const COM_CALCADA=new Set(['residential','tertiary','secondary','unclassified','living_street','tertiary_link','secondary_link']);
 const FALAS_CAI=['Aiii! Ô tio, olha por onde anda!','Vou contar pra minha mãe!','Quase, hein!','Minha bike!'];
+const FALAS_ROUBO=['Ladrão! Devolve minha bike!','Mãããe! Roubaram minha bike!','Isso é meu, tio!'];
 const FALAS_PASSA=['Uhuuul!','Sai da frente!','Bi-bi!','Ninguém me pega!','Corridaaa!'];
 const sorte=()=>Math.random(), sorteia=l=>l[(sorte()*l.length)|0];
 const frente=h=>[-Math.sin(h),-Math.cos(h)], esquerda=h=>[-Math.cos(h),Math.sin(h)];
@@ -55,7 +56,7 @@ export async function iniciarCriancas(){
     const obj=bike.scene.clone(true); obj.userData={...bike.scene.userData}; obj.rotation.order='YXZ'; obj.scale.setScalar(esc);
     const cor=new THREE.Color(CORES[k%CORES.length]);
     obj.traverse(o=>{ if(o.isMesh){ o.material=o.material.clone(); o.material.color.lerp(cor,0.6); o.material.side=THREE.FrontSide; } });
-    const rodas=prepararRodas(obj); rodas.raio*=esc;
+    const rodas=prepararRodas(obj); rodas.raio*=esc; obj.userData.esc=esc;
     const m=ok[k%ok.length], boneco=clonarEsqueleto(m.cena), e=(1.22+sorte()*0.2)/m.altura;   // criança de 1,22 a 1,42 m
     boneco.scale.multiplyScalar(e); boneco.position.y=-m.base*e; boneco.traverse(o=>{ if(o.isMesh) o.frustumCulled=false; });
     const corpo=new THREE.Group(); corpo.add(boneco);
@@ -169,3 +170,18 @@ export function bateNaCrianca(veic,x,z,h){
 // para o trânsito parar e para o minimapa
 export const posicoesCriancas=()=>criancas.filter(c=>c.via&&c.bike.visible).map(c=>[c.x,c.z]);
 export const estadoCriancas=()=>({ pronto, vias:vias.length, ativas:posicoesCriancas().length, lista:criancas.map(c=>({x:c.x|0,z:c.z|0,v:+c.v.toFixed(1),lat:+c.lat.toFixed(1),cai:c.cai>0})) });
+
+// roubar a bike (23/11, pedido do Maicon): a pé, colado numa criança de bike, E toma a bike dela.
+// A criança grita e some (renasce longe com outra bike); o jogador ganha uma cópia da bike para pilotar.
+export function bikePerto(x,z,r=2.2){
+  let m=null, md=r; for(const c of criancas){ if(!c.via||!c.bike.visible) continue; const d=Math.hypot(c.x-x,c.z-z); if(d<md){ md=d; m=c; } } return m;
+}
+export function tomarBike(c){
+  const obj=c.bike.clone(true); obj.userData={...c.bike.userData};
+  obj.traverse(o=>{ if(o.isMesh) o.material=o.material.clone(); });
+  obj.rotation.set(0,c.h,0); const r={ obj, x:c.x, z:c.z, h:c.h, esc:c.bike.userData.esc||1 };
+  falar(c,sorteia(FALAS_ROUBO),2.5);
+  setTimeout(()=>{ c.bike.visible=c.corpo.visible=false; c.via=null; },350);   // dá tempo do grito aparecer
+  c.v=0; c.cai=1.5;
+  return r;
+}

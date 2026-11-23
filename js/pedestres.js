@@ -11,7 +11,7 @@ import { scene } from './cena.js';
 import { toXZ } from './geo.js';
 import { ruas } from './cidade.js';
 import { bloqueado } from './mundo.js';
-import { horaJogo, fatorPessoas } from './ceu.js';
+import { horaJogo, fatorPessoas, posteEm } from './ceu.js';
 import { sortearPersona } from './personas.js';
 import { ehComercio } from './comercio.js';
 import { grupoDe, movimento, peso, nomeGrupo, perfil, PRACA, saudacao, FALA_LUGAR } from './rotina.js';
@@ -107,6 +107,7 @@ function prenderLugares(lugares){
 // nasce numa calçada perto do jogador (mais gente onde há comércio) ou numa praça
 function nascer(p, px, pz){
   if(p.obj){ scene.remove(p.obj); p.mixer.stopAllAction(); p.obj=null; }
+  p.morto=false;
   const m=moldes[(Math.random()*moldes.length)|0]; if(!m) return false;
   p.lugar=null; const h=horaJogo();
   // lugar movimentado nesta hora (escola na saída, padaria cedo, bar à noite…): rodinha na porta ou saindo de dentro
@@ -175,6 +176,19 @@ export async function iniciarPedestres(lugares, px, pz){
   iniciarAnimais(falar).catch(e=>console.warn('gatos/cavalos',e));   // gatos na calçada e cavalos nos terrenos baldios (animais.js)
 }
 
+// passo com colisão (23/11): fugindo, voltando para a calçada ou arremessado pelo carro, o pedestre não
+// atravessa parede, poste nem veículo — desliza num eixo ou para
+function passo(p,dx,dz,veiculos){
+  const livre=(x,z)=>!bloqueado(x,z)&&!posteEm(x,z)&&!emVeiculo(x,z,veiculos,0.15);
+  const nx=p.x+dx, nz=p.z+dz;
+  if(livre(nx,nz)){ p.x=nx; p.z=nz; return true; }
+  if(livre(nx,p.z)){ p.x=nx; return true; }
+  if(livre(p.x,nz)){ p.z=nz; return true; }
+  return false;
+}
+// atropelado a mais de 18 km/h morre (23/11, pedido do Maicon): fica deitado no chão e só some depois de 60 s
+// (ou quando o jogador vai para longe). Mais devagar, cai e levanta como antes.
+const MATA=5, CORPO=60;
 // avisa quem quiser saber (a polícia) que alguém foi atropelado
 let aoAtropelar=()=>{};
 export function quandoAtropelar(f){ aoAtropelar=f; }
@@ -198,16 +212,18 @@ export function atualizarPedestres(dt, jog, veiculos=[]){
       if(Math.abs(dx*fx+dz*fz)<V.meio+0.35&&Math.abs(-dx*fz+dz*fx)<V.larg+0.35){
         const sv=Math.sign(V.v), lado=Math.sign(-dx*fz+dz*fx)||1, k=Math.abs(V.v);
         p.modo='caido'; p.t=7+Math.random()*4; p.queda=0;
+        if(k>=MATA){ p.morto=true; p.t=CORPO; }
         p.vx=fx*sv*k*0.55-fz*lado*1.5; p.vz=fz*sv*k*0.55+fx*lado*1.5; p.vy=2+k*0.18;
         p.rumo=Math.atan2(-fx*sv,-fz*sv);                 // de frente para o carro: cai de costas
-        animar(p,'parado'); aoAtropelar(p.x,p.z,k);
+        animar(p,'parado'); aoAtropelar(p.x,p.z,k,p.morto);
       }
     }
     if(p.modo==='caido'){
-      p.x+=p.vx*dt; p.z+=p.vz*dt; p.y+=p.vy*dt; p.vy-=9.8*dt;
+      if(!passo(p,p.vx*dt,p.vz*dt,veiculos)){ p.vx*=-0.3; p.vz*=-0.3; }        // bateu na parede: não atravessa
+      p.y+=p.vy*dt; p.vy-=9.8*dt;
       if(p.y<=0){ p.y=0; p.vy=0; p.vx*=Math.max(0,1-6*dt); p.vz*=Math.max(0,1-6*dt); }
       p.queda=Math.min(1,p.queda+dt*3); p.t-=dt;
-      if(p.t<=0) p.modo='levantar';
+      if(p.t<=0){ if(p.morto){ nascer(p,px,pz); if(!p.obj) continue; } else p.modo='levantar'; }
     } else if(p.modo==='levantar'){
       p.queda=Math.max(0,p.queda-dt*1.5);
       if(p.queda===0){ const ax=p.x-px, az=p.z-pz, l=Math.hypot(ax,az)||1; p.modo='fugir'; p.fx=ax/l; p.fz=az/l; p.t=2.5; }
@@ -216,11 +232,12 @@ export function atualizarPedestres(dt, jog, veiculos=[]){
     else if(jog.dirigindo&&Math.abs(jog.v)>3&&dJog<9&&p.modo!=='fugir'){
       const ax=p.x-px, az=p.z-pz, l=Math.hypot(ax,az)||1; p.modo='fugir'; p.fx=ax/l; p.fz=az/l; p.t=1.6; }
     if(p.modo==='fugir'){
-      p.x+=p.fx*4.5*dt; p.z+=p.fz*4.5*dt; p.rumo=Math.atan2(p.fx,p.fz); animar(p,'correr'); p.t-=dt;
+      if(!passo(p,p.fx*4.5*dt,p.fz*4.5*dt,veiculos)){ const g=Math.PI/2*(sorte()<0.5?1:-1), c=Math.cos(g), s=Math.sin(g); [p.fx,p.fz]=[p.fx*c-p.fz*s,p.fx*s+p.fz*c]; }
+      p.rumo=Math.atan2(p.fx,p.fz); animar(p,'correr'); p.t-=dt;
       if(p.t<=0) p.modo=p.r?'voltar':'conversa', p.t=p.r?0:6;
     } else if(p.modo==='voltar'){                       // volta para a calçada depois do susto
       const c=naCalcada(p), ax=c.x-p.x, az=c.z-p.z, l=Math.hypot(ax,az);
-      if(l<0.3) p.modo='andar'; else { p.x+=ax/l*1.4*dt; p.z+=az/l*1.4*dt; p.rumo=Math.atan2(ax,az); animar(p,'andar',ritmo(p).passo); }
+      if(l<0.3) p.modo='andar'; else { if(!passo(p,ax/l*1.4*dt,az/l*1.4*dt,veiculos)) p.modo='andar'; /* preso atrás de algo: volta direto para a calçada */ p.rumo=Math.atan2(ax,az); animar(p,'andar',ritmo(p).passo); }
     } else if(p.modo==='andar'){
       // jogador a pé bem na frente: para e acena
       const fx=Math.sin(p.rumo), fz=Math.cos(p.rumo), fr=(px-p.x)*fx+(pz-p.z)*fz;
@@ -281,7 +298,7 @@ export function atualizarPedestres(dt, jog, veiculos=[]){
     }
     if(!p.obj) continue;                              // renasceu sem achar lugar: tenta no próximo quadro
     p.obj.position.set(p.x,(p.pe||0)+p.y+(p.queda>0?0.12:0),p.z); p.obj.rotation.y=p.rumo; p.obj.rotation.x=-p.queda*Math.PI/2;
-    if(dJog<RAIO_ANIMA) p.mixer.update(dt);           // longe, congela a animação (economiza)
+    if(dJog<RAIO_ANIMA&&!p.morto) p.mixer.update(dt);           // longe, congela a animação (economiza); morto não mexe
   }
 }
 
@@ -391,6 +408,8 @@ export function golpearPedestre(jx,jz,fx,fz,tipo){
 export const quantosSeguem=()=>gente.filter(o=>o.modo==='seguir'||(o.modo==='papo'&&o.antes==='seguir')).length;
 
 // para o trânsito e para o minimapa
+// de pé (o jogador a pé não atravessa; caído/morto dá para passar por cima)
+export function pedestresDePe(){ return gente.filter(p=>p.obj&&p.modo!=='caido'&&p.modo!=='levantar').map(p=>[p.x,p.z]); }
 export function posicoesPedestres(){ return gente.filter(p=>p.obj).map(p=>[p.x,p.z]); }
 // para conferir no console: quantos em cada modo e em que tipo de lugar
 export function estadoRotina(){ const c={}; for(const p of gente){ if(!p.obj) continue; const k=p.modo+(p.lugar?':'+(p.lugar.praca?'praca':nomeGrupo(p.lugar)):''); c[k]=(c[k]||0)+1; } return { lugares:pontos.length, ...c }; }
