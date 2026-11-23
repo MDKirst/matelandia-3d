@@ -352,7 +352,7 @@ function recuar(poly,d){                       // polígono (sentido horário na
 function cemiterio(){
   const P=recuar(CEMITERIO,7);                       // meia rua (3,5) + calçada
   const BRANCO=0xf4f4f1, AZUL=0xa9cbe8, AZUL_ARCO=0x3f7fc4, GRADE=0x5b6470;
-  const portaoZ=499, PW=5;                                                            // nº 208 da Munhoz da Rocha
+  const portaoZ=499, PW=5;                                                            // Munhoz da Rocha (lista da prefeitura: nº 269)
   const muroSeg=(a,b)=>{ const L=Math.hypot(b[0]-a[0],b[1]-a[1]); if(L<0.5) return; const ry=-Math.atan2(b[1]-a[1],b[0]-a[0]), cx=(a[0]+b[0])/2, cz=(a[1]+b[1])/2;
     caixa(L,1.3,0.25,cx,0,cz,BRANCO,ry); caixa(L,0.7,0.25,cx,1.3,cz,AZUL,ry); caixa(L+0.1,0.08,0.35,cx,2.0,cz,BRANCO,ry);
     for(let s=0;s<=L;s+=3){ const t=s/L; caixa(0.4,2.15,0.4,a[0]+(b[0]-a[0])*t,0,a[1]+(b[1]-a[1])*t,BRANCO,ry); }

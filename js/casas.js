@@ -30,7 +30,7 @@ export function acharPorta(p){
 export function iniciarCasas(){
   for(const p of predios){ if(p.osm||p.galpao||p.marco) continue; const A=area(p.pts); if(A<35||A>350) continue;
     const cx=(p.bb[0]+p.bb[2])/2, cz=(p.bb[1]+p.bb[3])/2, b0=p.bb0||p.bb, id=Math.round((b0[0]+b0[2])/2)+'_'+Math.round((b0[1]+b0[3])/2); if(porId.has(id)) continue;   // id pela posição original (a casa recuada da calçada não muda de código)
-    const c={ id, pts:p.pts, bb:p.bb, cx, cz, area:A, preco:Math.max(8000,Math.round(A*70/500)*500), porta:null, dono:null, nome:'' };
+    const c={ id, pts:p.pts, bb:p.bb, cx, cz, area:A, preco:Math.max(8000,Math.round(A*70/500)*500), porta:null, dono:null, nome:'', qg:p.publico };   // prédio de órgão público/banco: não vende
     casas.push(c); porId.set(id,c); }
   ligar().catch(e=>console.warn('casas',e));
   return casas.length;

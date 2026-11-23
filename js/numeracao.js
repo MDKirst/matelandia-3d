@@ -4,11 +4,30 @@
 // Ruas com o mesmo nome em vários trechos (avenida de pista dupla, rua cortada) são medidas juntas.
 // Âncoras reais corrigem o começo e o sentido onde se sabe o número de verdade.
 import { ruas } from './cidade.js';
+import { toXZ } from './geo.js';
 
 const CENTRO=[-55,-40];                                   // Praça Municipal
-const ANCORAS=[                                           // número real conhecido num ponto da rua
-  { nome:'Avenida Duque de Caxias', x:271.8, z:10.75, num:800 },   // Prefeitura (Paço 25 de Julho)
-  { nome:'Rua Munhoz da Rocha',     x:-1180, z:499,   num:208 },   // portão do Cemitério Municipal
+// número real conhecido num ponto da rua (prefeitura, Google Maps dos órgãos e bancos). Com 2 ou mais na
+// mesma rua, sentido e começo saem do melhor ajuste; o erro médio fica em `porNome.get(rua).erro`.
+const A=(nome,num,ll)=>({ nome, num, ll });
+const ANCORAS=[
+  A('Avenida Duque de Caxias',800,[-25.2399857,-53.9783108]),     // Prefeitura (Paço 25 de Julho)
+  A('Avenida Duque de Caxias',867,[-25.2402972,-53.9789927]),
+  A('Avenida Duque de Caxias',894,[-25.2399992,-53.9793886]),
+  A('Avenida Borges de Medeiros',774,[-25.2403992,-53.9778865]),
+  A('Avenida Borges de Medeiros',855,[-25.2414132,-53.9789505]),
+  A('Avenida Borges de Medeiros',862,[-25.2410675,-53.9791564]),
+  A('Avenida Borges de Medeiros',1108,[-25.2407649,-53.9813966]),  // Casa da Cultura
+  A('Avenida Borges de Medeiros',1575,[-25.2408439,-53.9861918]),  // PM
+  A('Rua Napoleão Laureano',578,[-25.2410252,-53.988664]),         // Colégio Euclides da Cunha
+  A('Rua Napoleão Laureano',764,[-25.2398708,-53.9885635]),        // Delegacia
+  A('Avenida Paraná',835,[-25.2422407,-53.9789534]),
+  A('Rua Marechal Floriano',964,[-25.2373642,-53.9821869]),        // Escola Municipal Dom Bosco
+  A('Rua Manoel Ribas',356,[-25.2470234,-53.9813153]),             // Escola Dom Pedro II
+  A('Rua Carlos Turri',350,[-25.2363225,-53.9737315]),             // CMEI Aline Hardt
+  A('Rua Ipanema',743,[-25.2364644,-53.9813846]),                  // Secretaria de Esportes
+  A('Rua Souza Naves',176,[-25.2434489,-53.993141]),               // UBS Vila Nova
+  { nome:'Rua Munhoz da Rocha', num:269, x:-1180, z:499 },         // Cemitério (lista oficial da prefeitura)
 ];
 const k=p=>Math.round(p[0])+'_'+Math.round(p[1]);
 let porNome=null;                                         // nome → { vias:[{r,acc,a,b}], D:Map, sgn, base }
@@ -45,11 +64,15 @@ function montar(){
         if(v.a===c&&(D.get(v.b)??Infinity)>m+L) D.set(v.b,m+L);
         if(v.b===c&&(D.get(v.a)??Infinity)>m+L) D.set(v.a,m+L); }
     }
-    // âncora: escolhe o sentido que não deixa número negativo e encosta no número real
-    const an=ANCORAS.find(a=>a.nome===nome);
-    if(an){ const d0=medir(g,an.x,an.z,999)?.d; if(d0!==undefined){
-      const ds=[...D.values()], piorMais=Math.min(...ds.map(d=>an.num+(d-d0))), piorMenos=Math.min(...ds.map(d=>an.num-(d-d0)));
-      g.sgn=piorMenos>piorMais?-1:1; g.base=an.num-g.sgn*d0; } }
+    // âncoras: sentido e começo pelo melhor ajuste (uma só: o sentido que não deixa número negativo)
+    const ans=ANCORAS.filter(a=>a.nome===nome).map(a=>{ const [x,z]=a.ll?toXZ(...a.ll):[a.x,a.z]; return { num:a.num, d:medir(g,x,z,999)?.d }; }).filter(a=>a.d!==undefined);
+    if(ans.length===1){ const {num,d:d0}=ans[0], ds=[...D.values()];
+      const piorMais=Math.min(...ds.map(d=>num+(d-d0))), piorMenos=Math.min(...ds.map(d=>num-(d-d0)));
+      g.sgn=piorMenos>piorMais?-1:1; g.base=num-g.sgn*d0; g.erro=0; }
+    else if(ans.length>1){ let m=null;
+      for(const sgn of [1,-1]){ const base=ans.reduce((s,a)=>s+a.num-sgn*a.d,0)/ans.length, erro=ans.reduce((s,a)=>s+Math.abs(a.num-(base+sgn*a.d)),0)/ans.length;
+        if(!m||erro<m.erro) m={sgn,base,erro}; }
+      Object.assign(g,m); }
   }
 }
 
@@ -83,3 +106,24 @@ export function endereco(x,z,raio=45){
   return { rua:melhor.rua, num, par:direita };
 }
 export const textoEndereco=e=>e?`${e.rua}, ${e.num}`:'';
+
+// o contrário: onde fica "rua, número" → { x, z (na calçada do lado certo), nx, nz (para dentro do lote) } ou null
+export function pontoDoEndereco(rua,num){
+  if(!porNome) montar();
+  const g=porNome.get(rua); if(!g) return null;
+  const cands=[];
+  for(const v of g.vias){ const P=v.r.pts, Lt=v.acc[v.acc.length-1];
+    for(let i=0;i<P.length-1;i++){ const a=P[i], b=P[i+1], L=v.acc[i+1]-v.acc[i]; if(L<0.01) continue;
+      for(let t=0;t<=L;t+=2){ const al=v.acc[i]+t, d1=(g.D.get(v.a)??0)+al, d2=(g.D.get(v.b)??0)+(Lt-al), n=g.base+g.sgn*Math.min(d1,d2), e=Math.abs(n-num);
+        if(e>60) continue;
+        const frente=(d1<=d2)===(g.sgn>0), ux=(b[0]-a[0])/L*(frente?1:-1), uz=(b[1]-a[1])/L*(frente?1:-1);
+        cands.push({ e, x:a[0]+(b[0]-a[0])*t/L, z:a[1]+(b[1]-a[1])*t/L, ux, uz, w:v.r.w }); } } }
+  cands.sort((p,q)=>p.e-q.e);
+  const s=num%2===0?1:-1;                                           // par: direita de quem anda no sentido do número
+  for(const m of cands.slice(0,40)){
+    const nx=-m.uz*s, nz=m.ux*s, x=m.x+nx*(m.w/2+2), z=m.z+nz*(m.w/2+2), conf=endereco(x,z);
+    if(conf&&conf.rua===rua&&conf.par===(s>0)&&Math.abs(conf.num-num)<30) return { x, z, nx, nz };   // avenida de pista dupla: o lado de dentro é o canteiro
+  }
+  return null;
+}
+export const erroDaRua=rua=>{ if(!porNome) montar(); return porNome.get(rua)?.erro; };

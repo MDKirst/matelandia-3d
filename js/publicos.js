@@ -1,4 +1,4 @@
-// Bancos, polícias, prédios públicos e Parque Farroupilha (pedido do Maicon em 17/11).
+// Bancos, polícias, prédios públicos e Parque Farroupilha (pedido do Maicon em 17/11); órgãos públicos em 22/11.
 // Endereços e coordenadas: sites da PMPR e da Polícia Civil do PR + busca de lugares (Firecrawl Maps).
 // Bancos com NOME FICTÍCIO (regra do jogo); cor só lembra a da agência. Fachada é modelagem própria
 // (sem foto de rua: o Maicon pode mandar foto como referência depois).
@@ -11,6 +11,7 @@ import { scene } from './cena.js';
 import { ruas, predios } from './cidade.js';
 import { comerciosRemovidos, prediosOcultos } from './predios.js';
 import { toXZ } from './geo.js';
+import { pontoDoEndereco } from './numeracao.js';
 
 export const LUGARES = [
   // bancos (nome fictício)
@@ -28,6 +29,27 @@ export const LUGARES = [
   { ll:[-25.2416310,-53.9765800], nome:'RODOVIÁRIA',                tipo:'publico', cor:0xf3f4f6, faixa:0x0369a1, h:5.5 },
   { ll:[-25.2395370,-53.9846700], nome:'AGÊNCIA POSTAL',            tipo:'publico', cor:0xf3f4f6, faixa:0xeab308, h:5 },
   { ll:[-25.2409660,-53.9726900], nome:'CIRETRAN',                  tipo:'publico', cor:0xf3f4f6, faixa:0x15803d, h:5 },
+  // órgãos públicos (22/11): lista de telefones/endereços da Prefeitura + Google Maps (Firecrawl Maps).
+  // Sem pino confiável no mapa: `end` = rua e número, posição pela numeração métrica (numeracao.js).
+  { end:['Avenida Duque de Caxias',699], nome:'CRAS',                          tipo:'social', cor:0xf3f4f6, faixa:0x7c3aed, h:5 },
+  { end:['Avenida Duque de Caxias',482], nome:'PREVIMAT',                      tipo:'publico', cor:0xf1efe6, faixa:0x1e40af, h:5 },
+  { ll:[-25.2392313,-53.9789315], nome:'CONSELHO TUTELAR',                     tipo:'social', cor:0xf3f4f6, faixa:0xdb2777, h:5 },
+  { ll:[-25.2400115,-53.9829285], nome:'CAPS · SAÚDE MENTAL',                  tipo:'saude', cor:0xf3f4f6, faixa:0x0d9488, h:5 },
+  { ll:[-25.2389409,-53.9846680], nome:'SECRETARIA DE SAÚDE',                  tipo:'saude', cor:0xf3f4f6, faixa:0x15803d, h:6 },
+  { ll:[-25.2387939,-53.9848775], nome:'UBS CENTRAL',                          tipo:'saude', cor:0xf3f4f6, faixa:0x16a34a, h:5 },
+  { ll:[-25.2364132,-53.9734061], nome:'UBS JARDIM TROPICAL',                  tipo:'saude', cor:0xf3f4f6, faixa:0x16a34a, h:4.5 },
+  { ll:[-25.2434531,-53.9931471], nome:'UBS VILA NOVA',                        tipo:'saude', cor:0xf3f4f6, faixa:0x16a34a, h:4.5 },
+  { ll:[-25.2442157,-53.9740316], nome:'UBS VILA PAZZA',                       tipo:'saude', cor:0xf3f4f6, faixa:0x16a34a, h:4.5 },
+  { ll:[-25.2407649,-53.9813966], nome:'CASA DA CULTURA',                      tipo:'publico', cor:0xfef3c7, faixa:0xb45309, h:6 },
+  { ll:[-25.2364644,-53.9813846], nome:'SECRETARIA DE ESPORTES',               tipo:'publico', cor:0xf3f4f6, faixa:0x0284c7, h:5 },
+  { ll:[-25.2318286,-53.9709548], nome:'SECRETARIA DE AGRICULTURA',            tipo:'publico', cor:0xf3f4f6, faixa:0x65a30d, h:5 },
+  { ll:[-25.2373642,-53.9821869], nome:'ESCOLA MUNICIPAL DOM BOSCO',           tipo:'escola', cor:0xfef9c3, faixa:0xea580c, h:5 },
+  { ll:[-25.2470234,-53.9813153], nome:'ESCOLA MUNICIPAL DOM PEDRO II',        tipo:'escola', cor:0xfef9c3, faixa:0xea580c, h:5 },
+  { ll:[-25.2451558,-53.9694234], nome:'ESCOLA MUNICIPAL VOVÔ CASSIANO',       tipo:'escola', cor:0xfef9c3, faixa:0xea580c, h:5 },
+  { ll:[-25.2363225,-53.9737315], nome:'CMEI ALINE HARDT',                     tipo:'escola', cor:0xfce7f3, faixa:0xdb2777, h:4.5 },
+  { ll:[-25.2433220,-53.9928278], nome:'CMEI CANTINHO DA CRIANÇA',             tipo:'escola', cor:0xfce7f3, faixa:0xdb2777, h:4.5 },
+  { ll:[-25.2450790,-53.9900607], nome:'CMEI PROFª ERINA MARIA SIDOR',         tipo:'escola', cor:0xfce7f3, faixa:0xdb2777, h:4.5 },
+  { ll:[-25.2445269,-53.9692743], nome:'CMEI PRIMEIROS PASSOS',                tipo:'escola', cor:0xfce7f3, faixa:0xdb2777, h:4.5 },
 ];
 export const PARQUE = { ll:[-25.2393607,-53.9862555], x0:-641, x1:-531, z0:-134, z1:-25, xMata:-445 };   // xMata: a mata do satélite segue para o leste (só árvores)   // quadra entre R. Alfredo Chaves e R. N. Sra. do Caravaggio, de frente para a Av. Duque de Caxias
 
@@ -65,10 +87,16 @@ function predioDe(x,z){
   return m;
 }
 
+const usados=new Set();                                             // um prédio não leva duas placas
 function montar(L,lotes){
-  const [x,z]=toXZ(...L.ll), achado=predioDe(x,z);
+  let x,z;
+  if(L.end){ const e=pontoDoEndereco(...L.end); if(!e) return 'endereço não achado'; x=e.x+e.nx*6; z=e.z+e.nz*6; }   // 6 m para dentro do lote
+  else [x,z]=toXZ(...L.ll);
+  const achado=predioDe(x,z);
   if(!achado) return 'sem prédio';
   const {p,tirado}=achado, pts=p.pts;
+  if(usados.has(p)) return 'prédio já usado'; usados.add(p);
+  p.publico=L.nome;                                                   // casas.js: órgão público não está à venda
   if(tirado&&tocaLote(pts,lotes)) return 'virou terreno';
   const h=Math.max(L.h,(p.h||0)+0.4), k=tirado?1:1.04;            // por cima do prédio que ainda está de pé
   prisma(pts,0,h-1.1,L.cor,k); prisma(pts,h-1.1,h,L.faixa,k+0.01); prisma(pts,h,h+0.25,0xd4d4d4,k+0.02);
@@ -81,10 +109,14 @@ function montar(L,lotes){
     const px=m[0]+nx*(off+(k-1)*Math.hypot(m[0]-cx,m[1]-cz)), pz=m[1]+nz*(off+(k-1)*Math.hypot(m[0]-cx,m[1]-cz));
     const w=Math.min(L2*0.85,12), tex=texPlaca(L.nome.toUpperCase(),hex(L.faixa),L.tipo==='banco'&&L.cor===0xf6c915?'#1e3a8a':'#ffffff');
     const pl=new THREE.Mesh(new THREE.PlaneGeometry(w,1.0),new THREE.MeshBasicMaterial({map:tex})); pl.position.set(px,h-0.55,pz); pl.rotation.y=ry; placas.push(pl);
+    L.placa=[px,pz,nx,nz];                                                                          // para o teste (tools/teste/orgaos.mjs)
     caixa(2.0,2.5,0.2,px,0,pz,0x1f2937,ry);                                                       // porta de vidro escuro
     caixa(Math.min(L2*0.7,9),1.4,0.1,px+Math.cos(ry)*0,1.0,pz,0x3b5568,ry);                          // vidraça
     if(L.tipo==='banco'){ const ex=Math.cos(ry), ez=-Math.sin(ry); caixa(0.8,1.7,0.5,px+ex*2.2+nx*0.3,0,pz+ez*2.2+nz*0.3,0x374151,ry); }   // caixa eletrônico
     if(L.tipo==='policia'){ caixa(Math.min(L2*0.85,12),0.3,0.14,px,2.6,pz,L.faixa,ry); }            // faixa na marquise
+    if(L.tipo==='saude'){ const ex=Math.cos(ry), ez=-Math.sin(ry), cx2=px+ex*(w/2+0.9), cz2=pz+ez*(w/2+0.9);   // cruz verde
+      caixa(1.0,0.3,0.12,cx2,h-0.7,cz2,0x16a34a,ry); caixa(0.3,1.0,0.12,cx2,h-1.05,cz2,0x16a34a,ry); }
+    if(L.tipo==='escola'||L.tipo==='social'){ caixa(Math.min(L2*0.85,12),0.35,0.14,px,2.6,pz,L.faixa,ry); }   // marquise colorida
   }
   if(tirado) solidosTarde.push(pts);
   return 'ok';
