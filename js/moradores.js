@@ -84,7 +84,7 @@ const MORADORES = {
     cenas:[
       ['Bom dia. Osvaldo, advogado. Se tiver problema com a lei, sabe onde me achar. Se não tiver, melhor ainda.', ['Bom dia, doutor.','Cordialidade é meio caminho andado num processo.'], ['O senhor já defendeu muita gente?','Muita. Metade foi presa por bater em pedestre. Não faça isso.'], ['Advogado só complica.','!Complica quem não lê o contrato. Passar bem.']],
       ['Sabe qual é meu maior caso? Tentar descobrir quem é o dono desta cidade. Não acho registro, escritura, nada.', ['Ninguém é dono?','Alguém é. Só não assinou nada aqui dentro.'], ['Deve ser a prefeitura.','A prefeitura também não tem registro. Curioso, não?'], ['Pra que saber disso?','Porque todo mundo tem direito de saber onde mora.']],
-      ['Li as regras da cidade inteira. Tem artigos estranhíssimos. Por exemplo: "cada usuário pode ter no máximo 2 terrenos".', ['Usuário?','Pois é. Não diz "cidadão". Diz USUÁRIO.'], ['Regra é regra.','Concordo. Mas quem escreveu não mora aqui.'], ['Que tédio.','Tédio é não saber das próprias regras, jovem.']],
+      ['Li as regras da cidade inteira. Tem artigos estranhíssimos. Por exemplo: "cada usuário pode ter quantos terrenos conseguir pagar". Antes era no máximo 2.', ['Usuário?','Pois é. Não diz "cidadão". Diz USUÁRIO.'], ['Regra é regra.','Concordo. Mas quem escreveu não mora aqui.'], ['Que tédio.','Tédio é não saber das próprias regras, jovem.']],
     ],
     prova:'Achei o contrato da cidade. No rodapé: "Matelândia 3D — feito por Maicon". Nenhum de nós assinou.',
     peca:'Pelas regras, só o dono do terreno mexe nele. Então o plano não pode quebrar nada: a gente só vai e olha.',

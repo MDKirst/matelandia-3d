@@ -51,7 +51,7 @@ export async function entrarGoogle(confirmarTroca){
   catch(e){
     if(e.code==='auth/credential-already-in-use'){
       const c=A.GoogleAuthProvider.credentialFromError(e); if(!c) return 'erro';
-      const vagas=Object.keys((await F.get(ref('donos/'+nuvem.uid)).catch(()=>null))?.val()||{}).length;   // terrenos do visitante atual
+      const vagas=Object.values(ultLotes).filter(d=>d?.dono===nuvem.uid).length;   // terrenos do visitante atual
       if(vagas&&confirmarTroca&&!await confirmarTroca(vagas)) return 'cancelado';
       await A.signInWithCredential(au,c); marcarConta(au.currentUser); return 'trocou';
     }
@@ -76,26 +76,22 @@ const chave=k=>k.split(',').join('_');            // '3,4,0' → '3_4_0' (vírgu
 const celula=c=>c.split('_').join(',');
 
 // donos: cb({ id:{dono,nome} }) a cada mudança
-export function ouvirLotes(cb){ if(!nuvem.ok) return; F.onValue(ref('lotes'),s=>cb(s.val()||{}),e=>console.warn('lotes',e)); }
+let ultLotes={};   // última foto de lotes/ (para contar os terrenos do visitante ao trocar de conta)
+export function ouvirLotes(cb){ if(!nuvem.ok) return; F.onValue(ref('lotes'),s=>{ ultLotes=s.val()||{}; cb(ultLotes); },e=>console.warn('lotes',e)); }
 // blocos de um terreno: cb(Map 'i,j,k' → valor)
 export function ouvirBlocos(id, cb){
   if(!nuvem.ok) return;
   F.onValue(ref('blocos/'+id),s=>{ const m=new Map(); const v=s.val()||{}; for(const k in v) if(typeof v[k]==='number') m.set(celula(k),v[k]); cb(m); },e=>console.warn('blocos',e));
 }
-// tenta ficar com o terreno: grava o lote e ocupa uma das 2 vagas do jogador numa gravação só
-// (as regras recusam se o lote já tem dono ou se não há vaga). Devolve 'ok', 'limite' ou 'ocupado'
-export const LIMITE_TERRENOS=2;
-// admin (conta Google do criador do jogo): sem limite de terrenos. A regra do banco tem o mesmo id,
-// então isto aqui só evita a pergunta das vagas; ninguém mais passa do limite.
+// tenta ficar com o terreno (as regras recusam se o lote já tem dono). Devolve 'ok' ou 'ocupado'.
+// 17/11: SEM limite de terrenos por jogador (pedido do Maicon); antes eram 2 vagas em donos/{uid}/s1|s2.
+// admin (conta Google do criador do jogo): personagem Maicon e outras coisas só dele
 export const ADMINS=['MyJ32756ZkMyoQiaboetnmrVPgr2'];
 export const souAdmin=()=>nuvem.ok&&ADMINS.includes(nuvem.uid);
 export async function tomarLote(id, nome){
   if(!nuvem.ok) return 'ocupado';
   try{
-    if(souAdmin()){ await F.set(ref('lotes/'+id),{ dono:nuvem.uid, nome:(nome||'Visitante').slice(0,16) }); return 'ok'; }
-    const vagas=(await F.get(ref('donos/'+nuvem.uid))).val()||{};
-    const vaga=['s1','s2'].find(v=>!vagas[v]); if(!vaga) return 'limite';
-    await F.update(ref(''),{ ['lotes/'+id]:{ dono:nuvem.uid, nome:(nome||'Visitante').slice(0,16) }, [`donos/${nuvem.uid}/${vaga}`]:id });
+    await F.set(ref('lotes/'+id),{ dono:nuvem.uid, nome:(nome||'Visitante').slice(0,16) });
     return 'ok';
   }catch(e){ console.warn('tomarLote',e); return 'ocupado'; }
 }

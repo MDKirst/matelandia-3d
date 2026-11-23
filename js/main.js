@@ -249,7 +249,7 @@ function trocarVeiculo(){
 }
 
 // 🏠 Meu terreno (L / botão): a pé vai direto para a calçada da frente; dirigindo, liga a seta até lá.
-// Com 2 terrenos, cada aperto vai para o outro.
+// Com vários terrenos, cada aperto vai para o próximo.
 let idxCasa=-1, guiaCasa=null, alvoTrab=null;
 function irAoTerreno(){
   const meus=terrenosNoMapa().meus;

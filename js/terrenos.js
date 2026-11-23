@@ -18,7 +18,7 @@ import { altura } from './relevo.js';
 import { LX0, LZ0, LX1, LZ1 } from './geo.js';
 import { telaTex, texCache } from './canvastex.js';
 import { lerJogador, gravarJogador } from './nuvem.js';
-import { nuvem, conectarNuvem, aoTrocarConta, ouvirLotes, ouvirBlocos, tomarLote, LIMITE_TERRENOS, porBloco, tirarBloco, subirBlocos } from './nuvem.js';
+import { nuvem, conectarNuvem, aoTrocarConta, ouvirLotes, ouvirBlocos, tomarLote, porBloco, tirarBloco, subirBlocos } from './nuvem.js';
 
 const W=12, D=24, ALT=20;                          // largura (frente), fundo, altura máxima em blocos
 const COM_CALCADA=new Set(['primary','secondary','tertiary','residential','unclassified','living_street']);
@@ -233,7 +233,6 @@ export async function comprar(x,z){
   if(salvo.saldo<l.preco){ avisar(`Saldo insuficiente (${fmt(salvo.saldo)})`); return true; }
   if(comprando) return true;
   if(nuvem.ok){ comprando=true; avisar('Comprando…'); const r=await tomarLote(l.id, meuNome()); comprando=false;
-    if(r==='limite'){ avisar(`Cada jogador pode ter só ${LIMITE_TERRENOS} terrenos`); return true; }
     if(r!=='ok'){ avisar('Alguém comprou antes de você!'); return true; }
     l.dono=nuvem.uid; l.donoNome=meuNome(); }
   salvo.saldo-=l.preco; salvo.terrenos[l.id]={blocos:[]}; salvar(); hudSaldo(); trocarPlaca(l);
