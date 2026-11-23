@@ -160,6 +160,22 @@ function aPe(dt){
 }
 
 let distAPe=cam.dist, volante=0;
+// empinar (23/11, pedido do Maicon): na moto, dois toques rápidos no acelerar (W/↑ ou joystick para cima) levantam a
+// roda da frente enquanto segura o acelerar; gira em volta da roda de trás. Solta, freia, vira muito ou passa de 4 s: desce.
+const EMPINA_MAX=0.5, EMPINA_DURA=4;
+const empina={ ang:0, ativo:false, t:0 };
+function atualizarEmpina(dt,c,acel,giro){
+  const apertou=acel>0.5;
+  if(pedido.empinar){                                                          // toque duplo (controles.js); velho = era de antes de subir na moto
+    if(c.tipo.moto&&performance.now()/1000-pedido.empinar<2&&c.v>-0.5){ empina.ativo=true; empina.t=0; if(!empina.aviso){ empina.aviso=1; avisarTerreno('🏍️ Empinou! Segure o acelerar'); } }
+    pedido.empinar=0; }
+  empina.t+=dt;
+  if(!c.tipo.moto||!apertou||tecla.Space||Math.abs(giro)>0.8||empina.t>EMPINA_DURA||c.quebrado) empina.ativo=false;
+  const alvoA=empina.ativo?EMPINA_MAX*(0.85+0.15*Math.sin(empina.t*3)):0;       // balança um pouco lá em cima
+  empina.ang+=(alvoA-empina.ang)*Math.min(1,dt*(empina.ativo?4:6));
+  if(empina.ang<0.002) empina.ang=0;
+  if(empina.ang>0.25) conquista('empinou');
+}
 function aoVolante(dt){
   const c=veic.dirigindo;
   let acel=(tecla.KeyW||tecla.ArrowUp?1:0)-(tecla.KeyS||tecla.ArrowDown?1:0);
@@ -184,6 +200,9 @@ function aoVolante(dt){
   // quebra-mola: eixo da frente e de trás sobem; quanto mais rápido, maior o pulo
   { const [fx,fz]=frente(c.h), a=c.comp*0.35, yf=alturaLombada(p.x+fx*a,p.z+fz*a), yt=alturaLombada(p.x-fx*a,p.z-fz*a), k=1+Math.max(0,Math.abs(c.v)-6)*0.25;
     p.y=(yf+yt)/2*k; c.obj.rotation.x=Math.atan2((yf-yt)*k,c.comp); }
+  atualizarEmpina(dt,c,acel,giro);
+  if(empina.ang>0){ const r=c.comp*0.36;                                          // gira em volta da roda de trás (frente = -Z, trás = +Z)
+    c.obj.rotation.x+=empina.ang; p.y+=r*Math.sin(empina.ang); }
   if(c.tipo.moto) sentar(jogador,c.obj,false,c.assento);                                      // piloto no banco (anda e inclina com a moto)
   // câmera vem para trás do veículo quando ele anda (parado, dá para olhar em volta)
   if(Math.abs(c.v)>0.6){ let d=c.h-cam.yaw; d=Math.atan2(Math.sin(d),Math.cos(d)); cam.yaw+=d*Math.min(1,dt*2.5); }
@@ -279,7 +298,7 @@ function trocarVeiculo(){
       const r=tirarDoTransito(t); c=veic.adotar(r);
       if(r.policia) crime(2,'Roubo de viatura'); else avisarTerreno(`🔑 Você pegou ${c.tipo.nome==='SUV'?'o':'a'} ${c.tipo.nome} da rua`); }
     efeito.ultimo=c;
-    distAPe=cam.dist; entrar(c); jogador.visible=!!c.tipo.moto; animar('parado');
+    distAPe=cam.dist; entrar(c); pedido.empinar=0;   // toque duplo dado a pé não vale na moto jogador.visible=!!c.tipo.moto; animar('parado');
     if(c.tipo.moto){ c.obj.rotation.z=0; sentar(jogador,c.obj,true,c.assento); } conquista('motorista'); colecionar('frota','veic',c.tipo.id,5);
     $('velo').style.display='block';
   }
@@ -456,4 +475,4 @@ carregarCidade().then(async()=>{
   pronto(); });
 quadro();
 // gancho para testes no console
-window.__jogo={prender,detido:()=>detido,vida,golpe,golpear,jogador,ruas,predios,tecla,frota,veic,pedido,lim:[LX0,LZ0,LX1,LZ1],cam:(d,p,y)=>{cam.dist=d;cam.pitch=p;cam.yaw=y;}};
+window.__jogo={empina,prender,detido:()=>detido,vida,golpe,golpear,jogador,ruas,predios,tecla,frota,veic,pedido,lim:[LX0,LZ0,LX1,LZ1],cam:(d,p,y)=>{cam.dist=d;cam.pitch=p;cam.yaw=y;}};

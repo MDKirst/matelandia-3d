@@ -12,6 +12,10 @@ export const cam={ yaw:0.6, pitch:0.42, dist:9 };  // câmera orbital atrás do 
 export const toque={ joy:null };                    // joystick virtual (lado esquerdo da tela no celular)
 export const pedido={ usar:false, acao:null };      // usar: entrar/sair do veículo (E); acao: interagir com pedestre
 const dedos={};
+// toque duplo no acelerar (empinar a moto, main.js): detectado no próprio evento, não por quadro — em celular
+// lento os dois toques podiam cair entre dois quadros e sumir. pedido.empinar = hora (s) do 2º toque.
+let ultAcel=-9, joyCima=false;
+function toqueAcel(){ const t=performance.now()/1000; if(t-ultAcel<0.45){ pedido.empinar=t; ultAcel=-9; } else ultAcel=t; }
 const digitando=()=>document.activeElement&&document.activeElement.tagName==='INPUT';
 
 // janela aberta (negócio, trabalhos, jornal, conquistas, foto): Esc fecha só ela; as outras teclas esperam
@@ -25,6 +29,7 @@ addEventListener('keydown',e=>{
   if(digitando()) return;
   tecla[e.code]=true;
   if((e.code==='KeyE'||e.code==='KeyF')&&!e.repeat) pedido.usar=true;
+  if((e.code==='KeyW'||e.code==='ArrowUp')&&!e.repeat) toqueAcel();
   const ACOES={KeyT:'conversar',KeyG:'cumprimentar',KeyH:'seguir',KeyX:'assustar'};
   if(ACOES[e.code]&&!e.repeat) pedido.acao=ACOES[e.code];
   if(e.code==='KeyJ'&&!e.repeat) pedido.golpe='soco';
@@ -56,12 +61,13 @@ cv.addEventListener('pointerdown',e=>{
 });
 cv.addEventListener('pointermove',e=>{
   const joy=toque.joy;
-  if(joy&&e.pointerId===joy.id){ const c=v=>Math.max(-1,Math.min(1,v/55)); joy.x=c(e.clientX-joy.x0); joy.y=c(e.clientY-joy.y0); desenharJoy(); return; }
+  if(joy&&e.pointerId===joy.id){ const c=v=>Math.max(-1,Math.min(1,v/55)); joy.x=c(e.clientX-joy.x0); joy.y=c(e.clientY-joy.y0);
+    const cima=joy.y<-0.5; if(cima&&!joyCima) toqueAcel(); joyCima=cima; desenharJoy(); return; }
   const d=dedos[e.pointerId]; if(!d) return;
   cam.yaw-=(e.clientX-d.x)*0.006; cam.pitch=Math.max(0.06,Math.min(1.45,cam.pitch+(e.clientY-d.y)*0.005));
   d.x=e.clientX; d.y=e.clientY;
 });
-const soltar=e=>{ if(toque.joy&&e.pointerId===toque.joy.id){ toque.joy=null; desenharJoy(); } delete dedos[e.pointerId]; };
+const soltar=e=>{ if(toque.joy&&e.pointerId===toque.joy.id){ toque.joy=null; joyCima=false; desenharJoy(); } delete dedos[e.pointerId]; };
 // joystick visível (celular): descansa no canto de baixo à esquerda; vai para onde o polegar encosta
 if(matchMedia('(pointer:coarse)').matches) document.body.classList.add('toque');
 function desenharJoy(){

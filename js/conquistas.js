@@ -7,6 +7,7 @@ export const LISTA = [
   ['motorista',   '🚗', 'Primeira volta',          'Entrou num veículo'],
   ['frota',       '🔑', 'Colecionador de chaves',  'Dirigiu 5 veículos diferentes'],
   ['veloz',       '💨', 'Pé de chumbo',            'Passou de 100 km/h'],
+  ['empinou',     '🏍️', 'Grau',                    'Empinou a moto (toque duplo no acelerar)'],
   ['entregador',  '📦', 'Primeira entrega',        'Fez uma entrega'],
   ['entregador10','🚚', 'Entregador do mês',       'Fez 10 entregas'],
   ['proprietario','🏠', 'Dono do pedaço',          'Comprou um terreno'],
