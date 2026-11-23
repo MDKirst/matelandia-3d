@@ -40,7 +40,7 @@ export const LUGARES = [
   { ll:[-25.2364132,-53.9734061], nome:'UBS JARDIM TROPICAL',                  tipo:'saude', cor:0xf3f4f6, faixa:0x16a34a, h:4.5 },
   { ll:[-25.2434531,-53.9931471], nome:'UBS VILA NOVA',                        tipo:'saude', cor:0xf3f4f6, faixa:0x16a34a, h:4.5 },
   { ll:[-25.2442157,-53.9740316], nome:'UBS VILA PAZZA',                       tipo:'saude', cor:0xf3f4f6, faixa:0x16a34a, h:4.5 },
-  { ll:[-25.2407649,-53.9813966], nome:'CASA DA CULTURA',                      tipo:'publico', cor:0xfef3c7, faixa:0xb45309, h:6, totem:true },   // prédio virou terreno de jogador: só placa na calçada
+  { xz:[-14,101], nome:'CASA DA CULTURA',                              tipo:'publico', cor:0xfef3c7, faixa:0xb45309, h:6, totem:true },   // o prédio de verdade (nº 1108) virou bar e oficina de jogadores: vai para o vizinho livre na mesma avenida (casa -14_101); se um dia faltar, totem na calçada
   { ll:[-25.2364644,-53.9813846], nome:'SECRETARIA DE ESPORTES',               tipo:'publico', cor:0xf3f4f6, faixa:0x0284c7, h:5 },
   { ll:[-25.2318286,-53.9709548], nome:'SECRETARIA DE AGRICULTURA',            tipo:'publico', cor:0xf3f4f6, faixa:0x65a30d, h:5 },
   { ll:[-25.2373642,-53.9821869], nome:'ESCOLA MUNICIPAL DOM BOSCO',           tipo:'escola', cor:0xfef9c3, faixa:0xea580c, h:5 },
@@ -108,6 +108,7 @@ const usados=new Set();                                             // um prédi
 function montar(L,lotes){
   let x,z;
   if(L.end){ const e=pontoDoEndereco(...L.end); if(!e) return 'endereço não achado'; x=e.x+e.nx*6; z=e.z+e.nz*6; }   // 6 m para dentro do lote
+  else if(L.xz) [x,z]=L.xz;                                          // ponto no mapa do jogo (prédio escolhido à mão)
   else [x,z]=toXZ(...L.ll);
   const achado=predioDe(x,z);
   if(!achado) return 'sem prédio';
