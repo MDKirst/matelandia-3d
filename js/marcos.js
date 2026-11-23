@@ -1,5 +1,6 @@
 // Marcos modelados à mão (em código, formas simples), no lugar do contorno genérico:
-// Igreja Matriz, Colégio Estadual Euclides da Cunha, Praça Municipal e Praça Benjamin Luiz Biazus.
+// Igreja Matriz, Colégio Estadual Euclides da Cunha, Praça Municipal, Praça Benjamin Luiz Biazus, Prefeitura,
+// Cemitério Municipal e Hospital e Maternidade Padre Tezza.
 // Posição: OpenStreetMap; planta e medidas: vista de cima do satélite (sem Street View),
 // então fachadas e alturas são interpretação, não cópia fiel.
 // Coordenadas em metros locais (x leste, z sul), as mesmas do resto do jogo.
@@ -17,6 +18,9 @@ const PREFEITURA = [[255.8,-22.1],[247.7,40.0],[289.1,44.4],[294.6,-19.3]];
 // Cemitério Municipal: quadra entre R. Souza Naves (N), R. Munhoz da Rocha (L), Av. Vital Brasil (S) e R. Lino Dal Pozzo (O),
 // pelos cruzamentos do OSM. Os túmulos vinham do Overture como dezenas de "casinhas" com janela (21/11, fotos do Maicon)
 const CEMITERIO = [[-1297,418],[-1178,425],[-1189,545],[-1304,532]];   // OSM amenity=townhall (contorno do terreno inteiro)
+// Hospital e Maternidade Padre Tezza (Av. Duque de Caxias, 1768, esquina R. Alfredo Chaves): contorno do Overture
+// (prédio comprido de 614 m² de frente para a avenida), 1 m de folga
+const HOSPITAL = [[-725.6,-46.2],[-672,-42.5],[-671.1,-56.6],[-724.7,-60.5]];
 // prédios do OSM que o marco substitui mas que os terrenos continuam enxergando (para nenhum terreno mudar de lugar)
 export const ocultosMarcos = [];
 
@@ -27,6 +31,7 @@ function dentroPoly(x,z,pts){ let c=false; for(let i=0,j=pts.length-1;i<pts.leng
 export function substituidoPorMarco(x,z,fonte,A){
   if(dentroPoly(x,z,PREFEITURA)) return fonte==='osm'?'oculto':true;
   if(dentroPoly(x,z,CEMITERIO)) return fonte==='osm'?'oculto':true;
+  if(dentroPoly(x,z,HOSPITAL)) return fonte==='osm'?'oculto':true;
   if(Math.hypot(x-IGREJA.c[0],z-IGREJA.c[1])<IGREJA.r+4) return true;
   if(x>=LOTE_COLEGIO[0]&&x<=LOTE_COLEGIO[1]&&z>=LOTE_COLEGIO[2]&&z<=LOTE_COLEGIO[3]) return true;
   if(dentroPoly(x,z,PRACA_MUNICIPAL)) return fonte==='muro' || (fonte==='overture' && A<150);   // quiosques/palco saem; quadra coberta fica; praça sem muro
@@ -269,6 +274,63 @@ function placa(l1,l2,x,y,z){
   m.position.set(x,y,z); placas.push(m);
 }
 
+/* ───────── Hospital e Maternidade Padre Tezza (22/11, foto do Google Maps enviada pelo Maicon) ─────────
+   Bloco comprido de 3 andares, branco-gelo com barrado cinza, fileiras de janelas com grade; uma parte de 4 andares
+   com grade de barras no telhado; entrada com marquise e a placa com o logo (cruz vermelha no círculo);
+   muro de cobogó branco e alambrado verde na calçada; árvores na frente. */
+function texHospital(){
+  const cv=document.createElement('canvas'); cv.width=1024; cv.height=256; const k=cv.getContext('2d');
+  k.fillStyle='#ece9e2'; k.fillRect(0,0,1024,256); k.strokeStyle='#b9b4aa'; k.lineWidth=8; k.strokeRect(4,4,1016,248);
+  k.strokeStyle='#8f1d22'; k.lineWidth=14; k.beginPath(); k.arc(128,128,92,0,Math.PI*2); k.stroke();          // logo: círculo com cruz
+  k.fillStyle='#8f1d22'; k.fillRect(116,52,24,152); k.fillRect(76,92,104,24);
+  k.fillStyle='#3a3a3a'; k.textAlign='left'; k.font='600 58px Georgia,serif'; k.fillText('Hospital e Maternidade',250,100);
+  k.fillStyle='#8f1d22'; k.font='bold 92px Georgia,serif'; k.fillText('PADRE TEZZA',246,196);
+  const t=new THREE.CanvasTexture(cv); t.colorSpace=THREE.SRGBColorSpace; t.anisotropy=4; return t;
+}
+function hospital(){
+  const A=[-724.6,-47.3], B=[-673,-43.6], L=Math.hypot(B[0]-A[0],B[1]-A[1]), t=[(B[0]-A[0])/L,(B[1]-A[1])/L], n=[t[1],-t[0]];   // n: da avenida para dentro
+  const ry=-Math.atan2(t[1],t[0]), W=(u,v)=>[A[0]+t[0]*u+n[0]*v, A[1]+t[1]*u+n[1]*v];
+  const bx=(u0,u1,v0,v1,y0,y1,c)=>{ const [x,z]=W((u0+u1)/2,(v0+v1)/2); caixa(Math.abs(u1-u0),y1-y0,Math.abs(v1-v0),x,y0,z,c,ry); };
+  const PAREDE=0xeeebe3, CLARO=0xf7f6f1, BARRA=0xb3ad9f, FRISO=0xd9d3c5, VIDRO=0x3a4a5c, GRADE=0xe4e4e0, D=12.4, AND=3.3, H=AND*3+0.9;
+  bx(0,L,0,D,0,H,PAREDE);                                                           // bloco
+  bx(-0.06,L+0.06,-0.06,D+0.06,0,0.85,BARRA);                                       // barrado
+  for(let f=1;f<3;f++) bx(-0.05,L+0.05,-0.05,D+0.05,f*AND-0.08,f*AND+0.1,FRISO);   // frisos entre andares
+  bx(-0.08,L+0.08,-0.08,D+0.08,H-0.25,H,CLARO);                                     // platibanda
+  const ENT=[27,33];                                                                // vão da entrada
+  const janela=(u,y,v,fora)=>{ bx(u-0.8,u+0.8,v-fora*0.1,v,y,y+1.35,VIDRO);       // fora: 1 = frente (v=0), -1 = fundos (v=D)
+    for(let b=-0.6;b<=0.61;b+=0.3) bx(u+b-0.03,u+b+0.03,v-fora*0.16,v-fora*0.1,y,y+1.35,GRADE);   // grade
+    bx(u-0.9,u+0.9,v-fora*0.2,v,y-0.1,y,CLARO); };                                  // peitoril
+  for(let f=0;f<3;f++){ const y=f*AND+1.05;
+    for(let u=2.2;u<L-1.5;u+=3.05){ if(f<2&&u>ENT[0]-1&&u<ENT[1]+1) continue; janela(u,y,0,1); janela(u,y,D,-1); }
+    for(const v of [3,6.2,9.4]){ for(const [uu,s] of [[0,1],[L,-1]]){ const [x,z]=W(uu,v); caixa(0.12,1.35,1.4,x-t[0]*s*0.05,y,z-t[1]*s*0.05,VIDRO,ry); } } }
+  // parte de 4 andares, perto da esquina com a Alfredo Chaves, com grade de barras no telhado e caixa d'água
+  const T0=L-21, T1=L-9, H2=H+AND;
+  bx(T0,T1,0.8,D-1.5,H-0.2,H2,PAREDE); bx(T0-0.08,T1+0.08,0.72,D-1.42,H2-0.25,H2,CLARO);
+  for(let u=T0+1.6;u<T1-0.8;u+=3.05) janela(u,H+1.05,0.8,1);
+  for(let u=T0;u<=T1+0.01;u+=0.25){ bx(u-0.025,u+0.025,0.75,0.8,H2,H2+1.4,0xd8d8d2); bx(u-0.025,u+0.025,D-1.5,D-1.45,H2,H2+1.4,0xd8d8d2); }
+  for(let v=0.8;v<=D-1.5+0.01;v+=0.25) for(const u of [T0,T1]) bx(u-0.025,u+0.025,v-0.025,v+0.025,H2,H2+1.4,0xd8d8d2);
+  bx(T0,T1,0.75,0.82,H2+1.4,H2+1.48,0xd8d8d2); bx(T0,T1,D-1.52,D-1.45,H2+1.4,H2+1.48,0xd8d8d2);
+  bx(T0+3,T0+7,4,8,H2,H2+2.4,CLARO);                                                // caixa d'água
+  // entrada: portas de vidro, marquise com 2 pilares e rampa
+  bx(ENT[0]+1,ENT[1]-1,-0.12,0,0,2.7,0x26323f); bx(ENT[0]-0.5,ENT[1]+0.5,-3.2,0,2.9,3.15,CLARO);
+  for(const u of [ENT[0]-0.2,ENT[1]+0.2]) bx(u-0.15,u+0.15,-3.05,-2.75,0,2.9,CLARO);
+  bx(ENT[0]-0.5,ENT[1]+0.5,-3.2,0,0,0.12,0xbab3a2);
+  // placa com o logo, na fachada acima da marquise
+  { const [x,z]=W((ENT[0]+ENT[1])/2,-0.14), m=new THREE.Mesh(new THREE.PlaneGeometry(7.4,1.85),new THREE.MeshBasicMaterial({map:texHospital()}));
+    m.position.set(x,4.25,z); m.rotation.y=Math.atan2(-n[0],-n[1]); placas.push(m); }
+  // muro de cobogó (do lado oeste da entrada) e alambrado verde até o fim
+  const CV=-2.4, cob=[6,ENT[0]-1];
+  bx(cob[0],cob[1],CV-0.1,CV+0.1,0,1.9,CLARO);
+  for(let u=cob[0]+0.25;u<cob[1]-0.1;u+=0.42) for(let y=0.35;y<1.75;y+=0.42){ bx(u-0.13,u+0.13,CV-0.12,CV-0.1,y,y+0.26,0x6f7368); bx(u-0.13,u+0.13,CV+0.1,CV+0.12,y,y+0.26,0x6f7368); }
+  bx(0,cob[0],CV-0.04,CV+0.04,0,0.3,CLARO);
+  for(let u=0;u<=cob[0]+0.01;u+=2.5) bx(u-0.05,u+0.05,CV-0.05,CV+0.05,0,1.9,0x2f6b3a);
+  bx(0,cob[0],CV-0.015,CV+0.015,0.3,1.85,0x3f8a4c); bx(0,cob[0],CV-0.04,CV+0.04,1.85,1.92,0x2f6b3a);
+  for(const [u0,u1] of [[0,cob[1]]]){ const [x,z]=W((u0+u1)/2,CV); retGirado(x,z,u1-u0,0.3,ry); }
+  // árvores na calçada e na esquina
+  for(const [u,v] of [[L-3,-3.6],[L+6,-1],[3,-3.6]]){ const [x,z]=W(u,v); arvore(x,z,0.9); }
+  const [cx,cz]=W(L/2,D/2); retGirado(cx,cz,L,D,ry);
+}
+
 /* ───────── Praça Municipal: oval, anfiteatro e concha acústica ───────── */
 function pracaMunicipal(ruaLonge){
   const C=[-55,-34], RX=28, RZ=40;
@@ -408,7 +470,7 @@ function cemiterio(){
 }
 
 export function construirMarcos(predios, ruaLonge){
-  igreja(); colegio(ruaLonge); pracaMunicipal(ruaLonge); pracaBiazus(ruaLonge); prefeitura(); cemiterio();
+  igreja(); colegio(ruaLonge); pracaMunicipal(ruaLonge); pracaBiazus(ruaLonge); prefeitura(); cemiterio(); hospital();
   const deRua=arvoresDeRua(predios, ruaLonge);
   const g=mergeGeometries(geos,false); geos.forEach(x=>x.dispose());
   if(g) scene.add(new THREE.Mesh(g,new THREE.MeshLambertMaterial({vertexColors:true,side:THREE.DoubleSide})));
