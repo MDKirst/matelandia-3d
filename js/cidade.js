@@ -91,7 +91,8 @@ function construir(elements){
       const w=LARGURA[t.highway], pe=A_PE.has(t.highway);
       fita(pts,w,pe?P:R);
       if(!pe) vias.push({pts,w,tipo:t.highway});
-      ruas.push({nome:t.name||'',tipo:t.highway,pts,bb:bbox(pts),w,pe,mao:t.oneway==='yes'||t.highway==='motorway'?1:t.oneway==='-1'?-1:0}); // mao: 1/-1 = mão única
+      // BR-277 (23/11, Maicon: "a maior pista no meio da cidade é a BR 277"): no OSM ela não tem nome, só ref → usa o ref
+      ruas.push({nome:t.name||(t.highway.startsWith('motorway')&&t.ref?t.ref.split(';')[0]:''),tipo:t.highway,pts,bb:bbox(pts),w,pe,mao:t.oneway==='yes'||t.highway==='motorway'?1:t.oneway==='-1'?-1:0}); // mao: 1/-1 = mão única
     }
   }
   // cruzamentos = vértices compartilhados por duas vias ou mais

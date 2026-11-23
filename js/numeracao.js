@@ -35,7 +35,7 @@ let porNome=null;                                         // nome → { vias:[{r
 function montar(){
   porNome=new Map();
   for(const r of ruas){
-    if(!r.nome||r.pe||r.pts.length<2) continue;
+    if(!r.nome||r.pe||r.pts.length<2||r.tipo.startsWith('motorway')) continue;   // BR-277: sem numeração (não há âncora)
     let g=porNome.get(r.nome); if(!g) porNome.set(r.nome,g={vias:[],D:new Map(),sgn:1,base:0});
     const acc=[0]; for(let i=1;i<r.pts.length;i++) acc.push(acc[i-1]+Math.hypot(r.pts[i][0]-r.pts[i-1][0],r.pts[i][1]-r.pts[i-1][1]));
     g.vias.push({r,acc,pa:r.pts[0],pb:r.pts[r.pts.length-1]});

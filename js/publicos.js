@@ -90,7 +90,7 @@ function predioDe(x,z){
 // totem na calçada em frente ao ponto (quando o prédio é terreno de jogador): dois postes e a placa virada para a rua
 function totem(L,x,z){
   let m=null;
-  for(const r of ruas){ if(r.pe||!r.nome) continue; const b=r.bb; if(x<b[0]-40||x>b[2]+40||z<b[1]-40||z>b[3]+40) continue;
+  for(const r of ruas){ if(r.pe||!r.nome||r.tipo.startsWith('motorway')) continue; const b=r.bb; if(x<b[0]-40||x>b[2]+40||z<b[1]-40||z>b[3]+40) continue;
     for(let i=0;i<r.pts.length-1;i++){ const a=r.pts[i], q=r.pts[i+1], vx=q[0]-a[0], vz=q[1]-a[1]; let t=((x-a[0])*vx+(z-a[1])*vz)/(vx*vx+vz*vz||1); t=Math.max(0,Math.min(1,t));
       const px=a[0]+vx*t, pz=a[1]+vz*t, d=Math.hypot(x-px,z-pz)-r.w/2; if(!m||d<m.d) m={d,px,pz,w:r.w}; } }
   if(!m) return 'sem rua';

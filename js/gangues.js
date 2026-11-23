@@ -37,7 +37,7 @@ const dist=(a,b,x,z)=>Math.hypot(a-x,b-z);
 // esquina de encontro: o vértice de rua (com nome) mais perto do centro do bairro
 function esquina(c){
   let m=null, md=1e9;
-  for(const r of ruas){ if(r.pe||!r.nome) continue; for(const p of r.pts){ const d=dist(p[0],p[1],c[0],c[1]); if(d<md){ md=d; m=p; } } }
+  for(const r of ruas){ if(r.pe||!r.nome||r.tipo.startsWith('motorway')) continue; for(const p of r.pts){ const d=dist(p[0],p[1],c[0],c[1]); if(d<md){ md=d; m=p; } } }
   return m?pontoLivre(m[0]+4,m[1]+4):c;
 }
 
