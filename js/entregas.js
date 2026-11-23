@@ -9,6 +9,7 @@ import { ganhar, fmt, lotes } from './terrenos.js';
 import { nomeDoNegocio } from './negocios.js';
 import { ruas } from './cidade.js';
 import { somEntrega } from './som.js';
+import { endereco, textoEndereco } from './numeracao.js';
 
 const PAGA_VEICULO={ suv:1.0, picape:1.2, cavalo:1.6, chopper:0.85, trail:0.85, urbana:0.85, hatch:0.9, sedan:0.95 };   // moto leva menos carga
 export const corrida={ etapa:null };   // etapa: null | 'buscar' | 'levar'
@@ -22,17 +23,20 @@ anel.position.y=0.08; anel.visible=false; scene.add(anel);
 
 function sortearLoja(x,z,dmin,dmax,evita){
   // negócio de jogador na faixa de distância (na calçada em frente)
-  const negs=lotes.filter(l=>l.negocio).map(l=>({ id:l.id, x:l.A[0]+l.t[0]*6-l.n[0]*2, z:l.A[1]+l.t[1]*6-l.n[1]*2, nome:nomeDoNegocio(l) }))
+  const negs=lotes.filter(l=>l.negocio).map(l=>{ const x=l.A[0]+l.t[0]*6-l.n[0]*2, z=l.A[1]+l.t[1]*6-l.n[1]*2, e=endereco(x,z);
+      return { id:l.id, x, z, nome:nomeDoNegocio(l)+(e?' · '+textoEndereco(e):'') }; })
     .filter(p=>{ const d=Math.hypot(p.x-x,p.z-z); return d>=dmin&&d<=dmax&&p.id!==evita?.id; });
   if(negs.length&&Math.random()<0.7) return negs[(Math.random()*negs.length)|0];
-  // endereço: ponto na beira de uma rua com nome, número pela posição
+  // endereço: ponto na beira de uma rua com nome, número da numeração métrica (numeracao.js)
   const vias=ruas.filter(r=>r.nome&&!r.pe&&r.tipo!=='motorway'&&r.pts.length>1);
   for(let t=0;t<80&&vias.length;t++){
     const r=vias[(Math.random()*vias.length)|0], i=(Math.random()*(r.pts.length-1))|0, a=r.pts[i], b=r.pts[i+1], s=Math.random();
-    const dx=b[0]-a[0], dz=b[1]-a[1], L=Math.hypot(dx,dz)||1, off=r.w/2+1.2, px=a[0]+dx*s-dz/L*off, pz=a[1]+dz*s+dx/L*off, d=Math.hypot(px-x,pz-z);
+    const lado=Math.random()<0.5?1:-1;                                              // casa de um lado ou do outro
+    const dx=b[0]-a[0], dz=b[1]-a[1], L=Math.hypot(dx,dz)||1, off=(r.w/2+1.2)*lado, px=a[0]+dx*s-dz/L*off, pz=a[1]+dz*s+dx/L*off, d=Math.hypot(px-x,pz-z);
     if(d<dmin||d>dmax) continue;
-    const num=10+Math.abs(Math.round(px*3.1+pz*7.3))%1900;
-    return { x:px, z:pz, nome:`${r.nome}, ${num}` };
+    const e=endereco(px,pz);                                                         // numeração métrica (par à direita, ímpar à esquerda)
+    if(!e) continue;
+    return { x:px, z:pz, nome:textoEndereco(e) };
   }
   return negs[0]||null;
 }
