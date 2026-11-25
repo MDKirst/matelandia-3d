@@ -16,6 +16,7 @@ import { sortearPersona } from './personas.js';
 import { ehComercio } from './comercio.js';
 import { grupoDe, movimento, peso, nomeGrupo, perfil, PRACA, saudacao, FALA_LUGAR } from './rotina.js';
 import { abrirMorador, atualizarMoradores } from './moradores.js';
+import { comentarioRapido } from './conversa.js';
 import { ALCANCE, naMira } from './tiro.js';
 import { iniciarCaes, atualizarCaes } from './caes.js';
 import { iniciarAnimais, atualizarAnimais } from './animais.js';
@@ -345,7 +346,7 @@ export function interagir(acao, jx, jz){
   const parar=(t,gesto)=>{ if(p.modo!=='papo'&&p.modo!=='seguir') p.antes=p.modo==='vitrine'||p.modo==='fugir'||p.modo==='voltar'||p.modo==='entrar'?'andar':p.modo; p.modo='papo'; p.t=p.tMax=t; p.gesto=gesto; };
   const h=horaJogo(), doLugar=p.lugar?FALA_LUGAR[p.lugar.praca?'praca':nomeGrupo(p.lugar)]:(h<5||h>=23?FALA_LUGAR.madrugada:null);
   if(acao==='conversar'){ const seguia=p.modo==='seguir'; parar(5,false); if(!abrirMorador(p,falar)) falar(p,sorteia(doLugar&&sorte()<0.6?doLugar:sorte()<0.45?p.persona.falas:FALAS.conversa),4.5); if(seguia) p.antes='seguir'; }
-  else if(acao==='cumprimentar'){ const seguia=p.modo==='seguir'; parar(3,true); falar(p,sorteia(sorte()<0.6?saudacao(h):FALAS.oi),2.5); if(seguia) p.antes='seguir'; }
+  else if(acao==='cumprimentar'){ const seguia=p.modo==='seguir'; parar(3,true); const viu=comentarioRapido(p.modelo?.nome); falar(p,viu||sorteia(sorte()<0.6?saudacao(h):FALAS.oi),viu?4:2.5); if(seguia) p.antes='seguir'; }
   else if(acao==='seguir'){
     if(p.modo==='seguir'||(p.modo==='papo'&&p.antes==='seguir')){ p.modo=p.r?'voltar':'conversa'; p.t=8; falar(p,sorteia(FALAS.tchau)); }
     else if(gente.filter(o=>o.modo==='seguir'||(o.modo==='papo'&&o.antes==='seguir')).length>=3) falar(p,FALAS.cheio[0]);

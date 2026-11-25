@@ -45,6 +45,7 @@ function hud(){ $('procurado').textContent=policia.estrelas?'★'.repeat(policia
 
 // algo grave aconteceu perto (atropelamento, batida forte): sobe o nível de procurado
 export function crime(peso=1, motivo=''){
+  dispatchEvent(new CustomEvent('matelandia:crime',{detail:{peso,motivo}}));   // moradores comentam (conversa.js)
   const antes=policia.estrelas; policia.estrelas=Math.min(MAX_ESTRELAS,policia.estrelas+peso); semVer=0; fuga=0; hud();
   if(!antes) avisar(motivo?`${motivo} · a polícia está vindo!`:'A polícia está vindo!');
   else if(policia.estrelas>=4&&antes<4) avisar('🚁 Helicóptero da polícia no ar!');

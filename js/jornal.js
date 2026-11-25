@@ -37,6 +37,7 @@ export function noticiar(tipo, extra={}){
 }
 
 let lista=[], vistos=null;
+export const noticiasRecentes=(n=5)=>lista.slice(-n).reverse().map(manchete).filter(Boolean);   // fofoca dos moradores (conversa.js)
 const ha=t=>{ const m=Math.max(0,Math.round((Date.now()-t)/60000)); return m<1?'agora':m<60?`há ${m} min`:m<1440?`há ${Math.round(m/60)} h`:`há ${Math.round(m/1440)} d`; };
 function abrir(){
   const g=$('jornalLista'); g.replaceChildren();

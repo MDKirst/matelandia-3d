@@ -8,6 +8,7 @@
 import { $ } from './cena.js';
 import { horaJogo } from './ceu.js';
 import { ganhar } from './conquistas.js';
+import { papoLivre, atualizarFavor } from './conversa.js';
 
 const CHAVE = 'matelandia3d.moradores', PECAS_PRECISA = 7, ESPERA_MS = 90e3;
 const PREFEITURA = [271, 11], RAIO_PREF = 45;
@@ -285,7 +286,7 @@ function mostrar(titulo, sub, cor, texto, botoes, dica){
   const esq=document.createElement('span'); esq.append(t,s); const c=document.createElement('span'); c.className='cor'; c.textContent=cor||''; q.append(esq,c);
   const p=document.createElement('p'); p.textContent=texto; d.append(q,p);
   botoes.forEach(([txt,fn],i)=>{ const b=document.createElement('button'); b.textContent=`${i+1}. ${txt}`; b.onclick=()=>{ b.blur(); fn(); }; d.append(b); });
-  const k=document.createElement('small'); k.className='dica'; k.textContent=dica||(matchMedia('(pointer:coarse)').matches?'Toque numa resposta.':'Responda com 1, 2 ou 3 · Esc fecha'); d.append(k);
+  const k=document.createElement('small'); k.className='dica'; k.textContent=dica||(matchMedia('(pointer:coarse)').matches?'Toque numa resposta.':'Responda com o número · Esc fecha'); d.append(k);
   d.classList.add('on');
 }
 const coracoes=n=>'❤'.repeat(n)+'♡'.repeat(5-n);
@@ -326,13 +327,15 @@ export function abrirMorador(p, falar){
   const id=p.modelo?.nome, m=MORADORES[id]; if(!m) return false;
   if(atual) fechar();
   const n=nivel(id), agora=Date.now();
-  const so=(txt)=>{ atual={p,m,id,passos:[],i:0}; falar?.(p,txt.length>60?txt.slice(0,57)+'…':txt,4); mostrar(m.nome,m.quem,coracoes(n),txt,[['Até mais!',fechar]]); };
+  // papo livre (conversa.js): menu de novidades, favor e dica em vez de uma frase só
+  const livre=abertura=>{ atual={p,m,id,passos:[],i:0}; falar?.(p,sorteia(['Oi de novo!','Opa!','E aí!']),2.5);
+    papoLivre(p,m,id,{ mostrar, fechar, cor:coracoes(n), outros:Object.entries(MORADORES).filter(([k])=>k!==id).map(([,o])=>o) },abertura); return true; };
   if(n>=5){
-    if(dados.final) return so(sorteia(DEPOIS_FINAL)), true;
-    if(planoCompleto()) return so('O plano tá completo! Meia-noite, na frente da Prefeitura. A gente te espera lá.'), true;
-    return so(`${sorteia(m.depois)}\n\nJá temos ${dados.pecas.length} de ${PECAS_PRECISA} peças do plano.`), true;
+    if(dados.final) return livre(sorteia(DEPOIS_FINAL));
+    if(planoCompleto()) return livre('O plano tá completo! Meia-noite, na frente da Prefeitura. A gente te espera lá.');
+    return livre(`${sorteia(m.depois)} (Já temos ${dados.pecas.length} de ${PECAS_PRECISA} peças do plano.)`);
   }
-  if(n>0&&agora-(dados.ultima[id]||0)<ESPERA_MS) return so(sorteia(ESPERA)), true;
+  if(n>0&&agora-(dados.ultima[id]||0)<ESPERA_MS) return livre(sorteia(ESPERA));
   const passos=n<3?cenaSimples(m.cenas[n]):n===3?cenaConsciencia(m):cenaFuga(m);
   falar?.(p, n===0?`Oi! Eu sou ${m.nome}.`:n===3?'Psiu… vem cá.':'Oi de novo!', 3);
   rodar(p, m, id, passos, ok=>{
@@ -350,6 +353,7 @@ export function abrirMorador(p, falar){
 /* ───────── a cada quadro (pedestres.js) ───────── */
 let avisouHora=0, emFinal=false;
 export function atualizarMoradores(dt, jog){
+  atualizarFavor(jog);                                                                                    // chegou no lugar do favor?
   if(atual){
     const d=$('papo'); const p=atual.p;
     if(!d?.classList.contains('on')) atual=null;                                                        // Esc fechou

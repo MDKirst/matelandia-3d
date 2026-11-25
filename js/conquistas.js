@@ -26,6 +26,7 @@ export const LISTA = [
   ['surra',       '🥊', 'Aprendeu a lição',        'Apanhou da turma por avacalhar'],
   ['fotografo',   '📷', 'Fotógrafo',               'Tirou uma foto'],
   ['encontro',    '🤝', 'Encontro marcado',        'Ficou perto de outro jogador online'],
+  ['camarada',    '🤝', 'Gente boa',               'Fez 5 favores para os moradores'],
   ['outro_lado',  '🚪', 'Do outro lado',           'Juntou o plano dos moradores e foi à Prefeitura à meia-noite'],
 ];
 const CHAVE='matelandia3d.conquistas';
