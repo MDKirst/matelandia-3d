@@ -83,6 +83,7 @@ function montarGrafo(){
   grafo=[...nos.values()];
 }
 const maisPerto=(x,z)=>{ let m=null, md=1e9; for(const n of grafo){ const d=Math.hypot(n.p[0]-x,n.p[1]-z); if(d<md){ md=d; m=n; } } return m; };
+export { rota as rotaRuas };   // ambulância (socorro.js) usa o mesmo caminho pelas ruas
 function rota(x0,z0,x1,z1){
   grafo??=(montarGrafo(),grafo);
   const ini=maisPerto(x0,z0), fim=maisPerto(x1,z1); if(!ini||!fim) return [];
@@ -109,16 +110,65 @@ function descerGuardas(c){
   const ex=-Math.cos(c.h), ez=Math.sin(c.h), fx=-Math.sin(c.h), fz=-Math.cos(c.h);   // lado do motorista / frente
   const portas=[[1,0.25],[-1,0.25],[1,-0.45],[-1,-0.45]].slice(0,PMS_POR_CARRO);
   portas.forEach(([lado,frente],i)=>{
-    const obj=clonarEsqueleto(moldeGuarda.cena); obj.scale.multiplyScalar(e);
-    obj.traverse(o=>{ if(o.isMesh){ o.frustumCulled=false; o.material=o.material.clone(); if(!/skin|eye|hair|brow/i.test(o.material.name)) o.material.color.setHex(0x1e2d4f); } });  // farda azul-marinho
     const x=c.x+ex*lado*(c.larg+0.8)+fx*frente*c.meio, z=c.z+ez*lado*(c.larg+0.8)+fz*frente*c.meio;
-    const g={obj, x, z, pe:-moldeGuarda.base*e, mixer:new THREE.AnimationMixer(obj), acoes:{}, atual:null,
-      ritmo:0.92+Math.random()*0.16, cerco:i*Math.PI/2+Math.random()*0.4};   // cada um num ritmo e chegando por um lado
-    for(const [n,a] of Object.entries(moldeGuarda.anims)) g.acoes[n]=g.mixer.clipAction(a);
-    scene.add(obj); c.guardas.push(g);
+    c.guardas.push(novoGuarda(x,z,i));
   });
 }
+function novoGuarda(x,z,i){
+  const e=1.8/moldeGuarda.altura, obj=clonarEsqueleto(moldeGuarda.cena); obj.scale.multiplyScalar(e);
+  obj.traverse(o=>{ if(o.isMesh){ o.frustumCulled=false; o.material=o.material.clone(); if(!/skin|eye|hair|brow/i.test(o.material.name)) o.material.color.setHex(0x1e2d4f); } });  // farda azul-marinho
+  const g={obj, x, z, y:0, pe:-moldeGuarda.base*e, mixer:new THREE.AnimationMixer(obj), acoes:{}, atual:null,
+    ritmo:0.92+Math.random()*0.16, cerco:i*Math.PI/2+Math.random()*0.4};   // cada um num ritmo e chegando por um lado
+  for(const [n,a] of Object.entries(moldeGuarda.anims)) g.acoes[n]=g.mixer.clipAction(a);
+  scene.add(obj); return g;
+}
 function animarGuarda(g,n){ const a=g.acoes[n]||g.acoes.parado; if(!a||a===g.atual) return; if(g.atual) g.atual.fadeOut(0.2); a.reset().fadeIn(0.2).play(); g.atual=a; }
+
+// PMs a pé correndo atrás do jogador, cada um chegando por um lado (cerco). true = prendeu (cena começou)
+function cacar(c,dt,jog,parado,prender){
+  const sp=velPM();
+  for(let i=c.guardas.length-1;i>=0;i--){ const g=c.guardas[i];
+    const ax0=jog.x-g.x, az0=jog.z-g.z, dg=Math.hypot(ax0,az0);
+    if(dg<1.5&&parado){ if(jog.dirigindo){ avisar('PRESO! Multa de M$ 500',2); prender(posto); limpar(); } else comecarPrisao(c,prender); return true; }
+    if(dg>(c.heli?90:55)){ scene.remove(g.obj); c.guardas.splice(i,1); continue; }   // ficou para trás: volta para a viatura
+    const k=dg>4?Math.min(1,(dg-4)/10)*2.5:0;                                     // de longe abre o cerco, de perto vai reto
+    const tx=jog.x+Math.cos(g.cerco)*k, tz=jog.z+Math.sin(g.cerco)*k, ax=tx-g.x, az=tz-g.z, da=Math.hypot(ax,az)||1;
+    const v=sp*g.ritmo*dt, nx=g.x+ax/da*v, nz=g.z+az/da*v;
+    if(!bloqueado(nx,nz)){ g.x=nx; g.z=nz; } else if(!bloqueado(nx,g.z)) g.x=nx; else if(!bloqueado(g.x,nz)) g.z=nz;
+    animarGuarda(g,'correr'); g.obj.position.set(g.x,g.pe,g.z); g.obj.rotation.y=Math.atan2(ax0,az0); g.mixer.update(dt); }
+  return false;
+}
+
+/* ───────── rapel (25/11, pedido do Maicon): jogador a pé escondido onde a viatura não chega e nenhum PM
+   por perto por 6 s → o helicóptero para em cima dele, solta a corda e 2 PMs descem e correm atrás ───────── */
+const RAPEL_ESPERA=6, RAPEL_CADA=40, ALT_RAPEL=18;
+const matCorda=new THREE.MeshLambertMaterial({color:0x2b2b2b});
+function pontoLivre(x,z){ if(!bloqueado(x,z)) return [x,z]; for(const r of [3,6,10]) for(let a=0;a<8;a++){ const px=x+Math.cos(a*Math.PI/4)*r, pz=z+Math.sin(a*Math.PI/4)*r; if(!bloqueado(px,pz)) return [px,pz]; } return [x,z]; }
+function rapel(dt,jog,parado,prender){
+  const H=policia.heli; if(!H||!moldeGuarda) return false;
+  H.cd-=dt;
+  const pmPerto=H.c.guardas.length>0||policia.carros.some(c=>c.guardas.some(g=>Math.hypot(g.x-jog.x,g.z-jog.z)<30));
+  if(!H.rapel){
+    if(!jog.dirigindo&&!pmPerto&&H.cd<=0){ H.semPM+=dt;
+      if(H.semPM>RAPEL_ESPERA){ const [x,z]=pontoLivre(jog.x,jog.z); H.rapel={x,z,fase:'ir',t:0,descendo:[]}; H.semPM=0; avisar('🚁 PMs vão descer de rapel do helicóptero!',3); } }
+    else H.semPM=0;
+  } else {
+    const R=H.rapel; R.t+=dt;
+    if(R.fase==='ir'&&((Math.hypot(H.x-R.x,H.z-R.z)<3&&H.y<ALT_RAPEL+4)||R.t>12)){
+      R.fase='descer'; H.c.x=R.x; H.c.z=R.z;
+      R.corda=new THREE.Mesh(new THREE.CylinderGeometry(0.03,0.03,1,5),matCorda); scene.add(R.corda);
+      for(let i=0;i<(LEVE?1:2);i++){ const g=novoGuarda(R.x+(i?0.5:-0.5),R.z,i*2+1); g.y=H.y-2-i*2.5; animarGuarda(g,'parado'); R.descendo.push(g); } }
+    if(R.fase==='descer'){
+      const top=H.y-1.2; R.corda.scale.set(1,top,1); R.corda.position.set(R.x,top/2,R.z);
+      for(let i=R.descendo.length-1;i>=0;i--){ const g=R.descendo[i];
+        g.y=Math.min(g.y,top-0.5)-6*dt; g.x=R.x+(i?0.5:-0.5); g.z=R.z;
+        if(g.y<=0){ g.y=0; R.descendo.splice(i,1); H.c.guardas.push(g); continue; }
+        g.obj.position.set(g.x,g.pe+g.y,g.z); g.obj.rotation.y=Math.atan2(jog.x-g.x,jog.z-g.z); g.mixer.update(dt); }
+      if(!R.descendo.length){ scene.remove(R.corda); H.rapel=null; H.cd=RAPEL_CADA; }
+    }
+  }
+  return H.c.guardas.length>0&&cacar(H.c,dt,jog,parado,prender);
+}
 
 /* ───────── helicóptero (★★★★ ou mais): feito de caixas, com rotor e holofote ───────── */
 function novoHeli(x,z){
@@ -141,17 +191,20 @@ function novoHeli(x,z){
   mancha.rotation.x=-Math.PI/2; scene.add(cone,mancha);
   scene.add(g);
   const ang=Math.random()*Math.PI*2;
-  policia.heli={obj:g,rotor,cauda,luz,cone,mancha,x:x+Math.cos(ang)*160,z:z+Math.sin(ang)*160,y:45,h:0,giro:ang};
+  policia.heli={obj:g,rotor,cauda,luz,cone,mancha,x:x+Math.cos(ang)*160,z:z+Math.sin(ang)*160,y:45,h:0,giro:ang,
+    c:{x,z,h:0,meio:1.5,larg:1,guardas:[],heli:true}, semPM:0, cd:15, rapel:null};
 }
-function tirarHeli(){ const H=policia.heli; if(!H) return; scene.remove(H.obj,H.cone,H.mancha); policia.heli=null; }
+function tirarHeli(){ const H=policia.heli; if(!H) return; scene.remove(H.obj,H.cone,H.mancha);
+  for(const g of [...H.c.guardas,...(H.rapel?.descendo||[])]) scene.remove(g.obj); if(H.rapel?.corda) scene.remove(H.rapel.corda); policia.heli=null; }
 function atualizarHeli(dt,jog,pisca){
   const H=policia.heli; if(!H) return 1e9;
   H.giro+=dt*0.35;                                               // circula em volta do jogador, uns 18 m ao lado
-  const ax=jog.x+Math.cos(H.giro)*18, az=jog.z+Math.sin(H.giro)*18, dx=ax-H.x, dz=az-H.z, d=Math.hypot(dx,dz);
+  const R=H.rapel;                                               // rapel: para em cima do ponto, mais baixo
+  const ax=R?R.x:jog.x+Math.cos(H.giro)*18, az=R?R.z:jog.z+Math.sin(H.giro)*18, dx=ax-H.x, dz=az-H.z, d=Math.hypot(dx,dz);
   const vmax=policia.estrelas>=5?38:31, passo=Math.min(d,vmax*dt);
   if(d>0.01){ H.x+=dx/d*passo; H.z+=dz/d*passo; }
   const alvoH=Math.atan2(-(jog.x-H.x),-(jog.z-H.z)); let dh=alvoH-H.h; dh=Math.atan2(Math.sin(dh),Math.cos(dh)); H.h+=dh*Math.min(1,dt*2);
-  H.y+=((d>40?55:32)-H.y)*Math.min(1,dt*0.8);
+  H.y+=((R?(d>30?40:ALT_RAPEL):d>40?55:32)-H.y)*Math.min(1,dt*(R?1.2:0.8));
   H.obj.position.set(H.x,H.y,H.z); H.obj.rotation.set(Math.min(0.25,passo/dt/120),H.h,0,'YXZ');   // inclina para frente quando acelera
   H.rotor.rotation.y+=dt*28; H.cauda.rotation.x+=dt*40;
   H.luz[0].material.color.setHex(pisca?0xff2a2a:0x400808); H.luz[1].material.color.setHex(pisca?0x10204a:0x2a5bff);
@@ -247,17 +300,7 @@ export function atualizarPolicia(dt, jog, prender){
     const dx=jog.x-c.x, dz=jog.z-c.z, d=Math.hypot(dx,dz); menorDist=Math.min(menorDist,d);
     const lento=!jog.dirigindo||Math.abs(jog.v)<5;
     if(c.guardas.length){
-      // PMs a pé correndo atrás do jogador, cada um chegando por um lado (cerco)
-      const sp=velPM();
-      for(let i=c.guardas.length-1;i>=0;i--){ const g=c.guardas[i];
-        const ax0=jog.x-g.x, az0=jog.z-g.z, dg=Math.hypot(ax0,az0);
-        if(dg<1.5&&parado){ if(jog.dirigindo){ avisar('PRESO! Multa de M$ 500',2); prender(posto); limpar(); } else comecarPrisao(c,prender); return; }
-        if(dg>55){ scene.remove(g.obj); c.guardas.splice(i,1); continue; }          // ficou para trás: volta para a viatura
-        const k=dg>4?Math.min(1,(dg-4)/10)*2.5:0;                                     // de longe abre o cerco, de perto vai reto
-        const tx=jog.x+Math.cos(g.cerco)*k, tz=jog.z+Math.sin(g.cerco)*k, ax=tx-g.x, az=tz-g.z, da=Math.hypot(ax,az)||1;
-        const v=sp*g.ritmo*dt, nx=g.x+ax/da*v, nz=g.z+az/da*v;
-        if(!bloqueado(nx,nz)){ g.x=nx; g.z=nz; } else if(!bloqueado(nx,g.z)) g.x=nx; else if(!bloqueado(g.x,nz)) g.z=nz;
-        animarGuarda(g,'correr'); g.obj.position.set(g.x,g.pe,g.z); g.obj.rotation.y=Math.atan2(ax0,az0); g.mixer.update(dt); }
+      if(cacar(c,dt,jog,parado,prender)) return;
       c.v=0; if(c.guardas.length) continue;
       c.desceu=false;                                                                 // todos voltaram: a viatura volta a perseguir
     }
@@ -278,6 +321,7 @@ export function atualizarPolicia(dt, jog, prender){
     c.travado+=dt; if(c.travado>3){ if(Math.hypot(c.x-c.ult[0],c.z-c.ult[1])<3){ const n=(c.rota&&c.rota[1])||maisPerto(c.x,c.z).p; c.x=n[0]; c.z=n[1]; c.re=0; c.recalc=0; } c.travado=0; c.ult=[c.x,c.z]; }
     c.obj.position.set(c.x,0,c.z); c.obj.rotation.y=c.h;
   }
+  if(rapel(dt,jog,parado,prender)) return;
   // longe de todas as viaturas por 12 s e sem o helicóptero em cima: despistou
   // (com helicóptero só despista indo além de 260 m dele: rua com moto rápida ou turbo)
   const visto=menorDist<=230||dHeli<260;

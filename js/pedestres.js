@@ -20,6 +20,8 @@ import { comentarioRapido } from './conversa.js';
 import { ALCANCE, naMira } from './tiro.js';
 import { iniciarCaes, atualizarCaes } from './caes.js';
 import { iniciarAnimais, atualizarAnimais } from './animais.js';
+import { iniciarSocorro, chamarSocorro, atualizarSocorro } from './socorro.js';
+import { arvores } from './marcos.js';
 
 export const PESSOAS = ['male-casual','female-casual','male-shirt','female-dress','male-long-sleeve','female-tank-top','male-suit','female-alternative',
   'male-casual-2-24','female-casual-2-24','male-worker-24','female-worker-24','male-farmer-24','female-formal-24','male-casual-hoodie-24','female-suit-24','male-beach-24','male-suit-24','male-punk-24','female-jeans','dona-maria'];
@@ -108,7 +110,7 @@ function prenderLugares(lugares){
 // nasce numa calçada perto do jogador (mais gente onde há comércio) ou numa praça
 function nascer(p, px, pz){
   if(p.obj){ scene.remove(p.obj); p.mixer.stopAllAction(); p.obj=null; }
-  p.morto=false;
+  p.morto=false; p.ferido=false; p.grave=false; p.levado=false; p.solto=false; p.carregado=false; p.chamou=false; p.agradece=false;
   const m=moldes[(Math.random()*moldes.length)|0]; if(!m) return false;
   p.lugar=null; const h=horaJogo();
   // lugar movimentado nesta hora (escola na saída, padaria cedo, bar à noite…): rodinha na porta ou saindo de dentro
@@ -174,7 +176,8 @@ export async function iniciarPedestres(lugares, px, pz){
   (async()=>{ for(const n of fila.slice(6)){ const m=await carregarModelo(n); if(m) moldes.push(m); } })();
   for(let k=0;k<QTD;k++){ const p={}; nascer(p,px,pz); gente.push(p); }
   iniciarCaes(falar).catch(e=>console.warn('cachorros',e));   // cachorros nascem junto dos pedestres (caes.js)
-  iniciarAnimais(falar).catch(e=>console.warn('gatos/cavalos',e));   // gatos na calçada e cavalos nos terrenos baldios (animais.js)
+  iniciarAnimais(falar).catch(e=>console.warn('gatos/cavalos',e));
+  iniciarSocorro(falar, carregarModelo).catch(e=>console.warn('ambulância',e));   // ambulância para atropelado (socorro.js)   // gatos na calçada e cavalos nos terrenos baldios (animais.js)
 }
 
 // passo com colisão (23/11): fugindo, voltando para a calçada ou arremessado pelo carro, o pedestre não
@@ -187,9 +190,19 @@ function passo(p,dx,dz,veiculos){
   if(livre(p.x,nz)){ p.z=nz; return true; }
   return false;
 }
-// atropelado a mais de 18 km/h morre (23/11, pedido do Maicon): fica deitado no chão e só some depois de 60 s
-// (ou quando o jogador vai para longe). Mais devagar, cai e levanta como antes.
-const MATA=5, CORPO=60;
+// atropelado (25/11, pedido do Maicon): cai, fica deitado RETO no chão pedindo socorro e a ambulância
+// vem (socorro.js). Acima de 18 km/h é grave: vai de maca para o hospital; abaixo, é atendido e levanta.
+const GRAVE=5;
+// deitado: para a animação na pose em pé (corpo reto) em vez de seguir andando/fazendo fade torto
+function congelar(p){ p.mixer.stopAllAction(); const a=p.acoes.parado||Object.values(p.acoes)[0]; if(!a) return; a.reset().setEffectiveWeight(1).play(); p.atual=a; p.mixer.update(0); }
+// a cabeça fica para trás (deita de costas): se ali tem parede, poste ou árvore, gira o corpo para um lado livre
+const arvoreEm=(x,z)=>{ for(const a of arvores) if(Math.abs(a[0]-x)<1.2&&Math.abs(a[1]-z)<1.2&&Math.hypot(a[0]-x,a[1]-z)<0.6*(a[2]||1)) return true; return false; };
+function ajeitar(p){
+  const ok=r=>{ for(const k of [0.6,1.2,1.8]){ const x=p.x-Math.sin(r)*k, z=p.z-Math.cos(r)*k; if(bloqueado(x,z)||posteEm(x,z)||arvoreEm(x,z)) return false; } return true; };
+  for(const d of [0,Math.PI/2,-Math.PI/2,Math.PI,Math.PI/4,-Math.PI/4]) if(ok(p.rumo+d)){ p.rumo+=d; return; }
+}
+const SOCORRO=['Socorro!','Fui atropelado!','Chama a ambulância!','Ai, minha perna…','Alguém me ajuda!'];
+let veicAntes=null;   // posição do veículo do jogador no quadro anterior (batida varrida: PC lento não "pula" o pedestre)
 // avisa quem quiser saber (a polícia) que alguém foi atropelado
 let aoAtropelar=()=>{};
 export function quandoAtropelar(f){ aoAtropelar=f; }
@@ -200,6 +213,8 @@ export function atualizarPedestres(dt, jog, veiculos=[]){
   const hora=horaJogo(), limite=Math.round(QTD*fatorPessoas(hora));       // de madrugada a rua esvazia
   atualizarCaes(dt, jog, gente, fatorPessoas(hora));
   atualizarAnimais(dt, jog, gente, fatorPessoas(hora));
+  atualizarSocorro(dt, jog);                                               // ambulância para quem foi atropelado
+  const VA=veicAntes; veicAntes=jog.veic?[jog.veic.x,jog.veic.z]:null;
   atualizarMoradores(dt, jog);                                             // conversa aberta + final na Prefeitura
   for(const [k,p] of gente.entries()){
     if(!p.obj||Math.hypot(p.x-px,p.z-pz)>RAIO_SOME){
@@ -209,25 +224,38 @@ export function atualizarPedestres(dt, jog, veiculos=[]){
     // atropelado: o veículo do jogador encostou nele andando
     const V=jog.veic;
     if(V&&Math.abs(V.v)>2.2&&p.modo!=='caido'&&p.modo!=='levantar'){
-      const fx=-Math.sin(V.h), fz=-Math.cos(V.h), dx=p.x-V.x, dz=p.z-V.z;
-      if(Math.abs(dx*fx+dz*fz)<V.meio+0.35&&Math.abs(-dx*fz+dz*fx)<V.larg+0.35){
+      const fx=-Math.sin(V.h), fz=-Math.cos(V.h);
+      // confere também no meio do caminho desde o quadro anterior (moto rápida em PC lento andava 2 m por quadro)
+      const A=VA&&Math.hypot(V.x-VA[0],V.z-VA[1])<8?VA:[V.x,V.z], n=Math.max(1,Math.ceil(Math.hypot(V.x-A[0],V.z-A[1])/0.4));
+      let bateu=false, dx=0, dz=0;
+      for(let s=1;s<=n&&!bateu;s++){ const cx=A[0]+(V.x-A[0])*s/n, cz=A[1]+(V.z-A[1])*s/n; dx=p.x-cx; dz=p.z-cz;
+        bateu=Math.abs(dx*fx+dz*fz)<V.meio+0.35&&Math.abs(-dx*fz+dz*fx)<V.larg+0.4; }
+      if(bateu){
         const sv=Math.sign(V.v), lado=Math.sign(-dx*fz+dz*fx)||1, k=Math.abs(V.v);
-        p.modo='caido'; p.t=7+Math.random()*4; p.queda=0;
-        if(k>=MATA){ p.morto=true; p.t=CORPO; }
+        p.modo='caido'; p.t=2.2; p.queda=0; p.ferido=true; p.grave=k>=GRAVE; p.chamou=false;
         p.vx=fx*sv*k*0.55-fz*lado*1.5; p.vz=fz*sv*k*0.55+fx*lado*1.5; p.vy=2+k*0.18;
         p.rumo=Math.atan2(-fx*sv,-fz*sv);                 // de frente para o carro: cai de costas
-        animar(p,'parado'); aoAtropelar(p.x,p.z,k,p.morto);
+        congelar(p); aoAtropelar(p.x,p.z,k,p.grave);
       }
     }
     if(p.modo==='caido'){
-      if(!passo(p,p.vx*dt,p.vz*dt,veiculos)){ p.vx*=-0.3; p.vz*=-0.3; }        // bateu na parede: não atravessa
-      p.y+=p.vy*dt; p.vy-=9.8*dt;
-      if(p.y<=0){ p.y=0; p.vy=0; p.vx*=Math.max(0,1-6*dt); p.vz*=Math.max(0,1-6*dt); }
+      if(p.levado){ nascer(p,px,pz); if(!p.obj) continue; }                       // a ambulância levou para o hospital
+      else if(!p.carregado){
+        if(!passo(p,p.vx*dt,p.vz*dt,veiculos)){ p.vx*=-0.3; p.vz*=-0.3; }        // bateu na parede: não atravessa
+        p.y+=p.vy*dt; p.vy-=9.8*dt;
+        if(p.y<=0){ p.y=0; p.vy=0; p.vx*=Math.max(0,1-6*dt); p.vz*=Math.max(0,1-6*dt); }
+      }
       p.queda=Math.min(1,p.queda+dt*3); p.t-=dt;
-      if(p.t<=0){ if(p.morto){ nascer(p,px,pz); if(!p.obj) continue; } else p.modo='levantar'; }
+      if(p.ferido){                                                                // deitado esperando a ambulância
+        if(p.t<=0&&!p.chamou){ p.chamou=true; p.vx=p.vz=0; ajeitar(p); chamarSocorro(p); p.grito=0.5; }
+        if(p.chamou&&!p.carregado&&(p.grito-=dt)<=0){ falar(p,sorteia(SOCORRO),2.5); p.grito=5+Math.random()*4; }
+        if(p.solto){ p.ferido=false; p.solto=false; p.modo='levantar'; }
+      } else if(p.t<=0) p.modo='levantar';
     } else if(p.modo==='levantar'){
       p.queda=Math.max(0,p.queda-dt*1.5);
-      if(p.queda===0){ const ax=p.x-px, az=p.z-pz, l=Math.hypot(ax,az)||1; p.modo='fugir'; p.fx=ax/l; p.fz=az/l; p.t=2.5; }
+      if(p.queda===0){
+        if(p.agradece){ p.agradece=false; p.modo=p.r?'voltar':'conversa'; p.t=6; falar(p,sorteia(['Obrigado! Já tô melhor.','Ufa, foi só o susto!','Valeu, pessoal da ambulância!']),3); }
+        else { const ax=p.x-px, az=p.z-pz, l=Math.hypot(ax,az)||1; p.modo='fugir'; p.fx=ax/l; p.fz=az/l; p.t=2.5; } }
     }
     // carro vindo rápido perto: sai correndo para o lado de fora
     else if(jog.dirigindo&&Math.abs(jog.v)>3&&dJog<9&&p.modo!=='fugir'){
@@ -299,7 +327,7 @@ export function atualizarPedestres(dt, jog, veiculos=[]){
     }
     if(!p.obj) continue;                              // renasceu sem achar lugar: tenta no próximo quadro
     p.obj.position.set(p.x,(p.pe||0)+p.y+(p.queda>0?0.12:0),p.z); p.obj.rotation.y=p.rumo; p.obj.rotation.x=-p.queda*Math.PI/2;
-    if(dJog<RAIO_ANIMA&&!p.morto) p.mixer.update(dt);           // longe, congela a animação (economiza); morto não mexe
+    if(dJog<RAIO_ANIMA&&p.modo!=='caido') p.mixer.update(dt);    // longe, congela a animação (economiza); deitado fica reto
   }
 }
 
@@ -398,9 +426,9 @@ export function golpearPedestre(jx,jz,fx,fz,tipo){
   if(!alvo) return null;
   const p=alvo; p.energia=(p.energia??100)-(tipo==='tiro'?55:tipo==='chute'?40:24);
   if(p.energia<=0){
-    p.energia=100; p.modo='caido'; p.t=6+Math.random()*3; p.queda=0;
+    p.energia=100; p.modo='caido'; p.t=6+Math.random()*3; p.queda=0; p.ferido=false;
     const k=tipo==='chute'?3.2:2.2; p.vx=fx*k; p.vz=fz*k; p.vy=1.2; p.rumo=Math.atan2(-fx,-fz);   // cai de costas
-    animar(p,'parado'); return 'nocaute';
+    congelar(p); return 'nocaute';
   }
   p.x+=fx*0.35; p.z+=fz*0.35;                                  // tranco
   p.modo='fugir'; p.fx=fx; p.fz=fz; p.t=2.5; falar(p,sorteia(FALAS_DOR),2);

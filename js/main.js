@@ -257,7 +257,7 @@ quandoAcordar(()=>{
   const [x,z]=pontoLivre(h[0]+6,h[1]+6); p.set(x,0,z); pagar(-150);
   avisarTerreno('🏥 Você acordou no hospital · conta de M$ 150');
 });
-quandoAtropelar((x,z,k,morto)=>{ somPancada(); crime(morto?2:1,morto?'Atropelamento com morte':'Atropelamento'); revolta(jogador.position.x,jogador.position.z); });
+quandoAtropelar((x,z,k,morto)=>{ somPancada(); crime(morto?2:1,morto?'Atropelamento grave':'Atropelamento'); revolta(jogador.position.x,jogador.position.z); });
 // avacalhar: nocaute ou 2 pancadas em 20 s → a turma junta e bate (até desmaiar)
 let pancadas=[];
 quandoTurmaBater((dano,fx,fz)=>{ if(veic.dirigindo) return false; if(levarPancada(dano,fx,fz)) somPancada(); return vida.caido>0; },
