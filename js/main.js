@@ -61,6 +61,7 @@ import { frota, iniciarVeiculos, veiculoPerto, entrar, sair, dirigir, dentroDeVe
 import * as veic from './veiculos.js';
 import { iniciarTransito, atualizarTransito, posicoesTransito, carros } from './transito.js';
 import { efeitosVelocidade } from './velocidade.js';
+import { cameraFrontal } from './camfrontal.js';
 
 // borda visível do mundo
 { const m=new THREE.MeshBasicMaterial({color:0xF97316,transparent:true,opacity:.18,side:THREE.DoubleSide,depthWrite:false}), H=45;
@@ -207,7 +208,7 @@ function aoVolante(dt){
     if(!tecla.Space) c.v-=9.8*Math.max(-0.35,Math.min(0.35,inc))*dt*0.55; }
   const p=c.obj.position; jogador.position.set(p.x,0,p.z); rumo=c.h+Math.PI;
   if(c.tipo.moto){ girarRodas(c,dt);                                                    // moto: inclina na curva e o piloto vai junto
-    c.obj.rotation.z=THREE.MathUtils.lerp(c.obj.rotation.z, giro*Math.min(1,Math.abs(c.v)/10)*0.32*Math.sign(c.v||1), Math.min(1,dt*5)); }
+    c.obj.rotation.z=THREE.MathUtils.lerp(c.obj.rotation.z, giro*Math.min(1,Math.abs(c.v)/10)*(0.32+0.18*Math.min(1,Math.abs(c.v)/25))*Math.sign(c.v||1), Math.min(1,dt*5)); }
   // quebra-mola: eixo da frente e de trás sobem; quanto mais rápido, maior o pulo
   { const [fx,fz]=frente(c.h), a=c.comp*0.35, yf=alturaLombada(p.x+fx*a,p.z+fz*a), yt=alturaLombada(p.x-fx*a,p.z-fz*a), k=1+Math.max(0,Math.abs(c.v)-6)*0.25;
     p.y=(yf+yt)/2*k; c.obj.rotation.x=Math.atan2((yf-yt)*k,c.comp);
@@ -443,7 +444,7 @@ function quadro(){
     { const c=camera.position;                                          // câmera não entra no poste (tampava a tela toda)
       for(let k=0;k<8;k++){ const bate=postes.some(q=>Math.abs(q[0]-c.x)<0.8&&Math.abs(q[1]-c.z)<0.8&&Math.hypot(q[0]-c.x,q[1]-c.z)<0.8);
         if(!bate||c.y-altura(c.x,c.z)>8) break; c.lerp(alvo,0.12); } }
-    camera.lookAt(alvo); }
+    camera.lookAt(alvo); cameraFrontal(dt); }   // R: câmera frontal; moto inclina a câmera (camfrontal.js)
   base.position.set(p.x,0,p.z);
   satelite.atualizar(p.x,p.z);
   atualizarTelhados(dt,p.x,p.z);
