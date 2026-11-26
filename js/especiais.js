@@ -12,6 +12,7 @@ import { carregarModelo } from './pedestres.js';
 import { membros, mirar } from './moto.js';
 import { LEVE } from './config.js';
 import { iniciarPostoVida, atualizarPostoVida } from './posto-vida.js';
+import { musicaBalada } from './som.js';
 
 const MAX_HORAS=8;
 const lamb=c=>new THREE.MeshLambertMaterial({color:c});
@@ -206,15 +207,15 @@ function dancar(d,t,dt){
     mirar(m.braco,m.ante,alvo1); mirar(m.ante,m.mao,alvo2); }
 }
 let t=0, dentroBalada=false;
-ganchos.musicaEspecial=()=>dentroBalada?'balada':null;
+ganchos.musicaEspecial=()=>null;   // a balada tem música própria (som.js musicaBalada), ouvida já da porta
 export function atualizarEspeciais(dt){
   t+=dt; const h=horaJogo(), noite=h>=18.5||h<6, jx=jogador.position.x, jz=jogador.position.z;
-  dentroBalada=false;
+  dentroBalada=false; let dBal=null;
   atualizarPostoVida(dt,jx,jz);
   for(const p of prontos){
     if(p.balada){ const B=p.balada, d=Math.hypot(p.l.cx-jx,p.l.cz-jz), perto=d<85;
       if(perto&&!p.gente&&!p.enchendo){ p.enchendo=true; encherBalada(p).catch(e=>console.warn('balada',e)); }
-      const dentro=B.dentroDe(jx,jz); dentroBalada=dentro; if(B.teto) B.teto.visible=!dentro;
+      const dentro=B.dentroDe(jx,jz); dentroBalada=dentro; if(dBal==null||d<dBal) dBal=d; if(B.teto) B.teto.visible=!dentro;
       if(perto){ // pista de luz, globo e feixes
         if(Math.floor(t*4)!==B.passo){ B.passo=Math.floor(t*4); const c=new THREE.Color();
           for(let i=0;i<40;i++){ const on=((i*7+B.passo)%5)<2; B.ladrilhos.setColorAt(i,on?c.setHSL(((i*0.13+B.passo*0.07)%1),0.95,0.55):c.setHex(0x1a1a1a)); }
@@ -229,6 +230,7 @@ export function atualizarEspeciais(dt){
     for(let i=1;i<=4;i++) p.neon[i].material.userData.forca=(Math.floor(t*2.5)%4===i-1?0.8:0.15)*(noite?1:0.4);
     p.faixas?.forEach((m,i)=>m.color.setHSL(((t*0.15+i*0.25)%1),0.9,Math.floor(t*4+i)%2?0.6:0.35));
   }
+  musicaBalada(dBal==null?null:Math.max(0,dBal-12), dentroBalada);   // dBal: do meio do lote; a porta fica ~12 m antes
 }
 // para o mapa grande (ícone e nome) e o minimapa (balada à venda pisca)
 export const pontosEspeciais=()=>prontos.map(({l})=>{ const c=[l.A[0]+l.t[0]*l.w/2+l.n[0]*l.d/2, l.A[1]+l.t[1]*l.w/2+l.n[1]*l.d/2];

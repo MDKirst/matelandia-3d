@@ -166,7 +166,8 @@ export async function gravarSom(nome, seg=2){
   const real=[ctx,mestre,ruido,sirene], off=new OfflineAudioContext(1,44100*seg,44100);
   ctx=off; mestre=off.createGain(); mestre.gain.value=0.8; mestre.connect(off.destination); sirene=null;
   ruido=off.createBuffer(1,off.sampleRate*2,off.sampleRate); { const d=ruido.getChannelData(0); for(let i=0;i<d.length;i++) d[i]=Math.random()*2-1; }
-  if(nome==='batida') somBatida(15); else if(nome==='explosao') somExplosao(); else if(nome==='pancada') somPancada(); else somSirene(30);
+  if(nome==='balada'){ bal=null; musicaBalada(0,true,0); bal.passo=512; bal.prox=0; bal.g.gain.value=0.34; musicaBalada(0,true,seg); bal=null; }
+  else if(nome==='batida') somBatida(15); else if(nome==='explosao') somExplosao(); else if(nome==='pancada') somPancada(); else somSirene(30);
   const buf=await off.startRendering(); [ctx,mestre,ruido,sirene]=real;
   const d=buf.getChannelData(0); let pico=0; for(const v of d) pico=Math.max(pico,Math.abs(v));
   // WAV 16 bits
@@ -202,4 +203,41 @@ export function musicaLoja(tipo){
     if(s%4===0) notaMus(hz(ac[0]+tr-24),tt,c*3,'sine',0.3,0.01);                         // baixo
     if(Math.random()<0.8) notaMus(hz(ac[[0,2,1,3,2,1,3,2][s%8]]+tr+12),tt,c*0.9,'sine',0.11,0.005);   // arpejo
     mus.passo++; mus.prox+=c; }
+}
+
+// ───────── balada (25/11, pedido do Maicon: "coloca uma música na balada") ─────────
+// Música eletrônica própria gerada na hora (124 BPM): bumbo 4x4, palma no 2 e 4, chimbal no contratempo,
+// baixo com "sidechain", acordes de serra e um refrão de lead. Ciclo de 64 compassos: intro → sobe → drop → pausa.
+// dist = metros até a porta (some aos 90 m); dentro = sem abafar.
+const BAL={ bpm:124, prog:[[57,60,64],[53,57,60],[55,59,62],[52,55,59]], hook:[76,0,74,72,0,72,74,76, 0,79,0,76,74,0,72,0] };   // Am · F · G · Em
+let bal=null;
+function batida(t,f0,f1,dur,vol){ const o=ctx.createOscillator(), g=ctx.createGain(); o.frequency.setValueAtTime(f0,t); o.frequency.exponentialRampToValueAtTime(f1,t+dur*0.6);
+  g.gain.setValueAtTime(vol,t); g.gain.exponentialRampToValueAtTime(0.0001,t+dur); o.connect(g).connect(bal.f); o.start(t); o.stop(t+dur+0.02); }
+function chiado(t,tipo,freq,dur,vol){ const s=ctx.createBufferSource(); s.buffer=ruido; const f=ctx.createBiquadFilter(); f.type=tipo; f.frequency.value=freq; f.Q.value=tipo==='bandpass'?1.2:0.7;
+  const g=ctx.createGain(); g.gain.setValueAtTime(vol,t); g.gain.exponentialRampToValueAtTime(0.0001,t+dur); s.connect(f).connect(g).connect(bal.f); s.start(t,Math.random()*1.5); s.stop(t+dur+0.02); }
+function serra(t,m,dur,vol,ataque=0.01,tipo='sawtooth',detune=0){ const o=ctx.createOscillator(); o.type=tipo; o.frequency.value=hz(m); o.detune.value=detune; const g=ctx.createGain();
+  g.gain.setValueAtTime(0.0001,t); g.gain.linearRampToValueAtTime(vol,t+ataque); g.gain.setValueAtTime(vol,t+dur*0.7); g.gain.exponentialRampToValueAtTime(0.0001,t+dur); o.connect(g).connect(bal.f); o.start(t); o.stop(t+dur+0.05); }
+export function musicaBalada(dist, dentro, adiante=0.3){
+  if(!ctx||(ctx.state!=='running'&&!(ctx instanceof OfflineAudioContext))) return;
+  if(!bal){ bal={ g:ctx.createGain(), f:ctx.createBiquadFilter(), prox:0, passo:0 }; bal.g.gain.value=0; bal.f.type='lowpass'; bal.f.frequency.value=800; bal.f.connect(bal.g).connect(mestre); }
+  const t=ctx.currentTime, longe=dist==null||dist>90;
+  const vol=longe?0:dentro?0.34:0.26*Math.max(0.05,1-dist/90);
+  bal.g.gain.setTargetAtTime(vol,t,0.4);
+  bal.f.frequency.setTargetAtTime(dentro?9000:Math.max(350,1400-dist*12),t,0.3);           // de fora só passa o grave (som abafado pela parede)
+  if(longe){ bal.prox=0; return; }
+  const sh=60/BAL.bpm/4;                                                                 // semicolcheia
+  if(bal.prox<t) bal.prox=t+0.05;
+  while(bal.prox<t+adiante){ const s=bal.passo, tt=bal.prox, bat=s%16, comp=Math.floor(s/16), parte=Math.floor(comp/16)%4, ac=BAL.prog[comp%4];
+    const drop=parte===2, pausa=parte===3, sobe=parte===1;
+    if(!pausa&&bat%4===0) batida(tt,150,45,0.32,0.9);                                     // bumbo
+    if(pausa&&bat===0&&comp%2===0) batida(tt,120,40,0.5,0.5);
+    if((drop||sobe)&&(bat===4||bat===12)) chiado(tt,'bandpass',1500,0.16,0.5);           // palma
+    if(!pausa&&bat%4===2) chiado(tt,'highpass',8000,0.09,0.32);                          // chimbal aberto
+    if(drop&&bat%2===1) chiado(tt,'highpass',10000,0.03,0.12);                           // chimbal fechado
+    if(sobe&&comp%16>=12){ const k=(comp%16-12)*16+bat; if(bat%(comp%16>=14?1:2)===0) chiado(tt,'bandpass',1200+k*20,0.08,0.12+k*0.004); }   // virada subindo
+    if(!pausa&&bat%4!==0) serra(tt,ac[0]-24+(bat%4===2?12:0),sh*1.6,drop?0.22:0.14,0.02,'sawtooth');   // baixo no contratempo (sidechain)
+    if(bat===0) for(const [i,n] of ac.entries()) for(const d of [-9,9]) serra(tt,n+12,sh*(pausa?16:drop?3:14),drop?0.05:0.035,pausa?0.4:0.01,'sawtooth',d+i*2);   // acordes
+    if(drop&&(bat===6||bat===10||bat===14)) for(const n of ac) serra(tt,n+12,sh*2,0.04,0.005,'sawtooth',7);
+    if((drop||pausa)&&s%2===0){ const n=BAL.hook[(s/2)%16]; if(n) serra(tt,n-(pausa?12:0),sh*1.8,pausa?0.06:0.07,0.01,'square'); }   // refrão
+    bal.passo++; bal.prox+=sh; }
 }
