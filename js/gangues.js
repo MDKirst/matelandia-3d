@@ -23,6 +23,7 @@ import { casas, acharPorta } from './casas.js';
 import { nuvem } from './nuvem.js';
 import { somTiro, somPancada } from './som.js';
 import { multGolpe } from './academia.js';
+import { iniciarMotoqueiros, atualizarMotoqueiros, golpearMotoqueiro } from './motoqueiros.js';
 
 const GANGUES=[
   { id:'corvos',   nome:'Corvos',   bairro:'Vila Nova',  ll:[-25.2422,-53.9916], cor:0xb91c1c, ic:'🐦‍⬛',
@@ -44,6 +45,7 @@ function esquina(c){
 
 let pronto=false;
 export async function iniciarGangues(){
+  iniciarMotoqueiros(falar, carregarModelo).catch(e=>console.warn('motoqueiros',e));   // 4 bondes de moto (motoqueiros.js)
   for(const g of GANGUES){
     g.c=toXZ(g.ll[0],g.ll[1]); g.ponto=esquina(g.c); g.membros=[]; g.estado='calmo'; g.liberado=0; g.queimado=0; g.prazo=0; g.aviso=0;
     g.moldes=(await Promise.all(g.modelos.map(carregarModelo))).filter(Boolean);
@@ -128,6 +130,7 @@ function hostil(g,fala){
 
 // soco/chute do jogador num membro (até 1,8 m na frente). Devolve true se acertou.
 export function golpearGangue(x,z,fx,fz,tipo){
+  if(golpearMotoqueiro(x,z,fx,fz,tipo)) return true;
   for(const g of GANGUES) for(const p of g.membros){ if(p.caido) continue;
     const ax=p.x-x, az=p.z-z, d=Math.hypot(ax,az);
     if(tipo==='tiro'){ if(naMira(ax,az,fx,fz)<0) continue; } else if(d>1.8||(ax*fx+az*fz)/(d||1)<0.35) continue;
@@ -142,6 +145,7 @@ export const territorio=(x,z)=>noite()?GANGUES.find(g=>g.c&&dist(x,z,g.c[0],g.c[
 
 // jog: {x,z,dirigindo,caido} · bater(dano,fx,fz) → true se o jogador desmaiou · aviso(txt)
 export function atualizarGangues(dt, jog, bater, aviso){
+  atualizarMotoqueiros(dt, jog);
   if(!pronto) return; avisar=aviso;
   for(let i=riscos.length-1;i>=0;i--){ const r=riscos[i]; r.t-=dt; if(r.t<=0){ for(const o of r.o){ scene.remove(o); o.geometry.dispose(); } riscos.splice(i,1); } }
   const ehNoite=noite();
