@@ -12,6 +12,7 @@ import { ruas, predios } from './cidade.js';
 import { comerciosRemovidos, prediosOcultos } from './predios.js';
 import { toXZ } from './geo.js';
 import { pontoDoEndereco } from './numeracao.js';
+import { ACADEMIA } from './academia.js';
 
 export const LUGARES = [
   // bancos (nome fictício)
@@ -167,6 +168,7 @@ function parque(lotes){
     const jx=x+Math.sin(x*12.9+z*7.1)*2.2, jz=z+Math.cos(x*3.7+z*9.3)*2.2, e=((jx-cx)/rx)**2+((jz-cz)/rz)**2;
     if(e>0.78&&e<1.25) continue; if(e<0.3) continue;                        // caminho e lago
     if(!livre(jx,jz,2.2)) continue;
+    if(Math.abs(jx-ACADEMIA.x)<10&&Math.abs(jz-ACADEMIA.z)<8) continue;          // academia ao ar livre (academia.js)
     arvP.push([jx,jz,0.8+Math.abs(Math.sin(jx*jz))*0.5, Math.abs(Math.sin(jx+jz))>0.93?1:0]); n++; }
   // placa na frente (Av. Duque de Caxias)
   const sx=cx, sz=P.z1-3; const pl=new THREE.Mesh(new THREE.PlaneGeometry(7,1.4),new THREE.MeshBasicMaterial({map:texPlaca('PARQUE FARROUPILHA','#14532d','#fef3c7'),side:THREE.DoubleSide}));

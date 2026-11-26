@@ -379,7 +379,7 @@ function quadro(){
   $('usar').textContent=veic.dirigindo?'Sair':'Entrar';
   // pedestre perto (a pé): mostra as ações
   const loja=!home.aberta&&!veic.dirigindo&&!casa.dentro&&lojaAqui(p.x,p.z);
-  const terr=!home.aberta&&!veic.dirigindo&&!perto?(casa.dentro?dicaCasa(p.x,p.z):loja?'E comprar no balcão (comida, remédio, roupa, conserto…)':dicaTerreno(p.x,p.z)||dicaCasa(p.x,p.z)):'';
+  const terr=!home.aberta&&!veic.dirigindo&&!perto?(casa.dentro?dicaCasa(p.x,p.z):loja?(loja.l?.negocio==='academia'?'E academia: treinar, whey, creatina':'E comprar no balcão (comida, remédio, roupa, conserto…)'):dicaTerreno(p.x,p.z)||dicaCasa(p.x,p.z)):'';
   if(terr){ $('dica').style.display='block'; $('dica').textContent=TOQUE?terr.replace(/\b[BCV] (?=comprar|construir|abrir|caixa)/g,'').replace(/^./,c=>c.toUpperCase()):terr; }   // celular: sem as teclas
   const gente=!home.aberta&&!veic.dirigindo&&!perto&&!terr&&pedestrePerto(p.x,p.z);
   if(gente){ $('dica').style.display='block'; $('dica').textContent='T conversar · G cumprimentar · H '+(gente.modo==='seguir'?'dispensar':'chamar')+' · X assustar'+(quantosSeguem()?` · ${quantosSeguem()} seguindo`:''); }

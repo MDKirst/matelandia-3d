@@ -74,7 +74,9 @@ function montar(){
   cx(2.4,0.7,0.5,cinza,0,0.35,2.4); for(let i=0;i<6;i++){ tubo(-0.9+i*0.36,0.78,2.25,-0.9+i*0.36,0.78,2.55,M(0x111827),0.07); }
   // placa
   const cv=document.createElement('canvas'); cv.width=512; cv.height=128; const k=cv.getContext('2d');
-  k.fillStyle='#1d4ed8'; k.fillRect(0,0,512,128); k.fillStyle='#facc15'; k.font='bold 44px system-ui'; k.textAlign='center'; k.fillText('🏋️ ACADEMIA',256,58); k.fillStyle='#fff'; k.font='bold 30px system-ui'; k.fillText('ao ar livre · E treinar',256,104);
+  k.fillStyle='#1d4ed8'; k.fillRect(0,0,512,128); k.textAlign='center'; k.fillStyle='#facc15';                                         // halter desenhado (emoji no canvas saía como "Y")
+  k.fillRect(62,34,76,8); for(const x of [62,124]){ k.fillRect(x-6,20,14,36); } for(const x of [48,138]){ k.fillRect(x,26,10,24); }
+  k.fillStyle='#facc15'; k.font='bold 44px system-ui'; k.fillText('ACADEMIA',290,58); k.fillStyle='#fff'; k.font='bold 30px system-ui'; k.fillText('ao ar livre · E treinar',256,104);
   const tex=new THREE.CanvasTexture(cv); tex.colorSpace=THREE.SRGBColorSpace;
   const placa=new THREE.Mesh(new THREE.PlaneGeometry(3,0.75),new THREE.MeshBasicMaterial({map:tex,side:THREE.DoubleSide})); placa.position.set(5,2.2,3); g.add(placa);
   tubo(4,0,3,4,2.2,3,cinza,0.05); tubo(6,0,3,6,2.2,3,cinza,0.05);
