@@ -22,6 +22,7 @@ import { ALCANCE, naMira } from './tiro.js';
 import { iniciarCaes, atualizarCaes } from './caes.js';
 import { iniciarAnimais, atualizarAnimais } from './animais.js';
 import { iniciarSocorro, chamarSocorro, atualizarSocorro } from './socorro.js';
+import { iniciarEscola, atualizarEscola } from './escola.js';
 import { arvores } from './marcos.js';
 
 export const PESSOAS = ['male-casual','female-casual','male-shirt','female-dress','male-long-sleeve','female-tank-top','male-suit','female-alternative',
@@ -178,7 +179,8 @@ export async function iniciarPedestres(lugares, px, pz){
   for(let k=0;k<QTD;k++){ const p={}; nascer(p,px,pz); gente.push(p); }
   iniciarCaes(falar).catch(e=>console.warn('cachorros',e));   // cachorros nascem junto dos pedestres (caes.js)
   iniciarAnimais(falar).catch(e=>console.warn('gatos/cavalos',e));
-  iniciarSocorro(falar, carregarModelo).catch(e=>console.warn('ambulância',e));   // ambulância para atropelado (socorro.js)   // gatos na calçada e cavalos nos terrenos baldios (animais.js)
+  iniciarSocorro(falar, carregarModelo).catch(e=>console.warn('ambulância',e));
+  iniciarEscola(falar, carregarModelo).catch(e=>console.warn('escola',e));         // alunos, ônibus e van do Colégio Euclides   // ambulância para atropelado (socorro.js)   // gatos na calçada e cavalos nos terrenos baldios (animais.js)
 }
 
 // passo com colisão (23/11): fugindo, voltando para a calçada ou arremessado pelo carro, o pedestre não
@@ -214,7 +216,8 @@ export function atualizarPedestres(dt, jog, veiculos=[]){
   const hora=horaJogo(), limite=Math.round(QTD*fatorPessoas(hora));       // de madrugada a rua esvazia
   atualizarCaes(dt, jog, gente, fatorPessoas(hora));
   atualizarAnimais(dt, jog, gente, fatorPessoas(hora));
-  atualizarSocorro(dt, jog);                                               // ambulância para quem foi atropelado
+  atualizarSocorro(dt, jog);
+  atualizarEscola(dt, jog);                                                // horários de aula do Colégio Euclides                                               // ambulância para quem foi atropelado
   const VA=veicAntes; veicAntes=jog.veic?[jog.veic.x,jog.veic.z]:null;
   atualizarMoradores(dt, jog);                                             // conversa aberta + final na Prefeitura
   for(const [k,p] of gente.entries()){

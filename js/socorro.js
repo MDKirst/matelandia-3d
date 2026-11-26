@@ -30,7 +30,7 @@ export async function iniciarSocorro(fala, carregarModelo){
 // pedestres.js chama quando o atropelado termina de cair
 export function chamarSocorro(p){ if(!fila.includes(p)&&!ambs.some(a=>a.p===p)){ p.esperaSocorro=0; fila.push(p); } }
 
-function pontoNaRua(px,pz,dmin,dmax){
+export function pontoNaRua(px,pz,dmin,dmax){
   const cand=[];
   for(const r of ruas){ if(r.pe) continue; const b=r.bb; if(b[0]>px+dmax||b[2]<px-dmax||b[1]>pz+dmax||b[3]<pz-dmax) continue;
     for(let i=0;i<r.pts.length-1;i++){ const a=r.pts[i], c=r.pts[i+1], L=Math.hypot(c[0]-a[0],c[1]-a[1]);
@@ -61,7 +61,8 @@ function dirigir(a,dt,ax,az,vmax){
   if(bloqueado(nx+fx*a.meio*Math.sign(a.v||1),nz+fz*a.meio*Math.sign(a.v||1))){ if(a.re<=0) a.re=0.7; } else { a.x=nx; a.z=nz; }
   a.travado+=dt; if(a.travado>3){ if(Math.hypot(a.x-a.ult[0],a.z-a.ult[1])<3&&a.rota?.[1]){ [a.x,a.z]=a.rota[1]; a.rota.shift(); a.re=0; } a.travado=0; a.ult=[a.x,a.z]; }
 }
-function seguirRota(a,dt,tx,tz,perto){
+// a: {x,z,h,v,meio,re,travado,ult,rota,destRota} — também usado pelo ônibus/van escolar (escola.js)
+export function seguirRota(a,dt,tx,tz,perto){
   // rota calculada uma vez; só refaz se o destino mudou ou a ambulância saiu do caminho (refazer sempre
   // pega o cruzamento que já ficou para trás e ela volta, andando em círculo)
   const fora=a.rota&&a.rota.length&&Math.hypot(a.rota[0][0]-a.x,a.rota[0][1]-a.z)>45;

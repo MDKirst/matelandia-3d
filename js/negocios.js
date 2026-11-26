@@ -29,6 +29,8 @@ const C_COMIDA=[[0,0.1],[10.8,0.15],[11.6,1],[13.6,0.3],[18.5,0.4],[19.8,1],[22.
 const C_LOJA=[[0,0],[7.8,0.05],[8.5,0.8],[11.8,0.9],[12.2,0.5],[13.5,0.8],[18,0.7],[18.6,0.05],[24,0]];
 const C_BAR=[[0,0.8],[2,0.3],[3,0.05],[11,0.1],[12,0.4],[14,0.15],[17,0.4],[18.5,0.8],[20,1],[24,0.8]];
 const C_FARMA=[[0,0.15],[7,0.4],[8,0.8],[19,0.7],[22,0.3],[24,0.15]];
+// escola (25/11): picos na entrada e na saída das aulas do Colégio Euclides
+const C_ESCOLA=[[0,0],[6.4,0.1],[7,1],[7.7,0.3],[9.5,0.7],[10.1,0.2],[11.4,1],[12.3,0.6],[12.9,1],[13.5,0.3],[15.2,0.7],[15.8,0.2],[17.2,1],[18,0.3],[19,0.05],[24,0]];
 const C_SORVETE=[[0,0],[9.5,0.05],[10.5,0.4],[13,0.8],[16,1],[19,0.7],[21.5,0.2],[22,0],[24,0]];
 export const TIPOS = {
   padaria:   { nome:'Padaria',    ic:'🥖', preco:6000,  hora:900,  venda:[8,25],   cor:0xF97316, piso:'#e9dcc4', prod:[0xc8893f,0xe0b070,0xa86b2e,0xf2d6a2,0x8a4f22], curva:C_PADARIA, fala:'Me vê 10 pães, por favor!' },
@@ -47,6 +49,10 @@ export const TIPOS = {
   floricultura:{ nome:'Floricultura', ic:'🌷', preco:6000, hora:900, venda:[20,90], cor:0xdb2777, piso:'#f0fdf4', prod:[0xf43f5e,0xfacc15,0xa855f7,0xffffff,0x22c55e,0xfb923c], curva:C_LOJA, fala:'Um buquê de rosas, por favor.' },
   eletronicos:{ nome:'Eletrônicos', ic:'📱', preco:12000, hora:1800, venda:[60,400], cor:0x1f2937, piso:'#f3f4f6', prod:[0x111827,0x6b7280,0x2563eb,0xe5e7eb,0x0ea5e9], curva:C_LOJA, fala:'Quanto tá esse celular?' },
   papelaria: { nome:'Papelaria',   ic:'📚', preco:5500, hora:850,  venda:[5,40],   cor:0xca8a04, piso:'#fefce8', prod:[0x2563eb,0xdc2626,0x16a34a,0xfacc15,0xffffff,0x7c3aed], curva:C_LOJA, fala:'Tem caderno de 10 matérias?' },
+  // 25/11 (pedido do Maicon): negócios de escola — rendem +50% perto do Colégio Euclides
+  cantina:   { nome:'Cantina',     ic:'🥪', preco:6000, hora:950,  venda:[6,25],   cor:0xea580c, piso:'#fff7ed', prod:[0xfacc15,0xea580c,0x16a34a,0x7c2d12,0xffffff], curva:C_ESCOLA, fala:'Um misto quente e um suco!', mesas:true, escola:true },
+  reforco:   { nome:'Reforço Escolar', ic:'📖', preco:7000, hora:1100, venda:[25,80], cor:0x2563eb, piso:'#eff6ff', prod:[0x2563eb,0xdc2626,0x16a34a,0xfacc15], curva:C_ESCOLA, fala:'Vim pra aula de matemática!', mesas:true, escola:true },
+  xerox:     { nome:'Xerox e Impressão', ic:'🖨️', preco:5000, hora:800, venda:[3,30], cor:0x475569, piso:'#f1f5f9', prod:[0xffffff,0xe5e7eb,0x2563eb,0x111827], curva:C_ESCOLA, fala:'Imprime meu trabalho, por favor?', escola:true },
   // moradia (21/11): casa para morar (sem renda; V descansa e enche a energia) e casa de aluguel (rende o aluguel)
   casa:      { nome:'Casa',        ic:'🏡', preco:20000, hora:0,    venda:[0,0], cor:0xf97316, piso:'#e7e5e4', prod:[0xffffff], curva:C_LOJA, fala:'', casa:true, residencial:true },
   aluguel:   { nome:'Casa de aluguel', ic:'🏠', preco:14000, hora:1000, venda:[0,0], cor:0x2563eb, piso:'#e7e5e4', prod:[0xffffff], curva:C_LOJA, fala:'', casa:true, residencial:true, alugada:true },
@@ -79,6 +85,9 @@ const MENU = {
   pizzaria:  [['🍕','Calabresa','49'],['🍕','Marguerita','45'],['🧀','Quatro queijos','55'],['🍫','Pizza doce','42'],['🥤','Refri 2 L','12']],
   floricultura:[['🌹','Buquê de rosas','60'],['🌻','Girassol','15'],['🪴','Vaso','35'],['🌵','Cacto','18'],['💐','Arranjo','90']],
   eletronicos:[['📱','Celular','1.299'],['🎧','Fone','89'],['🔌','Carregador','49'],['🔋','Power bank','119'],['💡','Lâmpada LED','15']],
+  cantina:   [['🥪','Misto quente','8'],['🧃','Suco de caixinha','4'],['🍌','Fruta','3'],['🥟','Salgado assado','6'],['🍫','Chocolate','5']],
+  reforco:   [['📐','Matemática','30/h'],['📖','Português','30/h'],['🔬','Ciências','30/h'],['🌎','Inglês','35/h'],['📝','Simulado','15']],
+  xerox:     [['🖨️','Cópia P&B','0,50'],['🌈','Cópia colorida','2'],['📄','Impressão','1'],['📎','Encadernação','8'],['🪪','Plastificação','5']],
   papelaria: [['📒','Caderno','25'],['✏️','Lápis','2'],['🖊️','Caneta','3'],['🎒','Mochila','89'],['📐','Régua','4']],
 };
 function texCartaz(it,cor){ return texCache('cartaz|'+it.join('|')+'|'+cor,()=>texCartaz0(it,cor)); }
@@ -436,7 +445,9 @@ function flutuar(n,txt){
 /* ───────── caixa (renda acumulada) ───────── */
 const reg=l=>{ salvo.negocios ??= {}; return salvo.negocios[l.id] ??= { coleta:Date.now() }; };
 export const nomeDoNegocio=l=>l.negocio?nomeNeg(l):'';
-export function caixa(l){ const T=TIPOS[l.negocio]; if(!T||!meu(l)) return 0; const h=Math.min(MAX_HORAS,(Date.now()-reg(l).coleta)/3.6e6); return Math.floor(h*T.hora/10)*10; }
+const pertoEscola=l=>Math.hypot(l.cx-(-731),l.cz-140)<250;                 // Colégio Euclides
+const bonusEscola=l=>TIPOS[l.negocio]?.escola&&pertoEscola(l)?1.5:1;
+export function caixa(l){ const T=TIPOS[l.negocio]; if(!T||!meu(l)) return 0; const h=Math.min(MAX_HORAS,(Date.now()-reg(l).coleta)/3.6e6); return Math.floor(h*T.hora*bonusEscola(l)/10)*10; }
 
 /* ───────── interface: cardápio e painel ───────── */
 let loteUI=null;
@@ -456,7 +467,7 @@ function abrirCardapio(l){
     const b=document.createElement('button'); b.className='neg';
     const i=document.createElement('div'); i.className='ic'; i.textContent=T.ic;
     const tx=document.createElement('div'); const nm=document.createElement('b'); nm.textContent=T.nome;
-    const pr=document.createElement('span'); pr.textContent=T.hora?`${fmt(T.preco)} · rende ${fmt(T.hora)}/h`+(T.residencial?' de aluguel':''):`${fmt(T.preco)} · para morar: V descansa`; tx.append(nm,pr); b.append(i,tx);
+    const pr=document.createElement('span'); pr.textContent=T.hora?`${fmt(T.preco)} · rende ${fmt(T.hora)}/h`+(T.residencial?' de aluguel':'')+(T.escola?(pertoEscola(l)?' · +50% aqui, perto do colégio!':' · +50% perto do Colégio Euclides'):''):`${fmt(T.preco)} · para morar: V descansa`; tx.append(nm,pr); b.append(i,tx);
     b.disabled=salvo.saldo<T.preco||!cabe(l,id); b.title=!cabe(l,id)?'Não cabe neste terreno (pequeno)':b.disabled?'Saldo insuficiente':''; if(!cabe(l,id)) pr.textContent+=' · não cabe aqui';
     b.onclick=()=>escolher(l,id); g.append(b); }
   $('negTit').textContent=`🏗️ O que construir no seu terreno (${l.w}×${l.d} m)?`;
@@ -613,6 +624,9 @@ export const PRODUTOS={
   floricultura:[['🌻','Girassol',15,{e:5}], ['💐','Arranjo (dá ânimo)',60,{e:20,corrida:60}]],
   eletronicos:[['🔋','Power bank (energia)',119,{e:30}], ['🎧','Fone com música (corre mais)',89,{corrida:180}]],
   papelaria: [['📒','Caderno',25,{e:3}], ['🍬','Bala',2,{e:4}]],
+  cantina:   [['🥪','Misto quente',8,{e:18}], ['🧃','Suco de caixinha',4,{e:8}], ['🍫','Chocolate',5,{e:10,corrida:30}]],
+  reforco:   [['📖','Aula de reforço',25,{carisma:2}], ['📝','Simulado',15,{carisma:1}]],
+  xerox:     [['🖨️','Imprimir o trabalho',5,{carisma:1}]],
 };
 // jogador dentro de um negócio aberto (de qualquer jogador)?
 export function lojaAqui(x,z){

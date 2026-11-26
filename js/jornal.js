@@ -8,7 +8,7 @@ import { jogador } from './avatar.js';
 
 const NEG = { padaria:['🥖','Padaria'], lanchonete:['🍔','Lanchonete'], mercado:['🛒','Mercado'], roupas:['👕','Loja de Roupas'], farmacia:['💊','Farmácia'], oficina:['🔧','Oficina'], bar:['🍻','Bar'],
   sorveteria:['🍦','Sorveteria'], petshop:['🐶','Pet Shop'], barbearia:['💈','Barbearia'], acougue:['🥩','Açougue'], kitnet:['🏘️','Kitnets'],
-  pizzaria:['🍕','Pizzaria'], floricultura:['🌷','Floricultura'], eletronicos:['📱','Loja de Eletrônicos'], papelaria:['📚','Papelaria'], casa:['🏡','Casa'], aluguel:['🏠','Casa de aluguel'] };
+  cantina:['🥪','Cantina'], reforco:['📖','Reforço Escolar'], xerox:['🖨️','Xerox'], pizzaria:['🍕','Pizzaria'], floricultura:['🌷','Floricultura'], eletronicos:['📱','Loja de Eletrônicos'], papelaria:['📚','Papelaria'], casa:['🏡','Casa'], aluguel:['🏠','Casa de aluguel'] };
 const na = r=>r?` na ${r}`:'';
 function manchete(e){
   const n=e.nome||'Visitante', r=e.rua||'';
