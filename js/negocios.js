@@ -18,6 +18,7 @@ import { perfil } from './rotina.js';
 import { sortearPersona } from './personas.js';
 import { estacionarMoto } from './veiculos.js';
 import { musicaLoja } from './som.js';
+import { academiaAqui, efeitoCorpo, descreveCorpo, descontoCarisma, iniciarAcademia, ACADEMIA } from './academia.js';
 import { acalmarCaes } from './caes.js';
 import { vida } from './luta.js';
 import { telaTex, texCache } from './canvastex.js';
@@ -55,6 +56,9 @@ export const TIPOS = {
 // Ficam fora da lista principal (oculto): o botão "Casa para morar" abre a escolha de tamanho e estilo.
 const PRECO_CASA={ p:12000, m:20000, g:35000, l:70000 }, MULT_ESTILO={ 1:1, 2:1.05, 3:1.15 };
 TIPOS.casa.rotulo='Média · Tradicional'; TIPOS.casa.oculto=true;
+// academia ao ar livre do parque (academia.js): só existe como balcão, fora do cardápio de negócios
+TIPOS.academia={ nome:'Academia', ic:'🏋️', preco:0, hora:0, venda:[0,0], cor:0x1d4ed8, piso:'#e5e7eb', prod:[0xffffff], fala:'', oculto:true };
+const ACAD_N={ l:{ negocio:'academia', negNome:ACADEMIA.nome } };
 for(const t of 'pmgl') for(const e of [1,2,3]){ if(t==='m'&&e===1) continue;
   TIPOS[`casa_${t}${e}`]={ ...TIPOS.casa, preco:Math.round(PRECO_CASA[t]*MULT_ESTILO[e]/500)*500, oculto:true, rotulo:'' }; }
 
@@ -561,6 +565,7 @@ ganchos.dica=l=>{
 
 /* ───────── ligação com o banco e o quadro ───────── */
 export async function iniciarNegocios(){
+  try{ iniciarAcademia(); }catch(e){ console.warn('academia',e); }
   if(!await conectarNuvem()) return;
   ouvirNegocios(ns=>{
     for(const l of lotes){ const t=ns[l.id]?.t, tipo=TIPOS[t]?t:null;
@@ -594,14 +599,15 @@ export function atualizarNegocios(dt, px, pz){
 export const PRODUTOS={
   padaria:   [['🥖','Pão francês',6,{e:10}], ['☕','Café',5,{e:5,corrida:60}], ['🍰','Bolo',22,{e:30}]],
   lanchonete:[['🍔','X-salada',22,{e:35}], ['🧃','Suco',8,{e:12}], ['🍟','Combo completo',40,{e:65}]],
-  mercado:   [['🍱','Marmita',18,{e:35}], ['💧','Água',3,{e:5}], ['🍌','Banana',4,{e:8}], ['⚡','Energético',15,{e:15,corrida:120}]],
-  roupas:    [['👟','Tênis de corrida',120,{corrida:300}], ['🧥','Roupa nova (disfarce)',150,{disfarce:true}], ['🧢','Boné',35,{e:5}]],
-  farmacia:  [['💊','Remédio',PRECO_REMEDIO,{cheia:true}], ['🩹','Curativo',15,{e:25}], ['🍊','Vitamina C',20,{e:15,corrida:90}]],
+  mercado:   [['🍱','Marmita',18,{e:35}], ['💧','Água',3,{e:5}], ['🍌','Banana',4,{e:8}], ['⚡','Energético',15,{e:15,corrida:120}], ['🥤','Whey protein',45,{whey:600}]],
+  roupas:    [['👟','Tênis de corrida',120,{corrida:300}], ['🧥','Roupa nova (disfarce)',150,{disfarce:true,carisma:4}], ['🧢','Boné',35,{e:5,carisma:2}]],
+  farmacia:  [['💊','Remédio',PRECO_REMEDIO,{cheia:true}], ['🩹','Curativo',15,{e:25}], ['🍊','Vitamina C',20,{e:15,corrida:90}], ['🥤','Whey protein',45,{whey:600}], ['⚡','Creatina',35,{creatina:600}]],
+  academia:  [['🏋️','Treinar (grátis)',0,{treino:1}], ['🥤','Whey protein',45,{whey:600}], ['⚡','Creatina',35,{creatina:600}], ['🚿','Banho e perfume',12,{carisma:3}], ['💧','Água',3,{e:5}]],
   oficina:   [['🔧','Conserto do veículo',80,{conserto:true}], ['🚀','Turbo (5 min)',200,{turbo:300}], ['🧴','Lavagem',25,{conserto:'leve'}]],
   bar:       [['🥤','Refri',6,{e:8}], ['🍗','Porção',35,{e:45}], ['🧊','Água com gás',5,{e:6}]],
   sorveteria:[['🍦','Casquinha',6,{e:8}], ['🍧','Açaí',22,{e:30}], ['🥤','Milk-shake',16,{e:20,corrida:60}]],
   petshop:   [['🦴','Petiscos para os cachorros',12,{caes:300}], ['🥫','Ração (cachorros amigos 15 min)',40,{caes:900}]],
-  barbearia: [['💈','Corte novo (disfarce)',35,{disfarce:true}], ['🧔','Barba feita',25,{e:10}]],
+  barbearia: [['💈','Corte novo (disfarce)',35,{disfarce:true,carisma:3}], ['🧔','Barba feita',25,{e:10,carisma:2}]],
   acougue:   [['🔥','Espetinho na brasa',12,{e:25}], ['🍖','Churrasco completo',55,{e:80}]],
   pizzaria:  [['🍕','Pedaço de pizza',9,{e:15}], ['🍕','Pizza inteira',49,{e:90}]],
   floricultura:[['🌻','Girassol',15,{e:5}], ['💐','Arranjo (dá ânimo)',60,{e:20,corrida:60}]],
@@ -613,26 +619,30 @@ export function lojaAqui(x,z){
   for(const n of abertos.values()){ const l=n.l, T=TIPOS[l.negocio]; if(!T||T.residencial) continue;
     const dx=x-l.A[0], dz=z-l.A[1], u=dx*l.t[0]+dz*l.t[1], v=dx*l.n[0]+dz*l.n[1];
     if(u>X0&&u<X1&&v>Z0&&v<(T.fundo||Z1)) return n; }
+  if(academiaAqui(x,z)) return ACAD_N;                               // academia do parque (aberta a todos)
   return null;
 }
 const descreve=ef=>[ef.cheia?'energia cheia':ef.e?`+${ef.e} energia`:'', ef.corrida?`corre mais rápido ${ef.corrida>=120?Math.round(ef.corrida/60)+' min':ef.corrida+' s'}`:'',
   ef.disfarce?'a polícia perde você de vista':'', ef.conserto===true?'arruma o último veículo que você dirigiu':ef.conserto?'tira a sujeira e o amassado leve':'', ef.turbo?'veículo mais rápido':'', ef.caes?`os cachorros não correm atrás de você por ${Math.round(ef.caes/60)} min`:''].filter(Boolean).join(' · ');
 // aplicar(ef) devolve texto de erro (não cobra) ou '' (deu certo)
 export function abrirBalcao(n, aplicar){
-  const l=n.l, T=TIPOS[l.negocio], dono=meu(l), lista=PRODUTOS[l.negocio]||[];
+  const l=n.l, T=TIPOS[l.negocio], dono=l===ACAD_N.l?false:meu(l), lista=PRODUTOS[l.negocio]||[], desc=descontoCarisma();
   $('balcaoTit').textContent=`${T.ic} ${nomeNeg(l)}`;
-  $('balcaoInfo').textContent=(dono?'Seu negócio: aqui você paga só a metade. ':'')+`Saldo: ${fmt(salvo.saldo)}`;
+  $('balcaoInfo').textContent=(dono?'Seu negócio: aqui você paga só a metade. ':'')+(desc<1?`✨ Carisma: ${Math.round((1-desc)*100)}% de desconto. `:'')+`Saldo: ${fmt(salvo.saldo)}`;
   const g=$('balcaoLista'); g.replaceChildren();
-  for(const [ic,nome,preco0,ef] of lista){ const preco=dono?Math.ceil(preco0/2):preco0;
+  for(const [ic,nome,preco0,ef] of lista){ const preco=Math.ceil((dono?preco0/2:preco0)*desc);
     const b=document.createElement('button'); b.className='neg';
     const i=document.createElement('div'); i.className='ic'; i.textContent=ic;
-    const tx=document.createElement('div'); const nm=document.createElement('b'); nm.textContent=`${nome} · ${fmt(preco)}`; const s=document.createElement('span'); s.textContent=descreve(ef); tx.append(nm,s); b.append(i,tx);
+    const tx=document.createElement('div'); const nm=document.createElement('b'); nm.textContent=`${nome} · ${fmt(preco)}`; const s=document.createElement('span'); s.textContent=[descreve(ef),descreveCorpo(ef)].filter(Boolean).join(' · '); tx.append(nm,s); b.append(i,tx);
     b.disabled=salvo.saldo<preco; b.title=b.disabled?'Saldo insuficiente':'';
     b.onclick=()=>{ if(salvo.saldo<preco){ avisar('Saldo insuficiente'); return; }
-      const erro=ef.caes&&Object.keys(ef).length===1?'':aplicar(ef); if(erro){ avisar(erro); return; }
+      const corpo=ef.treino||ef.whey||ef.creatina||ef.carisma, fora=Object.keys(ef).filter(k=>!['treino','whey','creatina','carisma','caes'].includes(k)).length;
+      const erroC=corpo?efeitoCorpo({treino:ef.treino}):''; if(erroC){ avisar(erroC); return; }   // treino: confere antes de cobrar
+      const erro=fora?aplicar(ef):''; if(erro){ avisar(erro); return; }
+      if(corpo) efeitoCorpo({whey:ef.whey,creatina:ef.creatina,carisma:ef.carisma});
       if(ef.caes) acalmarCaes(ef.caes);
       ganhar(-preco);
-      $('balcao').classList.remove('on'); avisar(`${ic} ${nome}: ${descreve(ef)} (−${fmt(preco)})`);
+      $('balcao').classList.remove('on'); avisar(`${ic} ${nome}: ${[descreve(ef),descreveCorpo(ef)].filter(Boolean).join(' · ')}`+(preco?` (−${fmt(preco)})`:''));
       dispatchEvent(new CustomEvent('matelandia:comprou',{detail:{tipo:l.negocio,nome}})); };
     g.append(b); }
   $('balcao').classList.add('on');

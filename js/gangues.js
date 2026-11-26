@@ -22,6 +22,7 @@ import { naMira, desenharTiro, bocaDaArma } from './tiro.js';
 import { casas, acharPorta } from './casas.js';
 import { nuvem } from './nuvem.js';
 import { somTiro, somPancada } from './som.js';
+import { multGolpe } from './academia.js';
 
 const GANGUES=[
   { id:'corvos',   nome:'Corvos',   bairro:'Vila Nova',  ll:[-25.2422,-53.9916], cor:0xb91c1c, ic:'🐦‍⬛',
@@ -130,7 +131,7 @@ export function golpearGangue(x,z,fx,fz,tipo){
   for(const g of GANGUES) for(const p of g.membros){ if(p.caido) continue;
     const ax=p.x-x, az=p.z-z, d=Math.hypot(ax,az);
     if(tipo==='tiro'){ if(naMira(ax,az,fx,fz)<0) continue; } else if(d>1.8||(ax*fx+az*fz)/(d||1)<0.35) continue;
-    p.vida-=tipo==='tiro'?2:tipo==='chute'?1.5:1; p.x+=fx*0.4; p.z+=fz*0.4;
+    p.vida-=tipo==='tiro'?2:(tipo==='chute'?1.5:1)*multGolpe();   // academia: força bate mais p.x+=fx*0.4; p.z+=fz*0.4;
     if(p.vida<=0){ p.caido=40; falar(p,'Ai!',1.5); }
     if(g.estado!=='hostil') hostil(g,'Bateu num dos nossos!');
     return true; }
