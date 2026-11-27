@@ -111,22 +111,26 @@ export function papoLivre(p, m, id, ui, abertura){
   const reag=reacao(id);
   const primeira=[abertura, reag||`${sorteia(saudacao(h))} ${sorteia(ex.papo.length?ex.papo:['Tudo tranquilo por aqui.'])}`].filter(Boolean).join('\n\n');
   // conversa livre por IA (27/11): o jogador escreve, o morador responde no personagem (ia-papo.js)
+  // 27/11 (Maicon): a conversa tem de 3 a 7 trocas — o morador puxa assunto/devolve pergunta e na 7ª se despede
   const hist=[]; let esperando=false;
+  const TROCAS=7, cel=matchMedia('(pointer:coarse)').matches;
+  const conversa=()=>hist.slice(-2).map(h=>`Você: "${h.q}"\n${m.nome}: ${h.r}`).join('\n\n');
+  const dicaRodada=()=>hist.length?`💬 Conversa ${hist.length} de ${TROCAS}${cel?'':' · Esc fecha'}`:undefined;
   const entrada={ dica:`Fale com ${m.nome}…`, enviar:async txt=>{
-    if(esperando) return; esperando=true;
-    const fala=txt.slice(0,200);
-    ui.mostrar(m.nome, m.quem, ui.cor, `Você: "${fala}"\n\n${m.nome} está pensando…`, [], '', null);
-    $('papo')?.querySelector('p')?.classList.add('pensando');
+    if(esperando||hist.length>=TROCAS) return; esperando=true;
+    const fala=txt.slice(0,200), rodada=hist.length+1;
+    ui.mostrar(m.nome, m.quem, ui.cor, [conversa(), `Você: "${fala}"\n${m.nome} está pensando…`].filter(Boolean).join('\n\n'), [], dicaRodada()||'', null);
     const f=fatoFresco();
-    let r=await perguntarIA({ id, fala, amizade:ui.amizade|0, hora:Math.floor(horaJogo()), noticias:noticiasRecentes?.(3)||[], fato:f?FATO_TXT[f.tipo]||'':'', hist });
+    let r=await perguntarIA({ id, fala, rodada, amizade:ui.amizade|0, hora:Math.floor(horaJogo()), noticias:noticiasRecentes?.(3)||[], fato:f?FATO_TXT[f.tipo]||'':'', hist });
     esperando=false;
     if(!ui.aberto?.()) return;                                       // fechou (Esc) ou se afastou enquanto a IA pensava
     if(!r) r=iaRestante()<=0&&iaLigada()?'Ufa, hoje já conversei demais! Amanhã a gente prosa mais.':sorteia(ex.papo.length?ex.papo:['Hm… é mesmo? Conta mais.']);
-    hist.push({ q:fala, r }); if(hist.length>6) hist.shift();
-    tela(`Você: "${fala}"\n\n${r}`);
-    if(!matchMedia('(pointer:coarse)').matches) $('papoIn')?.focus();
+    hist.push({ q:fala, r });
+    if(hist.length>=TROCAS){ ui.mostrar(m.nome, m.quem, ui.cor, conversa(), [['Tchau! Foi bom conversar.', ui.fechar]], `💬 Fim da conversa (${TROCAS} de ${TROCAS})`); return; }
+    tela(conversa());
+    if(!cel) $('papoIn')?.focus();
   } };
-  const tela=(texto)=>ui.mostrar(m.nome, m.quem, ui.cor, texto, menu(), undefined, iaLigada()?entrada:null);
+  const tela=(texto)=>ui.mostrar(m.nome, m.quem, ui.cor, texto, menu(), dicaRodada(), iaLigada()?entrada:null);
   const menu=()=>{
     const b=[['Quais as novidades?', ()=>tela(novidade(id, ui.outros))],
              ['Precisa de alguma ajuda?', ()=>favor()],
