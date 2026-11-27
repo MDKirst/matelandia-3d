@@ -8,7 +8,7 @@ então nenhum modelo é baixado no navegador.
 - `personas.js`: é gerado por `gerar-personas.mjs` a partir de `js/moradores.js` + `js/conversa-dados.js`.
   **Mudou um morador? Rode `node tools/ia-papo/gerar-personas.mjs` e publique o Worker de novo.**
 - `simular.mjs`: roda o mesmo Worker no PC com uma IA falsa, para testar sem a Cloudflare.
-- No jogo: `js/ia-papo.js` (60 falas por dia por navegador) e `IA_PAPO` em `js/config.js`.
+- No jogo: `js/ia-papo.js` (30 falas por dia por navegador) e `IA_PAPO` em `js/config.js`.
   Com `IA_PAPO` vazio, a caixa de texto não aparece.
 
 ## Publicar (uma vez)
@@ -23,6 +23,8 @@ então nenhum modelo é baixado no navegador.
 3. Cole esse endereço em `IA_PAPO` no `js/config.js`, faça o commit e o push.
 
 ## Cota grátis
-Workers AI dá 10 mil "neurons" por dia. Com o modelo `llama-3.1-8b-instruct-fast`, isso rende umas
-2 mil respostas por dia. Quando a cota acaba, o morador volta às falas prontas e o jogo segue normal.
+Endereço publicado (27/11): https://matelandia-papo.ia-papo.workers.dev
+
+Workers AI dá 10 mil "neurons" por dia. O modelo é o `llama-3.3-70b-instruct-fp8-fast`, que rende umas
+300 respostas por dia. O 8B rende umas 2 mil, mas foi testado e desobedeceu: puxou namoro e barzinho. Quando a cota acaba, o morador volta às falas prontas e o jogo segue normal.
 Para trocar o modelo, mude `MODELO` no `wrangler.toml` e rode `npx wrangler deploy`.

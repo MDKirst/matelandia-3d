@@ -4,7 +4,7 @@
 import { IA_PAPO } from './config.js';
 import { limparFala } from './online.js';
 
-const CHAVE = 'matelandia3d.iapapo', POR_DIA = 60, ESPERA_MS = 12e3;
+const CHAVE = 'matelandia3d.iapapo', POR_DIA = 30, ESPERA_MS = 12e3;
 const hoje = () => new Date().toISOString().slice(0, 10);
 function conta() { try { const d = JSON.parse(localStorage.getItem(CHAVE)); if (d?.dia === hoje()) return d; } catch (e) {} return { dia: hoje(), n: 0 }; }
 

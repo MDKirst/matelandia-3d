@@ -9,4 +9,4 @@ binding = "AI"
 
 # trocar o modelo sem mexer no código (ex.: "@cf/meta/llama-3.3-70b-instruct-fp8-fast" fala melhor, mas gasta ~6x a cota grátis)
 [vars]
-MODELO = "@cf/meta/llama-3.1-8b-instruct-fast"
+MODELO = "@cf/meta/llama-3.3-70b-instruct-fp8-fast"

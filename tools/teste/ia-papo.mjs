@@ -1,4 +1,4 @@
-// 27/11: conversa livre por IA com morador. Precisa do simulador (node tools/ia-papo/simular.mjs) e IA_PAPO apontando pra ele.
+// 27/11: conversa livre por IA com morador (usa o endereço de IA_PAPO; p/ IA falsa rode node tools/ia-papo/simular.mjs e aponte IA_PAPO pra ele).
 // uso: NODE_PATH=tools/teste/node_modules node tools/teste/ia-papo.mjs [largura altura]
 import { chromium } from 'playwright-core';
 import { readdirSync } from 'node:fs'; import { join, dirname } from 'node:path'; import { fileURLToPath } from 'node:url';
