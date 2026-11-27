@@ -271,7 +271,10 @@ function caixa(){
   #papo .quem b{font-size:16px} #papo .quem small{color:#94a3b8} #papo .cor{color:#fda4af;letter-spacing:1px;white-space:nowrap}
   #papo p{margin:0 0 10px;color:#e2e8f0;line-height:1.4;white-space:pre-line}
   #papo button{display:block;width:100%;text-align:left;margin-top:6px;padding:10px 12px;border-radius:10px;border:1px solid #475569;background:#1e293b;color:#f8fafc;font:600 14px system-ui,sans-serif;cursor:pointer}
-  #papo button:hover{background:#334155} #papo .dica{display:block;margin-top:8px;color:#94a3b8;font-size:12px}
+  #papo button:hover{background:#334155}
+  #papo .escrever{display:flex;gap:6px;margin:0 0 4px} #papo .escrever input{flex:1;min-width:0;padding:10px 12px;border-radius:10px;border:1px solid #f59e0b;background:#0f172a;color:#f8fafc;font:14px system-ui,sans-serif}
+  #papo .escrever button{width:auto;margin:0;padding:0 14px;background:#f59e0b;border-color:#f59e0b;color:#111;font-size:16px} #papo .escrever button:hover{background:#fbbf24}
+  #papo p.pensando{color:#94a3b8;font-style:italic} #papo .dica{display:block;margin-top:8px;color:#94a3b8;font-size:12px}
   @media (pointer:coarse){ #papo{left:50%;right:auto;transform:translateX(-50%);top:64px;bottom:auto;max-height:calc(100vh - 300px)} #papo button{padding:12px 12px;font-size:15px} }
   body.papo-falha canvas{animation:papoFalha .12s steps(2) 12}
   @keyframes papoFalha{0%{filter:hue-rotate(0) invert(0);transform:translate(0,0)}50%{filter:hue-rotate(160deg) invert(.85) contrast(1.6);transform:translate(-6px,3px)}100%{filter:none;transform:translate(4px,-2px)}}`;
@@ -279,12 +282,20 @@ function caixa(){
   d.addEventListener('tecla',e=>{ const n=+String(e.detail).replace(/Digit|Numpad/,''); const b=d.querySelectorAll('button')[n-1]; if(b) b.click(); });
   return d;
 }
-function mostrar(titulo, sub, cor, texto, botoes, dica){
+// entrada (opcional) = { dica, enviar(txt) }: caixa pra escrever o que quiser pro morador (IA, conversa.js)
+function mostrar(titulo, sub, cor, texto, botoes, dica, entrada){
   const d=caixa(); d.replaceChildren();
   const q=document.createElement('div'); q.className='quem';
   const t=document.createElement('b'); t.textContent=titulo; const s=document.createElement('small'); s.textContent=sub?' · '+sub:'';
   const esq=document.createElement('span'); esq.append(t,s); const c=document.createElement('span'); c.className='cor'; c.textContent=cor||''; q.append(esq,c);
   const p=document.createElement('p'); p.textContent=texto; d.append(q,p);
+  if(entrada){
+    const f=document.createElement('form'); f.className='escrever';
+    const i=document.createElement('input'); i.id='papoIn'; i.maxLength=200; i.autocomplete='off'; i.placeholder=entrada.dica||'Escreva o que quiser…';
+    const ok=document.createElement('button'); ok.type='submit'; ok.textContent='➤'; ok.title='Falar';
+    f.append(i,ok); f.onsubmit=e=>{ e.preventDefault(); const txt=i.value.trim(); if(!txt) return; i.value=''; entrada.enviar(txt); };
+    d.append(f);
+  }
   botoes.forEach(([txt,fn],i)=>{ const b=document.createElement('button'); b.textContent=`${i+1}. ${txt}`; b.onclick=()=>{ b.blur(); fn(); }; d.append(b); });
   const k=document.createElement('small'); k.className='dica'; k.textContent=dica||(matchMedia('(pointer:coarse)').matches?'Toque numa resposta.':'Responda com o número · Esc fecha'); d.append(k);
   d.classList.add('on');
@@ -329,7 +340,7 @@ export function abrirMorador(p, falar){
   const n=nivel(id), agora=Date.now();
   // papo livre (conversa.js): menu de novidades, favor e dica em vez de uma frase só
   const livre=abertura=>{ atual={p,m,id,passos:[],i:0}; falar?.(p,sorteia(['Oi de novo!','Opa!','E aí!']),2.5);
-    papoLivre(p,m,id,{ mostrar, fechar, cor:coracoes(n), outros:Object.entries(MORADORES).filter(([k])=>k!==id).map(([,o])=>o) },abertura); return true; };
+    papoLivre(p,m,id,{ mostrar, fechar, cor:coracoes(n), amizade:n, aberto:()=>atual?.p===p, outros:Object.entries(MORADORES).filter(([k])=>k!==id).map(([,o])=>o) },abertura); return true; };
   if(n>=5){
     if(dados.final) return livre(sorteia(DEPOIS_FINAL));
     if(planoCompleto()) return livre('O plano tá completo! Meia-noite, na frente da Prefeitura. A gente te espera lá.');

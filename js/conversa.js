@@ -14,6 +14,7 @@ import { ganhar as ganharM, fmt } from './terrenos.js';
 import { contar } from './conquistas.js';
 import { noticiasRecentes } from './jornal.js';
 import { saudacao } from './rotina.js';
+import { perguntarIA, iaLigada, iaRestante } from './ia-papo.js';
 import { EXTRA, REACOES, REACAO_DE, FOFOCAS, DICAS, PEDIDOS, SEM_FAVOR, OBRIGADO } from './conversa-dados.js';
 
 const CHAVE='matelandia3d.conversa', VALE_MS=25*60e3, FAVOR_CADA_MS=4*60e3, RAIO_CHEGOU=18;
@@ -25,6 +26,9 @@ function avisar(t){ const a=$('aviso'); if(!a) return; a.textContent=t; a.style.
 
 /* ───────── memória: o que o jogador andou fazendo ───────── */
 export function lembrar(tipo){ dados.fato={ tipo, t:Date.now() }; salvar(); }
+const FATO_TXT={ atropelou:'atropelou alguém há pouco', roubo:'roubou uma bicicleta há pouco', batida:'bateu o carro há pouco', briga:'se meteu numa briga há pouco', favor:'fez um favor pra um morador há pouco',
+  casa:'comprou uma casa', negocio:'abriu um negócio na cidade', trabalho:'fez um trabalho na cidade', surra:'levou uma surra da turma', preso:'foi preso pela polícia', fugiu:'fugiu da polícia',
+  terreno:'comprou um terreno', entrega:'fez uma entrega', hospital:'foi parar no hospital', empinou:'empinou a moto na rua' };   // contexto pra IA
 const fatoFresco=()=>dados.fato&&Date.now()-dados.fato.t<VALE_MS?dados.fato:null;
 // fala sobre o último fato, se este morador ainda não comentou (id = modelo do morador)
 export function reacao(id, marcar=true){
@@ -106,7 +110,23 @@ export function papoLivre(p, m, id, ui, abertura){
   const h=horaJogo();
   const reag=reacao(id);
   const primeira=[abertura, reag||`${sorteia(saudacao(h))} ${sorteia(ex.papo.length?ex.papo:['Tudo tranquilo por aqui.'])}`].filter(Boolean).join('\n\n');
-  const tela=(texto)=>ui.mostrar(m.nome, m.quem, ui.cor, texto, menu());
+  // conversa livre por IA (27/11): o jogador escreve, o morador responde no personagem (ia-papo.js)
+  const hist=[]; let esperando=false;
+  const entrada={ dica:`Fale com ${m.nome}…`, enviar:async txt=>{
+    if(esperando) return; esperando=true;
+    const fala=txt.slice(0,200);
+    ui.mostrar(m.nome, m.quem, ui.cor, `Você: "${fala}"\n\n${m.nome} está pensando…`, [], '', null);
+    $('papo')?.querySelector('p')?.classList.add('pensando');
+    const f=fatoFresco();
+    let r=await perguntarIA({ id, fala, amizade:ui.amizade|0, hora:Math.floor(horaJogo()), noticias:noticiasRecentes?.(3)||[], fato:f?FATO_TXT[f.tipo]||'':'', hist });
+    esperando=false;
+    if(!ui.aberto?.()) return;                                       // fechou (Esc) ou se afastou enquanto a IA pensava
+    if(!r) r=iaRestante()<=0&&iaLigada()?'Ufa, hoje já conversei demais! Amanhã a gente prosa mais.':sorteia(ex.papo.length?ex.papo:['Hm… é mesmo? Conta mais.']);
+    hist.push({ q:fala, r }); if(hist.length>6) hist.shift();
+    tela(`Você: "${fala}"\n\n${r}`);
+    if(!matchMedia('(pointer:coarse)').matches) $('papoIn')?.focus();
+  } };
+  const tela=(texto)=>ui.mostrar(m.nome, m.quem, ui.cor, texto, menu(), undefined, iaLigada()?entrada:null);
   const menu=()=>{
     const b=[['Quais as novidades?', ()=>tela(novidade(id, ui.outros))],
              ['Precisa de alguma ajuda?', ()=>favor()],

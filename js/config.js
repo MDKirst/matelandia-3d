@@ -5,6 +5,9 @@ export const Q = new URLSearchParams(location.search);
 export const LEVE = Q.get('leve')==='1' || (Q.get('leve')!=='0' && matchMedia('(pointer:coarse)').matches);
 export const porModo = (normal, leve)=>LEVE?leve:normal;
 
+// conversa com moradores por IA (27/11): endereço do Worker da Cloudflare (tools/ia-papo). Vazio = só falas prontas.
+export const IA_PAPO = '';
+
 export const LAT0 = -25.2398, LON0 = -53.9810;               // centro da área urbana de Matelândia-PR
 export const LIMITE = {s:-25.2585, w:-54.0010, n:-25.2212, e:-53.9610}; // o mundo do jogo acaba neste retângulo
 

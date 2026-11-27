@@ -1,0 +1,12 @@
+# Publicar: npx wrangler login   (uma vez, abre o navegador)
+#           npx wrangler deploy  (dentro de tools/ia-papo)
+name = "matelandia-papo"
+main = "worker.js"
+compatibility_date = "2026-11-01"
+
+[ai]
+binding = "AI"
+
+# trocar o modelo sem mexer no código (ex.: "@cf/meta/llama-3.3-70b-instruct-fp8-fast" fala melhor, mas gasta ~6x a cota grátis)
+[vars]
+MODELO = "@cf/meta/llama-3.1-8b-instruct-fast"

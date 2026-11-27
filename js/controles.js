@@ -22,7 +22,10 @@ const digitando=()=>document.activeElement&&document.activeElement.tagName==='IN
 const JANELAS='#negocio.on,#trabalhos.on,#jornal.on,#conquistas.on,#foto.on,#mapa.on,#gangue.on,#balcao.on,#papo.on';
 export const janelaAberta=()=>document.querySelector(JANELAS);
 addEventListener('keydown',e=>{ const j=janelaAberta(); if(!j) return;
-  e.stopImmediatePropagation(); if(j.id==='gangue'||j.id==='papo'){ j.dispatchEvent(new CustomEvent('tecla',{detail:e.code})); for(const k in tecla) tecla[k]=false; return; }   // interrogatório da gangue: só 1–4
+  e.stopImmediatePropagation();
+  if(j.id==='papo'&&e.code==='Escape'){ document.activeElement?.blur?.(); j.classList.remove('on'); for(const k in tecla) tecla[k]=false; return; }
+  if(j.id==='papo'&&digitando()) return;                                     // escrevendo pro morador (IA): as letras vão pra caixa, não pro jogo
+  if(j.id==='gangue'||j.id==='papo'){ j.dispatchEvent(new CustomEvent('tecla',{detail:e.code})); for(const k in tecla) tecla[k]=false; return; }   // interrogatório da gangue: só 1–4
   if(e.code==='Escape'||(e.code==='KeyM'&&j.id==='mapa')) j.classList.remove('on');
   for(const k in tecla) tecla[k]=false; },true);
 addEventListener('keydown',e=>{
