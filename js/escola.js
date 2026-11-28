@@ -57,7 +57,7 @@ function novoAluno(entra, de){
   const corpo=new THREE.Group(); corpo.add(obj); obj.position.y=-m.base*e;
   const mochila=new THREE.Mesh(new THREE.BoxGeometry(0.34,0.42,0.18),new THREE.MeshLambertMaterial({color:sorteia(MOCHILAS)}));
   mochila.position.set(0,(1.15+0.3/2)*0.62,-0.2); corpo.add(mochila);                  // nas costas (frente = +Z)
-  const mixer=new THREE.AnimationMixer(obj), clip=m.anims.andar||Object.values(m.anims)[0]; if(clip) mixer.clipAction(clip).play();
+  const mixer=new THREE.AnimationMixer(obj), clip=m.anims.andar||Object.values(m.anims)[0]; if(clip){ mixer.clipAction(clip).play(); mixer.update(0); }   // update(0): longe não anima, e o Mixamo ficaria em pose T
   scene.add(corpo);
   // caminho: entra = rua → portão → pátio ; sai = pátio → portão → rua
   const ponto=de||pontoNaRua(...ESCOLA.portao,55,120)||[ESCOLA.portao[0]+60,ESCOLA.portao[1]];

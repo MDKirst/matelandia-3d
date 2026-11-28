@@ -73,6 +73,7 @@ function vestir(p, m){
   scene.add(obj);
   p.obj=obj; p.mixer=new THREE.AnimationMixer(obj); p.acoes={}; p.atual=null; p.modelo=m;
   for(const [n,c] of Object.entries(m.anims)) p.acoes[n]=p.mixer.clipAction(c);
+  congelar(p);   // já nasce na pose 'parado': longe do jogador a animação não roda, e os modelos Mixamo ficariam em pose T
 }
 function animar(p, nome, vel=1){
   const a=p.acoes[nome]||p.acoes.parado; if(!a) return;
